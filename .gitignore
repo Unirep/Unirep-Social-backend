@@ -1,3 +1,13 @@
+# .DS_Store
+.DS_Store
+*/.DS_Store
+*/*/.DS_Store
+
+# artifacts
+artifacts/
+*/artifacts/
+*/*/artifacts/
+
 # Logs
 logs
 *.log

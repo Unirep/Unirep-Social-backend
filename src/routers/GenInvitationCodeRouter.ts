@@ -1,0 +1,51 @@
+import { NextFunction, Request, Response, Router } from 'express';
+import GenInvitationCodeController from '../controllers/GenInvitationCodeController';
+
+class GenInvitationCodeRouter {
+  private _router = Router();
+  private _controller = GenInvitationCodeController;
+
+  get router() {
+    return this._router;
+  }
+
+  constructor() {
+    this._configure();
+  }
+
+  /**
+   * Connect routes to their matching controller endpoints.
+   */
+  private _configure() {
+    this._router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+        if (req.headers.authorization === 'NLmKDUnJUpc6VzuPc7Wm') {
+            try {
+                const ret = this._controller.genCode();
+                global.invitationCodes.push(ret);
+                console.log(JSON.stringify(global.invitationCodes));
+                res.status(200).json(ret);
+              }
+              catch (error) {
+                console.log(error);
+                next(error);
+              }
+        } else {
+            res.status(403).json({error: 'No available authentications'});
+        }
+      });
+
+      this._router.get('/:ic', async (req: Request, res: Response, next: NextFunction) => {
+        const index = global.invitationCodes.indexOf(req.params.ic);
+        console.log(JSON.stringify(global.invitationCodes));
+        if (index >= 0) {
+            global.invitationCodes.splice(index, 1);
+            console.log(JSON.stringify(global.invitationCodes));
+            res.status(200).json();
+        } else {
+            res.status(403).json({error: 'Not available invitation code'});
+        }
+      });
+  }
+}
+
+export = new GenInvitationCodeRouter().router;
