@@ -1,11 +1,11 @@
 import ErrorHandler from '../ErrorHandler';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget } from '../constants';
 import base64url from 'base64url';
 import { ethers } from 'ethers';
 import Post, { IPost } from "../database/models/post";
 import { UnirepSocialContract } from '@unirep/unirep-social';
-import { maxReputationBudget } from '@unirep/unirep'
+// import { maxReputationBudget } from '@unirep/unirep'
 
 class PostController {
     defaultMethod() {
@@ -34,7 +34,6 @@ class PostController {
     
       const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
       await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
-      const currentEpoch = await unirepSocialContract.getEpoch();
 
       // Parse Inputs
       const decodedProof = base64url.decode(data.proof.slice(reputationProofPrefix.length))
@@ -51,7 +50,7 @@ class PostController {
       const newPost: IPost = new Post({
         content: data.content,
         epochKey: data.epk,
-        epoch: currentEpoch,
+        epoch,
         epkProof: proof.map((n)=>add0x(BigInt(n).toString(16))),
         proveMinRep: minRep !== null ? true : false,
         minRep: Number(minRep),
@@ -75,7 +74,7 @@ class PostController {
         );
       });
       
-      return {transaction: tx.hash, postId: newPost._id, currentEpoch: Number(currentEpoch)};
+      return {transaction: tx.hash, postId: newPost._id, currentEpoch: epoch};
     }
   }
 

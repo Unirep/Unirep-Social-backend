@@ -10,6 +10,7 @@ export const reputationProofPrefix = 'Unirep.reputation.proof.'
 export const reputationPublicSignalsPrefix = 'Unirep.reputation.publicSignals.'
 export const signUpProofPrefix = 'Unirep.signUp.proof.'
 export const signUpPublicSignalsPrefix = 'Unirep.signUp.publicSignals.'
+export const maxReputationBudget = 10
 
 export const add0x = (str: string): string => {
     str = str.padStart(64,"0")
