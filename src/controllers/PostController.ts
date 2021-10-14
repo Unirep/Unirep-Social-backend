@@ -1,10 +1,11 @@
 import ErrorHandler from '../ErrorHandler';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x } from '../constants';
-import Unirep from "../artifacts/contracts/Unirep.sol/Unirep.json";
-import UnirepSocial from '../artifacts/contracts/UnirepSocial.sol/UnirepSocial.json';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix } from '../constants';
+import base64url from 'base64url';
 import { ethers } from 'ethers';
 import Post, { IPost } from "../database/models/post";
+import { UnirepSocialContract } from '@unirep/unirep-social';
+import { maxReputationBudget } from '@unirep/unirep'
 
 class PostController {
     defaultMethod() {
@@ -30,61 +31,44 @@ class PostController {
         }
         return value
       });
-      
-      const provider = new ethers.providers.JsonRpcProvider(DEFAULT_ETH_PROVIDER)
-      const wallet = new ethers.Wallet(DEPLOYER_PRIV_KEY, provider)
-      const unirepSocialContract = new ethers.Contract(
-          UNIREP_SOCIAL,
-          UnirepSocial.abi,
-          wallet,
-      )
-      const unirepAddress = await unirepSocialContract.unirep()
-      const unirepContract = new ethers.Contract(
-          unirepAddress,
-          Unirep.abi,
-          provider,
-      )
-      const currentEpoch = await unirepContract.currentEpoch()
+    
+      const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
+      await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
+      const currentEpoch = await unirepSocialContract.getEpoch();
+
+      // Parse Inputs
+      const decodedProof = base64url.decode(data.proof.slice(reputationProofPrefix.length))
+      const decodedPublicSignals = base64url.decode(data.publicSignals.slice(reputationPublicSignalsPrefix.length))
+      const publicSignals = JSON.parse(decodedPublicSignals)
+      const proof = JSON.parse(decodedProof)
+      const epoch = publicSignals[maxReputationBudget]
+      const epochKey = publicSignals[maxReputationBudget + 1]
+      const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
+      const minRep = publicSignals[maxReputationBudget + 5]
+
+      /// TODO: verify reputation proof ///
       
       const newPost: IPost = new Post({
         content: data.content,
-        // TODO: hashedContent
         epochKey: data.epk,
         epoch: currentEpoch,
-        epkProof: data.proof.map((n)=>add0x(BigInt(n).toString(16))),
-        proveMinRep: data.minRep !== 0 ? true : false,
-        minRep: Number(data.minRep),
+        epkProof: proof.map((n)=>add0x(BigInt(n).toString(16))),
+        proveMinRep: minRep !== null ? true : false,
+        minRep: Number(minRep),
         posRep: 0,
         negRep: 0,
         comments: [],
         status: 0
       });
 
-      const attestingFee = await unirepContract.attestingFee()
-
-      let tx
-      try {
-          tx = await unirepSocialContract.publishPost(
-              BigInt(add0x(newPost._id.toString())), 
-              BigInt(add0x(data.epk)),
-              data.content, 
-              data.nullifiers,
-              data.publicSignals, 
-              data.proof,
-              { value: attestingFee, gasLimit: 1000000 }
-          )
-      } catch(e: any) {
-          console.error('Error: the transaction failed')
-          if (e.message) {
-              console.error(e.message)
-          }
-          return
-      }
+      const postId = newPost._id.toString();
+      const tx = await unirepSocialContract.publishPost(postId, publicSignals, proof, data.content);
+      console.log('transaction hash: ' + tx.hash + ', epoch key of epoch ' + epoch + ': ' + epochKey);
 
       await newPost.save((err, post) => {
         console.log('new post error: ' + err);
         Post.findByIdAndUpdate(
-          post._id.toString(),
+          postId,
           { transactionHash: tx.hash.toString() },
           { "new": true, "upsert": false }, 
           (err) => console.log('update transaction hash of posts error: ' + err)
