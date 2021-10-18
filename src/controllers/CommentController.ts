@@ -12,12 +12,12 @@ class CommentController {
 
     leaveComment = async (d: any) => {
       // decode data from d
-      // const data = JSON.parse(JSON.stringify(d), (key, value) => {
-      //   if (typeof value === 'string' && /^\d+n$/.test(value)) {
-      //     return BigInt(value.substr(0, value.length - 1))
-      //   }
-      //   return value
-      // });
+      const data = JSON.parse(JSON.stringify(d), (key, value) => {
+        if (typeof value === 'string' && /^\d+n$/.test(value)) {
+          return BigInt(value.substr(0, value.length - 1))
+        }
+        return value
+      });
       
       // const provider = new ethers.providers.JsonRpcProvider(DEFAULT_ETH_PROVIDER)
       // const wallet = new ethers.Wallet(DEPLOYER_PRIV_KEY, provider)

@@ -2,6 +2,7 @@ export const DEPLOYER_PRIV_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed
 export const UNIREP = '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6';
 export const UNIREP_SOCIAL = '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318';
 export const DEFAULT_ETH_PROVIDER = 'http://localhost:8545';
+export const DEFAULT_START_BLOCK = 0;
 
 export const identityPrefix = 'Unirep.identity.'
 export const identityCommitmentPrefix = 'Unirep.identityCommitment.'
