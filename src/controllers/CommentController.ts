@@ -23,9 +23,11 @@ class CommentController {
       const publicSignals = JSON.parse(decodedPublicSignals)
       const proof = JSON.parse(decodedProof)
       const epoch = publicSignals[maxReputationBudget]
-      const epochKey = publicSignals[maxReputationBudget + 1]
+      const epochKey = Number(publicSignals[maxReputationBudget + 1]).toString(16)
       const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
       const minRep = publicSignals[maxReputationBudget + 5]
+      const proofIndex = await unirepSocialContract.getReputationProofIndex(publicSignals, proof)
+
 
       const newComment: IComment = new Comment({
         postId: data.postId,
@@ -33,6 +35,7 @@ class CommentController {
         epochKey,
         epoch,
         epkProof: proof.map((n)=>add0x(BigInt(n).toString(16))),
+        proofIndex,
         proveMinRep: minRep !== 0 ? true : false,
         minRep: Number(minRep),
         posRep: 0,
@@ -50,13 +53,13 @@ class CommentController {
         data.content,
       );
       const tx = txResult.tx;
-      console.log('transaction: ' + tx.hash);
+      console.log('transaction: ' + tx.hash + ', proof index: ' + proofIndex);
 
       await newComment.save((err, comment) => {
         console.log('new comment error: ' + err);
         Comment.findByIdAndUpdate(
           commentId,
-          { transactionHash: tx.hash.toString() },
+          { transactionHash: tx.hash.toString(), proofIndex },
           { "new": true, "upsert": false }, 
           (err) => console.log('update transaction hash of comments error: ' + err)
         );
