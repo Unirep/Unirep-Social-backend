@@ -2,7 +2,6 @@ import ErrorHandler from '../ErrorHandler';
 
 import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget } from '../constants';
 import base64url from 'base64url';
-import { ethers } from 'ethers';
 import Post, { IPost } from "../database/models/post";
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
@@ -23,14 +22,6 @@ class PostController {
     }
 
     publishPost = async (data: any) => { // should have content, epk, proof, minRep, nullifiers, publicSignals  
-      // decode data from d
-      // const data = JSON.parse(JSON.stringify(d), (key, value) => {
-      //   if (typeof value === 'string' && /^\d+n$/.test(value)) {
-      //     return BigInt(value.substr(0, value.length - 1))
-      //   }
-      //   return value
-      // });
-    
       console.log(data);
 
       const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
@@ -62,7 +53,8 @@ class PostController {
       });
 
       const postId = newPost._id.toString();
-      const tx = await unirepSocialContract.publishPost(postId, publicSignals, proof, data.content);
+      const txResult = await unirepSocialContract.publishPost(postId, publicSignals, proof, data.content);
+      const tx = txResult.tx;
       console.log('transaction hash: ' + tx.hash + ', epoch key of epoch ' + epoch + ': ' + epochKey);
 
       await newPost.save((err, post) => {
