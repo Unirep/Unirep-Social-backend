@@ -18,13 +18,6 @@ class AirdropController {
     }
 
     getAirdrop = async (data: any) => {
-        // decode body
-        // const data = JSON.parse(JSON.stringify(d), (key, value) => {
-        //     return value
-        //   });
-
-        console.log(data);
-        
         // Ethereum provider
         const provider = new ethers.providers.JsonRpcProvider(DEFAULT_ETH_PROVIDER)
 
@@ -48,6 +41,11 @@ class AirdropController {
         const GSTRoot = publicSignals[2]
         const attesterId = publicSignals[3]
         const proof = JSON.parse(decodedProof)
+
+        console.log('in airdrop controller:')
+        console.log(publicSignals)
+        console.log(proof)
+        console.log('end in airdrop controller.')
 
         // Verify proof
         // Check if attester ID matches Unirep Social
