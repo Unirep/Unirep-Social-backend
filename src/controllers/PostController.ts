@@ -5,7 +5,6 @@ import base64url from 'base64url';
 import { ethers } from 'ethers';
 import Post, { IPost } from "../database/models/post";
 import { UnirepSocialContract } from '@unirep/unirep-social';
-// import { maxReputationBudget } from '@unirep/unirep'
 
 class PostController {
     defaultMethod() {
@@ -23,15 +22,17 @@ class PostController {
         // return posts;
     }
 
-    publishPost = async (d: any) => { // should have content, epk, proof, minRep, nullifiers, publicSignals  
+    publishPost = async (data: any) => { // should have content, epk, proof, minRep, nullifiers, publicSignals  
       // decode data from d
-      const data = JSON.parse(JSON.stringify(d), (key, value) => {
-        if (typeof value === 'string' && /^\d+n$/.test(value)) {
-          return BigInt(value.substr(0, value.length - 1))
-        }
-        return value
-      });
+      // const data = JSON.parse(JSON.stringify(d), (key, value) => {
+      //   if (typeof value === 'string' && /^\d+n$/.test(value)) {
+      //     return BigInt(value.substr(0, value.length - 1))
+      //   }
+      //   return value
+      // });
     
+      console.log(data);
+
       const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
       await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
 
