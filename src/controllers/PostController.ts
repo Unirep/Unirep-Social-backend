@@ -36,8 +36,6 @@ class PostController {
       const epochKey = Number(publicSignals[maxReputationBudget + 1]).toString(16)
       const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
       const minRep = publicSignals[maxReputationBudget + 5]
-      const proofIndex = await unirepSocialContract.getReputationProofIndex(publicSignals, proof)
-
       /// TODO: verify reputation proof ///
       
       const newPost: IPost = new Post({
@@ -45,7 +43,6 @@ class PostController {
         epochKey,
         epoch,
         epkProof: proof.map((n)=>add0x(BigInt(n).toString(16))),
-        proofIndex,
         proveMinRep: minRep !== null ? true : false,
         minRep: Number(minRep),
         posRep: 0,
@@ -55,15 +52,15 @@ class PostController {
       });
 
       const postId = newPost._id.toString();
-      const txResult = await unirepSocialContract.publishPost(postId, publicSignals, proof, data.content);
-      const tx = txResult.tx;
-      console.log('transaction hash: ' + tx.hash + ', epoch key of epoch ' + epoch + ': ' + epochKey + ', proof index: ' + proofIndex);
+      const tx = await unirepSocialContract.publishPost(postId, publicSignals, proof, data.content);
+      console.log('transaction hash: ' + tx.hash + ', epoch key of epoch ' + epoch + ': ' + epochKey);
 
+      const proofIndex = await unirepSocialContract.getReputationProofIndex(publicSignals, proof) // proof index should wait until on chain --> server listening
       await newPost.save((err, post) => {
         console.log('new post error: ' + err);
         Post.findByIdAndUpdate(
           postId,
-          { transactionHash: tx.hash.toString() },
+          { transactionHash: tx.hash.toString(), proofIndex },
           { "new": true, "upsert": false }, 
           (err) => console.log('update transaction hash of posts error: ' + err)
         );

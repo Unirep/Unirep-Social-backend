@@ -26,8 +26,6 @@ class CommentController {
       const epochKey = Number(publicSignals[maxReputationBudget + 1]).toString(16)
       const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
       const minRep = publicSignals[maxReputationBudget + 5]
-      const proofIndex = await unirepSocialContract.getReputationProofIndex(publicSignals, proof)
-
 
       const newComment: IComment = new Comment({
         postId: data.postId,
@@ -35,7 +33,6 @@ class CommentController {
         epochKey,
         epoch,
         epkProof: proof.map((n)=>add0x(BigInt(n).toString(16))),
-        proofIndex,
         proveMinRep: minRep !== 0 ? true : false,
         minRep: Number(minRep),
         posRep: 0,
@@ -45,14 +42,14 @@ class CommentController {
 
       const commentId = newComment._id.toString();
 
-      const txResult = await unirepSocialContract.leaveComment(
+      const tx = await unirepSocialContract.leaveComment(
         publicSignals,
         proof,
         data.postId,
         commentId,
         data.content,
       );
-      const tx = txResult.tx;
+      const proofIndex = await unirepSocialContract.getReputationProofIndex(publicSignals, proof)
       console.log('transaction: ' + tx.hash + ', proof index: ' + proofIndex);
 
       await newComment.save((err, comment) => {

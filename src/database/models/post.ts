@@ -26,7 +26,7 @@ export interface IPost extends Document {
     epoch: { type: Number, required: true },
     epochKey: { type: String, required: true },
     epkProof:  { type: [], required: true},
-    proofIndex: { type: Number, required: true },
+    proofIndex: { type: Number },
     proveMinRep: { type: Boolean },
     minRep: { type: Number },
     comments: { type: [ ]},
