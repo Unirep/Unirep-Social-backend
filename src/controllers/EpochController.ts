@@ -1,7 +1,7 @@
 import ErrorHandler from '../ErrorHandler';
 
 import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x } from '../constants';
-import { ethers } from 'ethers';
+import { UnirepSocialContract } from '@unirep/unirep-social';
 
 class EpochController {
     defaultMethod() {
@@ -9,41 +9,19 @@ class EpochController {
     }
 
     epochTransition = async () => {
-        // const provider = new ethers.providers.JsonRpcProvider(DEFAULT_ETH_PROVIDER)
-        // const wallet = new ethers.Wallet(DEPLOYER_PRIV_KEY, provider)
-        // const unirepSocialContract = new ethers.Contract(
-        //     UNIREP_SOCIAL,
-        //     UnirepSocial.abi,
-        //     wallet,
-        // )
-        // const unirepAddress = await unirepSocialContract.unirep()
-        // const unirepContract = new ethers.Contract(
-        //     unirepAddress,
-        //     Unirep.abi,
-        //     provider,
-        // )
+        const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
+        const unirepContract = await unirepSocialContract.getUnirep()
+        await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
+        
+        await unirepSocialContract.fastForward()
+        const currentEpoch = await unirepContract.currentEpoch()
+        const tx = await unirepSocialContract.epochTransition()
 
-        // const currentEpoch = await unirepContract.currentEpoch()
-        // let tx
-        // try {
-        //     const numEpochKeysToSeal = await unirepContract.getNumEpochKey(currentEpoch)
-        //     tx = await unirepSocialContract.beginEpochTransition(
-        //         numEpochKeysToSeal,
-        //         { gasLimit: 9000000 }
-        //     )
+        console.log('Transaction hash:', tx.hash)
+        console.log('End of epoch:', currentEpoch.toString())
 
-        // } catch(e: any) {
-        //     console.error('Error: the transaction failed')
-        //     if (e.message) {
-        //         console.error(e.message)
-        //     }
-        //     return
-        // }
-
-        // console.log('Transaction hash:', tx.hash)
-        // console.log('End of epoch:', currentEpoch.toString())
-
-        // global.nextEpochTransition = Date.now() + global.epochPeriod
+        global.nextEpochTransition = Date.now() + global.epochPeriod
+        console.log(global.nextEpochTransition)
 
         return
     }
