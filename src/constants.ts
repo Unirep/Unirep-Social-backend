@@ -4,6 +4,11 @@ export const UNIREP_SOCIAL = '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318';
 export const DEFAULT_ETH_PROVIDER = 'http://localhost:8545';
 export const DEFAULT_START_BLOCK = 0;
 
+export const DEFAULT_POST_KARMA = 5
+export const DEFAULT_COMMENT_KARMA = 3
+export const MAX_KARMA_BUDGET = 10
+export const DEFAULT_AIRDROPPED_KARMA = 30
+
 export const identityPrefix = 'Unirep.identity.'
 export const identityCommitmentPrefix = 'Unirep.identityCommitment.'
 export const epkProofPrefix = 'Unirep.epk.proof.'

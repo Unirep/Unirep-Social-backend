@@ -1,10 +1,10 @@
 import ErrorHandler from '../ErrorHandler';
 
 import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget } from '../constants';
-import { Attestation } from '../database/models/attestation';
 import { IVote } from '../database/models/vote';
 import Post from '../database/models/post';
 import Comment from '../database/models/comment';
+import Record, { IRecord } from '../database/models/record';
 import base64url from 'base64url';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
@@ -69,7 +69,17 @@ class VoteController {
           { "new": true, "upsert": false }, 
           (err) => console.log('update votes of comment error: ' + err));
       }
-      
+
+      const newRecord: IRecord = new Record({
+        to: data.receiver,
+        from: epochKey,
+        upvote: data.upvote,
+        downvote: data.downvote,
+        epoch,
+        action: 'Vote',
+      });
+      await newRecord.save();
+
       return {transaction: tx.hash};
     }
   }

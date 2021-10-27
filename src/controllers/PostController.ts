@@ -1,8 +1,9 @@
 import ErrorHandler from '../ErrorHandler';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_POST_KARMA } from '../constants';
 import base64url from 'base64url';
 import Post, { IPost } from "../database/models/post";
+import Record, { IRecord } from '../database/models/record';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
 class PostController {
@@ -73,6 +74,16 @@ class PostController {
           (err) => console.log('update transaction hash of posts error: ' + err)
         );
       });
+
+      const newRecord: IRecord = new Record({
+        to: epochKey,
+        from: epochKey,
+        upvote: 0,
+        downvote: DEFAULT_POST_KARMA,
+        epoch,
+        action: 'Post',
+      });
+      await newRecord.save();
       
       return {transaction: tx.hash, postId: newPost._id, currentEpoch: epoch};
     }
