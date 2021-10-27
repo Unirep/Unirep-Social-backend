@@ -45,6 +45,7 @@ global.epochPeriod = 7 * 24 * 60 * 60 * 1000;
 
 global.invitationCodes = [];
 global.nextEpochTransition = Date.now() + global.epochPeriod + 10000; // delay 10 seconds
+console.log(global.nextEpochTransition);
 
 const doEpochTransition = async () => {
   console.log('do epoch transition');

@@ -31,8 +31,16 @@ class VoteController {
       const receiver = BigInt(parseInt(data.receiver, 16))
       const proofIndex = (await unirepSocialContract.getReputationProofIndex(publicSignals, proof)).toNumber()
 
+      const isProofValid = await unirepSocialContract.verifyReputation(
+        publicSignals,
+        proof,
+      )
+      if (!isProofValid) {
+          console.error('Error: invalid reputation proof')
+          return
+      }
+
       console.log(`Attesting to epoch key ${data.receiver} with pos rep ${data.upvote}, neg rep ${data.downvote}`)
-      
       
       const tx = await unirepSocialContract.vote(publicSignals, proof, receiver, proofIndex, data.upvote, data.downvote);
 

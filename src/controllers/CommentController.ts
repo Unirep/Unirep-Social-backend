@@ -27,6 +27,15 @@ class CommentController {
       const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
       const minRep = publicSignals[maxReputationBudget + 5]
 
+      const isProofValid = await unirepSocialContract.verifyReputation(
+        publicSignals,
+        proof,
+      )
+      if (!isProofValid) {
+          console.error('Error: invalid reputation proof')
+          return
+      }
+
       const newComment: IComment = new Comment({
         postId: data.postId,
         content: data.content, // TODO: hashedContent

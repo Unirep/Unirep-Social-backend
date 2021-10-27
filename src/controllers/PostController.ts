@@ -36,7 +36,15 @@ class PostController {
       const epochKey = Number(publicSignals[maxReputationBudget + 1]).toString(16)
       const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
       const minRep = publicSignals[maxReputationBudget + 5]
-      /// TODO: verify reputation proof ///
+
+      const isProofValid = await unirepSocialContract.verifyReputation(
+        publicSignals,
+        proof,
+      )
+      if (!isProofValid) {
+          console.error('Error: invalid reputation proof')
+          return
+      }
       
       const newPost: IPost = new Post({
         content: data.content,
