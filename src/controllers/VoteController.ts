@@ -56,30 +56,45 @@ class VoteController {
         overwriteGraffiti: false,
       };
 
+      let newRecord: IRecord;
       if (data.isPost) {
         Post.findByIdAndUpdate(
           data.postId, 
           { "$push": { "votes": newVote } },
           { "new": true, "upsert": false }, 
           (err) => console.log('update votes of post error: ' + err));
+        newRecord = new Record({
+            to: data.receiver,
+            from: epochKey,
+            upvote: data.upvote,
+            downvote: data.downvote,
+            epoch,
+            action: 'Vote',
+            data: data.postId,
+          });
+          await newRecord.save();
       } else {
         Comment.findByIdAndUpdate(
           data.postId, 
           { "$push": { "votes": newVote } },
           { "new": true, "upsert": false }, 
-          (err) => console.log('update votes of comment error: ' + err));
+          (err, comment) => {
+            console.log('update votes of comment error: ' + err);
+            if (comment !== undefined && comment !== null) {
+              newRecord = new Record({
+                to: data.receiver,
+                from: epochKey,
+                upvote: data.upvote,
+                downvote: data.downvote,
+                epoch,
+                action: 'Vote',
+                data: `${comment.postId}_${data.postId}`,
+              });
+              newRecord.save();
+            }
+          });
       }
-
-      const newRecord: IRecord = new Record({
-        to: data.receiver,
-        from: epochKey,
-        upvote: data.upvote,
-        downvote: data.downvote,
-        epoch,
-        action: 'Vote',
-      });
-      await newRecord.save();
-
+    
       return {transaction: tx.hash};
     }
   }

@@ -82,6 +82,7 @@ class PostController {
         downvote: DEFAULT_POST_KARMA,
         epoch,
         action: 'Post',
+        data: postId,
       });
       await newRecord.save();
       

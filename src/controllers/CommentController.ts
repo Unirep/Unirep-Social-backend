@@ -85,6 +85,7 @@ class CommentController {
         downvote: DEFAULT_COMMENT_KARMA,
         epoch,
         action: 'Comment',
+        data: data.postId + '_' + commentId,
       });
       await newRecord.save();
 

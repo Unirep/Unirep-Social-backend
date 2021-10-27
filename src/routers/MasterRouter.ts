@@ -44,7 +44,7 @@ class MasterRouter {
     this._router.use('/genInvitationCode', this._genInvitationCodeRouter);
     this._router.use('/epochTransition', this._epochRouter);
     this._router.use('/userStateTransition', this._USTRouter);
-    this._router.use('/record', this._recordRouter);
+    this._router.use('/records', this._recordRouter);
   }
 }
 
