@@ -8,6 +8,7 @@ import VoteRouter from './VoteRouter';
 import GenInvitationCodeRouter from './GenInvitationCodeRouter';
 import EpochRouter from './EpochRouter';
 import USTRouter from './USTRouter';
+import RecordRouter from './RecordRouter';
 
 class MasterRouter {
   private _router = Router();
@@ -20,6 +21,7 @@ class MasterRouter {
   private _genInvitationCodeRouter = GenInvitationCodeRouter;
   private _epochRouter = EpochRouter;
   private _USTRouter = USTRouter;
+  private _recordRouter = RecordRouter;
 
   get router() {
     return this._router;
@@ -42,6 +44,7 @@ class MasterRouter {
     this._router.use('/genInvitationCode', this._genInvitationCodeRouter);
     this._router.use('/epochTransition', this._epochRouter);
     this._router.use('/userStateTransition', this._USTRouter);
+    this._router.use('/record', this._recordRouter);
   }
 }
 
