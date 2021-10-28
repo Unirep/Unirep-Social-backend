@@ -19,7 +19,7 @@ class RecordRouter {
       this._router.get('/:epks', async (req: Request, res: Response, next: NextFunction) => {
         console.log(req.params.epks);
         const epks = req.params.epks.split('_');
-        Record.find({"to": {$in: epks}}, (err, record) => {
+        Record.find({$or: [{"to": {$in: epks}}, {"from": {$in: epks}}]}, (err, record) => {
             console.log(record);
             console.log('find record error: ' + err);
             res.status(200).json(record);
