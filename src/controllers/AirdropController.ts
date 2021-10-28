@@ -7,10 +7,12 @@ import {
     DEPLOYER_PRIV_KEY, 
     UNIREP_SOCIAL, 
     DEFAULT_ETH_PROVIDER,  
-    DEFAULT_START_BLOCK } from '../constants';
+    DEFAULT_START_BLOCK,
+    DEFAULT_AIRDROPPED_KARMA } from '../constants';
 import { ethers } from 'ethers';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 import { genUnirepStateFromContract } from '@unirep/unirep';
+import Record, { IRecord } from '../database/models/record';
 
 class AirdropController {
     defaultMethod() {
@@ -81,6 +83,17 @@ class AirdropController {
             console.log(`The user of epoch key ${epk} will get airdrop in the next epoch`)
             console.log('Transaction hash:', tx?.hash)
         }
+
+        const newRecord: IRecord = new Record({
+            to: Number(epk).toString(16),
+            from: 'UnirepSocial',
+            upvote: DEFAULT_AIRDROPPED_KARMA,
+            downvote: 0,
+            epoch: Number(epoch) + 1,
+            action: 'UST',
+            data: '0',
+          });
+        await newRecord.save((err) => console.log('save airdrop record error: ' + err));
 
         return {transaction: tx.hash}
     }
