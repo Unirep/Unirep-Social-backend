@@ -29,7 +29,19 @@ class VoteController {
       const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
       const minRep = publicSignals[maxReputationBudget + 5]
       const receiver = BigInt(parseInt(data.receiver, 16))
-      const proofIndex = (await unirepSocialContract.getReputationProofIndex(publicSignals, proof)).toNumber()
+
+      let postProofIndex: number = 0
+      if (data.isPost) {
+        Post.findById(data.postId, (err, post) => {
+          console.log('find post proof index: ' + post.proofIndex);
+          postProofIndex = post.proofIndex;
+        });
+      } else {
+        Comment.findById(data.postId, (err, comment) => {
+          console.log('find comment proof index: ' + comment.proofIndex);
+          postProofIndex = comment.proofIndex;
+        });
+      }
 
       const isProofValid = await unirepSocialContract.verifyReputation(
         publicSignals,
@@ -42,12 +54,13 @@ class VoteController {
 
       console.log(`Attesting to epoch key ${data.receiver} with pos rep ${data.upvote}, neg rep ${data.downvote}`)
       
-      const tx = await unirepSocialContract.vote(publicSignals, proof, receiver, proofIndex, data.upvote, data.downvote);
+      const tx = await unirepSocialContract.vote(publicSignals, proof, receiver, postProofIndex, data.upvote, data.downvote);
 
       // save to db data
+      const voteProofIndex = (await unirepSocialContract.getReputationProofIndex(publicSignals, proof)).toNumber()
       const newVote: IVote = {
         transactionHash: tx.hash.toString(),
-        proofIndex,
+        proofIndex: voteProofIndex,
         epoch,
         voter: epochKey,
         posRep: data.upvote,
