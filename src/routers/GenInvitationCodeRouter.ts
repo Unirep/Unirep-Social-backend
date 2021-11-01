@@ -34,7 +34,6 @@ class GenInvitationCodeRouter {
       });
 
       this._router.get('/:ic', async (req: Request, res: Response, next: NextFunction) => {
-        // const index = global.invitationCodes.indexOf(req.params.ic);
         InvitationCode.findOneAndDelete({code: req.params.ic}, (err, code) => {
           if (err !== null) {
             console.log('get invitation code error: ' + err);
@@ -46,14 +45,6 @@ class GenInvitationCodeRouter {
             res.status(200).json();
           }
         });
-
-        // if (index >= 0) {
-        //     global.invitationCodes.splice(index, 1);
-        //     console.log(JSON.stringify(global.invitationCodes));
-        //     res.status(200).json();
-        // } else {
-        //     res.status(403).json({error: 'Not available invitation code'});
-        // }
       });
   }
 }
