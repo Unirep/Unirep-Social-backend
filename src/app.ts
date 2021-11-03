@@ -9,7 +9,7 @@ import MasterRouter from './routers/MasterRouter';
 
 import EpochController from './controllers/EpochController';
 import { DEFAULT_ETH_PROVIDER, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI } from './constants';
-import { updateDBFromNewGSTLeafInsertedEvent } from './database/utils';
+import { updateDBFromAttestationEvent, updateDBFromNewGSTLeafInsertedEvent } from './database/utils';
 
 // load the environment variables from the .env file
 dotenv.config({
@@ -92,6 +92,10 @@ const unirepContract = new ethers.Contract(
     provider,
   )
 const NewGSTLeafInsertedFilter = unirepContract.filters.NewGSTLeafInserted()
+const AttestationSubmittedFilter = unirepContract.filters.AttestationSubmitted()
 provider.on(
-  NewGSTLeafInsertedFilter, (event) => updateDBFromNewGSTLeafInsertedEvent(event, 0)
+  NewGSTLeafInsertedFilter, (event) => updateDBFromNewGSTLeafInsertedEvent(event)
+)
+provider.on(
+  AttestationSubmittedFilter, (event) => updateDBFromAttestationEvent(event)
 )

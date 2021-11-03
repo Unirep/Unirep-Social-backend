@@ -1,7 +1,9 @@
 import { ethers } from 'ethers'
 import mongoose from 'mongoose'
-import { add0x, DEFAULT_ETH_PROVIDER, UNIREP, UNIREP_ABI } from '../constants'
+import { add0x, DEFAULT_ETH_PROVIDER, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI } from '../constants'
+import Attestations, { IAttestation } from './models/attestation'
 import GSTLeaves, { IGSTLeaf, IGSTLeaves } from './models/GSTLeaf'
+import Nullifier, { INullifier } from './models/nullifiers'
 
 // /*
 // * Connect to db uri
@@ -42,6 +44,25 @@ import GSTLeaves, { IGSTLeaf, IGSTLeaves } from './models/GSTLeaf'
 
 //     return
 // }
+
+const nullifierExists = async (nullifier: string, epoch?: number): Promise<boolean> => {
+    const n = await Nullifier.findOne({
+        $or: [
+            {epoch: epoch, nullifier: nullifier},
+            {nullifier: nullifier},
+        ]
+    })
+    if (n != undefined) return true
+    return false
+}
+
+const saveNullifier = async (_epoch: number, _nullifier: string) => {
+    const nullifier: INullifier = new Nullifier({
+        epoch: _epoch,
+        nullifier: _nullifier
+    })
+    await nullifier.save()
+}
 
 const verifyNewGSTProofByIndex = async(proofIndex: number | ethers.BigNumber): Promise<ethers.Event | void> => {
     const ethProvider = DEFAULT_ETH_PROVIDER
@@ -215,7 +236,7 @@ const updateGSTLeaf = async (
 
 const updateDBFromNewGSTLeafInsertedEvent = async (
     event: ethers.Event,
-    startBlock: number,
+    startBlock: number  = DEFAULT_START_BLOCK,
 ) => {
 
     // The event has been processed
@@ -229,20 +250,95 @@ const updateDBFromNewGSTLeafInsertedEvent = async (
     const _hashedLeaf = add0x(decodedData?._hashedLeaf._hex)
 
     const proofIndex = decodedData?._proofIndex
-    const isValidEvent = await verifyNewGSTProofByIndex(proofIndex)
-    if (isValidEvent == undefined) {
+    const results = await verifyNewGSTProofByIndex(proofIndex)
+    if (results == undefined) {
         console.log('Proof is invalid, transaction hash', _transactionHash)
         return
     }
+
+    // TODO: check if GST root, epoch tree root exists
+
     // save the new leaf
     const newLeaf: IGSTLeaf = {
         transactionHash: _transactionHash,
         hashedLeaf: _hashedLeaf
     }
     await updateGSTLeaf(newLeaf, _epoch)
+
+    // TODO: save epoch key nullifiers
+    const epkNullifier = results?.args?.userTransitionedData?.epkNullifiers
+    for(let nullifier of epkNullifier){
+        if(BigInt(nullifier) != BigInt(0))
+            await saveNullifier(Number(_epoch), BigInt(nullifier).toString())
+    }
+}
+
+/*
+* When an AttestationSubmitted event comes
+* update the database
+* @param event AttestationSubmitted event
+*/
+const updateDBFromAttestationEvent = async (
+    event: ethers.Event,
+    startBlock: number  = DEFAULT_START_BLOCK,
+) => {
+
+    // The event has been processed
+    if(event.blockNumber <= startBlock) return
+
+    const iface = new ethers.utils.Interface(UNIREP_ABI)
+    const _epoch = event.topics[1]
+    const _epochKey = BigInt(event.topics[2]).toString(16)
+    const _attester = event.topics[3]
+    const decodedData = iface.decodeEventLog("AttestationSubmitted",event.data)
+    const proofIndex = decodedData?._proofIndex
+
+    const results = await verifyAttestationProofsByIndex(proofIndex)
+    if (results == undefined) {
+        console.log('Proof is invalid, transaction hash', event.transactionHash)
+        return
+    }
+
+    const newAttestation: IAttestation = {
+        transactionHash: event.transactionHash,
+        epoch: Number(_epoch),
+        attester: _attester,
+        proofIndex: Number(decodedData?._proofIndex),
+        attesterId: Number(decodedData?.attestation?.attesterId),
+        posRep: Number(decodedData?.attestation?.posRep),
+        negRep: Number(decodedData?.attestation?.negRep),
+        graffiti: decodedData?.attestation?.graffiti?._hex,
+        signUp: Boolean(Number(decodedData?.attestation?.signUp)),
+    }
+
+    // TODO: verify GST root
+
+    let attestations = await Attestations.findOne({epochKey: _epochKey})
+
+    if(!attestations){
+        attestations = new Attestations({
+            epochKey: _epochKey,
+            attestations: [newAttestation]
+        })
+    } else {
+        if(JSON.stringify(attestations.get('attestations')).includes(JSON.stringify(newAttestation)) == true) return
+        attestations.get('attestations').push(newAttestation)
+    }
+    
+    const res = await attestations?.save()
+    if(res){
+        console.log('Database: saved submitted attestation')
+    }
+
+    // save reputation nullifiers
+    for(let nullifier of results?.repNullifiers){
+        if(BigInt(nullifier) != BigInt(0))
+            await saveNullifier(Number(_epoch), BigInt(nullifier).toString())
+    }
 }
 
 
 export {
     updateDBFromNewGSTLeafInsertedEvent,
+    updateDBFromAttestationEvent,
 }
