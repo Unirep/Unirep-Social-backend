@@ -266,10 +266,12 @@ const updateDBFromNewGSTLeafInsertedEvent = async (
     await updateGSTLeaf(newLeaf, _epoch)
 
     // TODO: save epoch key nullifiers
-    const epkNullifier = results?.args?.userTransitionedData?.epkNullifiers
-    for(let nullifier of epkNullifier){
-        if(BigInt(nullifier) != BigInt(0))
-            await saveNullifier(Number(_epoch), BigInt(nullifier).toString())
+    if (results?.event == "UserStateTransitionProof") {
+        const epkNullifier = results?.args?.userTransitionedData?.epkNullifiers
+        for(let nullifier of epkNullifier){
+            if(BigInt(nullifier) != BigInt(0))
+                await saveNullifier(Number(_epoch), BigInt(nullifier).toString())
+        }
     }
 }
 
@@ -339,6 +341,7 @@ const updateDBFromAttestationEvent = async (
 
 
 export {
+    nullifierExists,
     updateDBFromNewGSTLeafInsertedEvent,
     updateDBFromAttestationEvent,
 }

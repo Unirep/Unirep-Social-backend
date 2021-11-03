@@ -5,6 +5,7 @@ import { IVote } from '../database/models/vote';
 import Post from '../database/models/post';
 import Comment from '../database/models/comment';
 import Record, { IRecord } from '../database/models/record';
+import { nullifierExists } from "../database/utils"
 import base64url from 'base64url';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
@@ -24,6 +25,7 @@ class VoteController {
       const decodedPublicSignals = base64url.decode(data.publicSignals.slice(reputationPublicSignalsPrefix.length))
       const publicSignals = JSON.parse(decodedPublicSignals)
       const proof = JSON.parse(decodedProof)
+      const repNullifiers = publicSignals.slice(0, maxReputationBudget)
       const epoch = publicSignals[maxReputationBudget]
       const epochKey = Number(publicSignals[maxReputationBudget + 1]).toString(16)
       const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
@@ -50,6 +52,15 @@ class VoteController {
       if (!isProofValid) {
           console.error('Error: invalid reputation proof')
           return
+      }
+
+      // check nullifiers
+      for (let nullifier of repNullifiers) {
+        const seenNullifier = await nullifierExists(nullifier)
+        if(seenNullifier) {
+          console.error(`Error: invalid reputation nullifier ${nullifier}`)
+          return
+        }
       }
 
       console.log(`Attesting to epoch key ${data.receiver} with pos rep ${data.upvote}, neg rep ${data.downvote}`)
