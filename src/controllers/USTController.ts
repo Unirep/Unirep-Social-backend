@@ -3,6 +3,7 @@ import ErrorHandler from '../ErrorHandler';
 import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x } from '../constants';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 import { verifyProof } from '@unirep/circuits'
+import { epochTreeRootExists } from '../database/utils';
 
 class USTController {
     defaultMethod() {
@@ -18,6 +19,7 @@ class USTController {
       let isValid = await verifyProof('startTransition', results.startTransitionProof.proof, results.startTransitionProof.publicSignals)
       if (!isValid) {
           console.error('Error: start state transition proof generated is not valid!')
+          return
       }
 
       // Process attestations proofs
@@ -25,6 +27,7 @@ class USTController {
           const isValid = await verifyProof('processAttestations', results.processAttestationProofs[i].proof, results.processAttestationProofs[i].publicSignals)
           if (!isValid) {
               console.error('Error: process attestations proof generated is not valid!')
+              return
           }
       }
 
@@ -32,6 +35,16 @@ class USTController {
       isValid = await verifyProof('userStateTransition', results.finalTransitionProof.proof, results.finalTransitionProof.publicSignals)
       if (!isValid) {
           console.error('Error: user state transition proof generated is not valid!')
+          return
+      }
+
+      // Check epoch tree root
+      const epoch = Number(results.finalTransitionProof.transitionedFromEpoch)
+      const epochTreeRoot = results.finalTransitionProof.fromEpochTree
+      const isEpochTreeExisted = await epochTreeRootExists(epoch, epochTreeRoot)
+      if(!isEpochTreeExisted){
+          console.log('Epoch tree root mismatches')
+          return
       }
 
       // submit user state transition proofs

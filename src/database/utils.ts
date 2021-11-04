@@ -1,8 +1,11 @@
+import { Attestation, circuitEpochTreeDepth, genNewSMT, SMT_ONE_LEAF } from '@unirep/unirep'
 import { ethers } from 'ethers'
+import { hashLeftRight } from 'maci-crypto'
 import mongoose from 'mongoose'
 import { add0x, DEFAULT_ETH_PROVIDER, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI } from '../constants'
 import Attestations, { IAttestation } from './models/attestation'
 import GSTLeaves, { IGSTLeaf, IGSTLeaves } from './models/GSTLeaf'
+import EpochTreeLeaves, { IEpochTreeLeaf } from './models/epochTreeLeaf'
 import Nullifier, { INullifier } from './models/nullifiers'
 
 // /*
@@ -44,6 +47,29 @@ import Nullifier, { INullifier } from './models/nullifiers'
 
 //     return
 // }
+
+const getGSTLeaves = async (epoch: number): Promise<IGSTLeaf[]> => {
+    const leaves = await GSTLeaves.findOne({epoch: epoch})
+    return leaves? leaves.GSTLeaves : []
+}
+
+const getEpochTreeLeaves = async (epoch: number): Promise<IEpochTreeLeaf[]> => {
+    const leaves = await EpochTreeLeaves.findOne({epoch: epoch})
+    return leaves? leaves.epochTreeLeaves : []
+}
+
+// const GSTRootExists = async (epoch: number, GSTRoot: string | BigInt): Promise<boolean> => {
+//     const root = await GSTRoots.findOne({epoch: epoch, GSTRoot: GSTRoot.toString()})
+//     if(root != undefined) return true
+//     return false
+// }
+
+const epochTreeRootExists = async (epoch: number, epochTreeRoot: string | BigInt): Promise<boolean> => {
+    console.log({epoch: epoch, epochTreeRoot: epochTreeRoot.toString()})
+    const root = await EpochTreeLeaves.findOne({epoch: epoch, epochTreeRoot: epochTreeRoot.toString()})
+    if(root != undefined) return true
+    return false
+}
 
 const nullifierExists = async (nullifier: string, epoch?: number): Promise<boolean> => {
     const n = await Nullifier.findOne({
@@ -257,6 +283,14 @@ const updateDBFromNewGSTLeafInsertedEvent = async (
     }
 
     // TODO: check if GST root, epoch tree root exists
+    const epoch = results?.args?.userTransitionedData?.transitionFromEpoch
+    const GSTRoot = results?.args?.userTransitionedData?.fromGlobalStateTree
+    const epochTreeRoot = results?.args?.userTransitionedData?.fromEpochTree
+    const isEpochTreeExisted = await epochTreeRootExists(epoch, epochTreeRoot)
+    if(!isEpochTreeExisted){
+        console.log('Epoch tree root mismatches')
+        return
+    }
 
     // save the new leaf
     const newLeaf: IGSTLeaf = {
@@ -289,8 +323,8 @@ const updateDBFromAttestationEvent = async (
     if(event.blockNumber <= startBlock) return
 
     const iface = new ethers.utils.Interface(UNIREP_ABI)
-    const _epoch = event.topics[1]
-    const _epochKey = BigInt(event.topics[2]).toString(16)
+    const _epoch = Number(event.topics[1])
+    const _epochKey = BigInt(event.topics[2]).toString()
     const _attester = event.topics[3]
     const decodedData = iface.decodeEventLog("AttestationSubmitted",event.data)
     const proofIndex = decodedData?._proofIndex
@@ -303,7 +337,6 @@ const updateDBFromAttestationEvent = async (
 
     const newAttestation: IAttestation = {
         transactionHash: event.transactionHash,
-        epoch: Number(_epoch),
         attester: _attester,
         proofIndex: Number(decodedData?._proofIndex),
         attesterId: Number(decodedData?.attestation?.attesterId),
@@ -316,15 +349,27 @@ const updateDBFromAttestationEvent = async (
     // TODO: verify GST root
 
     let attestations = await Attestations.findOne({epochKey: _epochKey})
+    const attestation = new Attestation(
+        BigInt(decodedData?.attestation?.attesterId),
+        BigInt(decodedData?.attestation?.posRep),
+        BigInt(decodedData?.attestation?.negRep),
+        BigInt(decodedData?.attestation?.graffiti?._hex),
+        BigInt(decodedData?.attestation?.signUp)
+    )
 
     if(!attestations){
         attestations = new Attestations({
+            epoch: _epoch,
             epochKey: _epochKey,
+            epochKeyToHashchainMap: hashLeftRight(attestation.hash(), BigInt(0)),
             attestations: [newAttestation]
         })
     } else {
         if(JSON.stringify(attestations.get('attestations')).includes(JSON.stringify(newAttestation)) == true) return
+        const hashChainResult = attestations.get('epochKeyToHashchainMap')
+        const newHashChainResult = hashLeftRight(attestation.hash(), hashChainResult)
         attestations.get('attestations').push(newAttestation)
+        attestations.set('epochKeyToHashchainMap', newHashChainResult)
     }
     
     const res = await attestations?.save()
@@ -339,9 +384,63 @@ const updateDBFromAttestationEvent = async (
     }
 }
 
+/*
+* When an EpochEnded event comes
+* update the database
+* @param event EpochEnded event
+* @param address The address of the Unirep contract
+* @param provider An Ethereum provider
+*/
+const updateDBFromEpochEndedEvent = async (
+    event: ethers.Event,
+    startBlock: number  = DEFAULT_START_BLOCK,
+) => {
+
+    // The event has been processed
+    if(event.blockNumber <= startBlock) return
+
+    // update Unirep state
+    const epoch = Number(event?.topics[1])
+
+    // Get epoch tree leaves of the ending epoch
+    let attestations = await Attestations.find({epoch: epoch})
+    const epochTree = await genNewSMT(circuitEpochTreeDepth, SMT_ONE_LEAF)
+    const epochTreeLeaves: IEpochTreeLeaf[] = []
+
+    // seal all epoch keys in current epoch
+    for (let attestation of attestations) {
+        const hashchainResult = attestation?.get('epochKeyToHashchainMap')
+        const sealedHashchain = hashLeftRight(
+            BigInt(1),
+            BigInt(hashchainResult)
+        )
+        const epochTreeLeaf: IEpochTreeLeaf = {
+            epochKey: attestation?.get('epochKey'),
+            hashchainResult: sealedHashchain.toString()
+        }
+        epochTreeLeaves.push(epochTreeLeaf)
+    }
+
+    // Add to epoch key hash chain map
+    for (let leaf of epochTreeLeaves) {
+        await epochTree.update(BigInt(leaf.epochKey), BigInt(leaf.hashchainResult))
+    }
+
+    const newEpochTreeLeaves = new EpochTreeLeaves({
+        epoch: epoch,
+        epochTreeLeaves: epochTreeLeaves,
+        epochTreeRoot: epochTree.getRootHash(),
+    })
+
+    await newEpochTreeLeaves.save()
+}
 
 export {
+    getGSTLeaves,
+    getEpochTreeLeaves,
+    epochTreeRootExists,
     nullifierExists,
     updateDBFromNewGSTLeafInsertedEvent,
     updateDBFromAttestationEvent,
+    updateDBFromEpochEndedEvent,
 }
