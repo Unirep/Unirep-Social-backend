@@ -3,7 +3,7 @@ import ErrorHandler from '../ErrorHandler';
 import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x } from '../constants';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 import { verifyProof } from '@unirep/circuits'
-import { epochTreeRootExists } from '../database/utils';
+import { epochTreeRootExists, GSTRootExists } from '../database/utils';
 
 class USTController {
     defaultMethod() {
@@ -40,11 +40,17 @@ class USTController {
 
       // Check epoch tree root
       const epoch = Number(results.finalTransitionProof.transitionedFromEpoch)
+      const GSTRoot = results?.finalTransitionProof?.fromGSTRoot
       const epochTreeRoot = results.finalTransitionProof.fromEpochTree
+      const isGSTExisted = await GSTRootExists(epoch, GSTRoot)
       const isEpochTreeExisted = await epochTreeRootExists(epoch, epochTreeRoot)
+      if(!isGSTExisted) {
+        console.log('Global state tree root mismatches')
+        return
+      }
       if(!isEpochTreeExisted){
-          console.log('Epoch tree root mismatches')
-          return
+        console.log('Epoch tree root mismatches')
+        return
       }
 
       // submit user state transition proofs

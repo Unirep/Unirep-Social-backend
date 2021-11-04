@@ -5,7 +5,7 @@ import base64url from 'base64url';
 import Record, { IRecord } from '../database/models/record';
 import Comment, { IComment } from "../database/models/comment";
 import Post from '../database/models/post';
-import { nullifierExists } from "../database/utils"
+import { GSTRootExists, nullifierExists } from "../database/utils"
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
 class CommentController {
@@ -27,6 +27,7 @@ class CommentController {
       const repNullifiers = publicSignals.slice(0, maxReputationBudget)
       const epoch = publicSignals[maxReputationBudget]
       const epochKey = Number(publicSignals[maxReputationBudget + 1]).toString(16)
+      const GSTRoot = publicSignals[maxReputationBudget + 2]
       const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
       const minRep = publicSignals[maxReputationBudget + 5]
 
@@ -37,6 +38,13 @@ class CommentController {
       if (!isProofValid) {
           console.error('Error: invalid reputation proof')
           return
+      }
+
+      // check GST root
+      const validRoot = await GSTRootExists(Number(epoch), GSTRoot)
+      if(!validRoot){
+        console.error(`Error: invalid global state tree root ${GSTRoot}`)
+        return
       }
 
       // check nullifiers

@@ -1,10 +1,11 @@
-import { Attestation, circuitEpochTreeDepth, genNewSMT, SMT_ONE_LEAF } from '@unirep/unirep'
+import { Attestation, circuitEpochTreeDepth, circuitUserStateTreeDepth, circuitGlobalStateTreeDepth, computeEmptyUserStateRoot, genNewSMT, SMT_ONE_LEAF } from '@unirep/unirep'
 import { ethers } from 'ethers'
-import { hashLeftRight } from 'maci-crypto'
+import { hashLeftRight, IncrementalQuinTree } from '@unirep/crypto'
 import mongoose from 'mongoose'
 import { add0x, DEFAULT_ETH_PROVIDER, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI } from '../constants'
 import Attestations, { IAttestation } from './models/attestation'
 import GSTLeaves, { IGSTLeaf, IGSTLeaves } from './models/GSTLeaf'
+import GSTRoots, { IGSTRoots } from './models/GSTRoots'
 import EpochTreeLeaves, { IEpochTreeLeaf } from './models/epochTreeLeaf'
 import Nullifier, { INullifier } from './models/nullifiers'
 
@@ -58,14 +59,13 @@ const getEpochTreeLeaves = async (epoch: number): Promise<IEpochTreeLeaf[]> => {
     return leaves? leaves.epochTreeLeaves : []
 }
 
-// const GSTRootExists = async (epoch: number, GSTRoot: string | BigInt): Promise<boolean> => {
-//     const root = await GSTRoots.findOne({epoch: epoch, GSTRoot: GSTRoot.toString()})
-//     if(root != undefined) return true
-//     return false
-// }
+const GSTRootExists = async (epoch: number, GSTRoot: string | BigInt): Promise<boolean> => {
+    const root = await GSTRoots.findOne({epoch: epoch, GSTRoots: {$eq: GSTRoot.toString()}})
+    if(root != undefined) return true
+    return false
+}
 
 const epochTreeRootExists = async (epoch: number, epochTreeRoot: string | BigInt): Promise<boolean> => {
-    console.log({epoch: epoch, epochTreeRoot: epochTreeRoot.toString()})
     const root = await EpochTreeLeaves.findOne({epoch: epoch, epochTreeRoot: epochTreeRoot.toString()})
     if(root != undefined) return true
     return false
@@ -236,20 +236,43 @@ const updateGSTLeaf = async (
     _epoch: number,
 ) => {
     let treeLeaves: IGSTLeaves | null = await GSTLeaves.findOne({epoch: _epoch})
+    // compute GST root and save GST root
+    const emptyUserStateRoot = computeEmptyUserStateRoot(circuitUserStateTreeDepth)
+    const defaultGSTLeaf = hashLeftRight(BigInt(0), emptyUserStateRoot)
+    const globalStateTree = new IncrementalQuinTree(
+        circuitGlobalStateTreeDepth,
+        defaultGSTLeaf,
+        2,
+    )
 
     if(!treeLeaves){
         treeLeaves = new GSTLeaves({
             epoch: _epoch,
             GSTLeaves: [_newLeaf],
         })
+        globalStateTree.insert(BigInt(_newLeaf.hashedLeaf))
     } else {
         if(JSON.stringify(treeLeaves.get('GSTLeaves')).includes(JSON.stringify(_newLeaf)) == true) return
         treeLeaves.get('GSTLeaves').push(_newLeaf)
-    }
 
+        for(let leaf of treeLeaves.get('GSTLeaves.hashedLeaf')){
+            globalStateTree.insert(leaf)
+        }
+    }
     const savedTreeLeavesRes = await treeLeaves?.save()
 
-    if( savedTreeLeavesRes ){
+    // save the root
+    let treeRoots: IGSTRoots | null = await GSTRoots.findOne({epoch: _epoch})
+    if(!treeRoots){
+        treeRoots = new GSTRoots({
+            epoch: _epoch,
+            GSTRoots: [globalStateTree.root.toString()],
+        })
+    } else {
+        treeRoots.get('GSTRoots').push(globalStateTree.root.toString())
+    }
+    const savedTreeRootsRes = await treeRoots.save()
+    if( savedTreeRootsRes && savedTreeLeavesRes) {
         console.log('Database: saved new GST event')
     }
 }
@@ -273,7 +296,7 @@ const updateDBFromNewGSTLeafInsertedEvent = async (
 
     const _transactionHash = event.transactionHash
     const _epoch = Number(event?.topics[1])
-    const _hashedLeaf = add0x(decodedData?._hashedLeaf._hex)
+    const _hashedLeaf = BigInt(decodedData?._hashedLeaf).toString()
 
     const proofIndex = decodedData?._proofIndex
     const results = await verifyNewGSTProofByIndex(proofIndex)
@@ -282,14 +305,28 @@ const updateDBFromNewGSTLeafInsertedEvent = async (
         return
     }
 
-    // TODO: check if GST root, epoch tree root exists
-    const epoch = results?.args?.userTransitionedData?.transitionFromEpoch
-    const GSTRoot = results?.args?.userTransitionedData?.fromGlobalStateTree
-    const epochTreeRoot = results?.args?.userTransitionedData?.fromEpochTree
-    const isEpochTreeExisted = await epochTreeRootExists(epoch, epochTreeRoot)
-    if(!isEpochTreeExisted){
-        console.log('Epoch tree root mismatches')
-        return
+    // save epoch key nullifiers
+    if (results?.event == "UserStateTransitionProof") {
+        // check if GST root, epoch tree root exists
+        const epoch = results?.args?.userTransitionedData?.transitionFromEpoch
+        const GSTRoot = results?.args?.userTransitionedData?.fromGlobalStateTree
+        const epochTreeRoot = results?.args?.userTransitionedData?.fromEpochTree
+        const isGSTExisted = await GSTRootExists(epoch, GSTRoot)
+        const isEpochTreeExisted = await epochTreeRootExists(epoch, epochTreeRoot)
+        if(!isGSTExisted) {
+            console.log('Global state tree root mismatches')
+            return
+        }
+        if(!isEpochTreeExisted) {
+            console.log('Epoch tree root mismatches')
+            return
+        }
+
+        const epkNullifier = results?.args?.userTransitionedData?.epkNullifiers
+        for(let nullifier of epkNullifier){
+            if(BigInt(nullifier) != BigInt(0))
+                await saveNullifier(Number(_epoch), BigInt(nullifier).toString())
+        }
     }
 
     // save the new leaf
@@ -298,15 +335,6 @@ const updateDBFromNewGSTLeafInsertedEvent = async (
         hashedLeaf: _hashedLeaf
     }
     await updateGSTLeaf(newLeaf, _epoch)
-
-    // TODO: save epoch key nullifiers
-    if (results?.event == "UserStateTransitionProof") {
-        const epkNullifier = results?.args?.userTransitionedData?.epkNullifiers
-        for(let nullifier of epkNullifier){
-            if(BigInt(nullifier) != BigInt(0))
-                await saveNullifier(Number(_epoch), BigInt(nullifier).toString())
-        }
-    }
 }
 
 /*
@@ -346,7 +374,11 @@ const updateDBFromAttestationEvent = async (
         signUp: Boolean(Number(decodedData?.attestation?.signUp)),
     }
 
-    // TODO: verify GST root
+    const isGSTExisted = await GSTRootExists(Number(results?.epoch), BigInt(results?.globalStateTree).toString())
+    if(!isGSTExisted) {
+        console.log('Global state tree root mismatches')
+        return
+    }
 
     let attestations = await Attestations.findOne({epochKey: _epochKey})
     const attestation = new Attestation(
@@ -438,6 +470,7 @@ const updateDBFromEpochEndedEvent = async (
 export {
     getGSTLeaves,
     getEpochTreeLeaves,
+    GSTRootExists,
     epochTreeRootExists,
     nullifierExists,
     updateDBFromNewGSTLeafInsertedEvent,
