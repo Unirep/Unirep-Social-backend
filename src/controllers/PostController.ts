@@ -44,6 +44,27 @@ class PostController {
         return allPosts;
     }
 
+    getPostWithId = async (postId: string) => {
+      const post = Post.findById(postId).then(async (p) => {
+        if (p !== null) {
+          if (p.comments.length > 0) {
+            const comments = await Comment.find({'_id': {$in: p.comments}});
+            return {...(p.toObject()), comments};
+          } else {
+            return p.toObject();
+          }
+        } else {
+          return p;
+        }
+      });
+
+      return post;
+    }
+
+    getPostWithQuery = async () => {
+
+    }
+
     publishPost = async (data: any) => { // should have content, epk, proof, minRep, nullifiers, publicSignals  
       console.log(data);
 

@@ -20,13 +20,21 @@ class PostRouter {
     this._router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         try {
           const result = await this._controller.listAllPosts();
-          // console.log(result);
           res.status(200).json(result);
         }
         catch (error) {
           console.log(error);
           next(error);
         }
+    });
+    this._router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const result = await this._controller.getPostWithId(req.params.id);
+        res.status(200).json(result);
+      } catch (error) {
+        console.log(error);
+        next(error);
+      }
     });
     this._router.post('/', async (req: Request, res: Response, next: NextFunction) => {
         try {
