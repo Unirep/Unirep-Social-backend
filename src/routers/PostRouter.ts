@@ -20,6 +20,7 @@ class PostRouter {
     this._router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         try {
           const result = await this._controller.listAllPosts();
+          // console.log(result);
           res.status(200).json(result);
         }
         catch (error) {

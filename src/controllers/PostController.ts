@@ -3,6 +3,7 @@ import ErrorHandler from '../ErrorHandler';
 import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_POST_KARMA } from '../constants';
 import base64url from 'base64url';
 import Post, { IPost } from "../database/models/post";
+import Comment, { IComment } from "../database/models/comment";
 import Record, { IRecord } from '../database/models/record';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
@@ -12,14 +13,34 @@ class PostController {
     }
 
     listAllPosts = async () => {
-        // let posts: any;
-        // await listAllPosts({
-        //     contract: UNIREP_SOCIAL,
-        // }).then((ret) => {
-        //     posts = ret;
-        // });
+        const allPosts = Post.find({}).then(async (posts) => {
+          let ret: any[] = [];
+          let singleComment: any = {};
+          for (var i = 0; i < posts.length; i ++) {
+            if (posts[i].comments.length > 0) {
+              console.log('post with comments: ' + posts[i].comments)
+              singleComment = await Comment.find({'_id': {$in: posts[i].comments}}).then(comments => {
+                let score: number = 0;
+                let retComment: any = {};
+                for (var j = 0; j < comments.length; j ++) {
+                  const _score = comments[j].posRep + comments[j].negRep;
+                  if (_score >= score) {
+                    score = _score;
+                    retComment = {...(comments[j].toObject())};
+                  }
+                }
+                return retComment;
+              });
+            } 
+            console.log(posts[i].comments.length);
+            console.log(singleComment);
+            const p = {...(posts[i].toObject()), comments: singleComment};
+            ret = [...ret, p];
+          }
+          return ret;
+        });
 
-        // return posts;
+        return allPosts;
     }
 
     publishPost = async (data: any) => { // should have content, epk, proof, minRep, nullifiers, publicSignals  
