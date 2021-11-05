@@ -15,8 +15,9 @@ class PostController {
     listAllPosts = async () => {
         const allPosts = Post.find({}).then(async (posts) => {
           let ret: any[] = [];
-          let singleComment: any = {};
+          
           for (var i = 0; i < posts.length; i ++) {
+            let singleComment: any = {};
             if (posts[i].comments.length > 0) {
               console.log('post with comments: ' + posts[i].comments)
               singleComment = await Comment.find({'_id': {$in: posts[i].comments}}).then(comments => {
