@@ -4,6 +4,7 @@ import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputati
 import base64url from 'base64url';
 import Post, { IPost } from "../database/models/post";
 import Comment, { IComment } from "../database/models/comment";
+import { GSTRootExists, nullifierExists } from "../database/utils"
 import Record, { IRecord } from '../database/models/record';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
@@ -76,8 +77,10 @@ class PostController {
       const decodedPublicSignals = base64url.decode(data.publicSignals.slice(reputationPublicSignalsPrefix.length))
       const publicSignals = JSON.parse(decodedPublicSignals)
       const proof = JSON.parse(decodedProof)
+      const repNullifiers = publicSignals.slice(0, maxReputationBudget)
       const epoch = publicSignals[maxReputationBudget]
       const epochKey = Number(publicSignals[maxReputationBudget + 1]).toString(16)
+      const GSTRoot = publicSignals[maxReputationBudget + 2]
       const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
       const minRep = publicSignals[maxReputationBudget + 5]
 
@@ -88,6 +91,22 @@ class PostController {
       if (!isProofValid) {
           console.error('Error: invalid reputation proof')
           return
+      }
+
+      // check GST root
+      const validRoot = await GSTRootExists(Number(epoch), GSTRoot)
+      if(!validRoot){
+        console.error(`Error: invalid global state tree root ${GSTRoot}`)
+        return
+      }
+
+      // check nullifiers
+      for (let nullifier of repNullifiers) {
+        const seenNullifier = await nullifierExists(nullifier)
+        if(seenNullifier) {
+          console.error(`Error: invalid reputation nullifier ${nullifier}`)
+          return
+        }
       }
       
       const newPost: IPost = new Post({
