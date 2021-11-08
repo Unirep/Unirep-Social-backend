@@ -13,6 +13,7 @@ import { ethers } from 'ethers';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 import { genUnirepStateFromContract } from '@unirep/unirep';
 import Record, { IRecord } from '../database/models/record';
+import { GSTRootExists } from '../database/utils';
 
 class AirdropController {
     defaultMethod() {
@@ -58,9 +59,9 @@ class AirdropController {
         }
 
         // Check if Global state tree root exists
-        const isGSTRootExisted = unirepState.GSTRootExists(GSTRoot, epoch)
-        if(!isGSTRootExisted) {
-            console.error('Error: invalid global state tree root')
+        const validRoot = await GSTRootExists(Number(epoch), GSTRoot)
+        if(!validRoot){
+            console.error(`Error: invalid global state tree root ${GSTRoot}`)
             return
         }
 

@@ -1,3 +1,6 @@
+import UnirepSocial from "../node_modules/@unirep/unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json"
+import Unirep from "../node_modules/@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json"
+
 export const DEPLOYER_PRIV_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 export const UNIREP = '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6';
 export const UNIREP_SOCIAL = '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318';
@@ -18,6 +21,9 @@ export const reputationPublicSignalsPrefix = 'Unirep.reputation.publicSignals.'
 export const signUpProofPrefix = 'Unirep.signUp.proof.'
 export const signUpPublicSignalsPrefix = 'Unirep.signUp.publicSignals.'
 export const maxReputationBudget = 10
+
+export const UNIREP_ABI = Unirep.abi
+export const UNIREP_SOCIAL_ABI = UnirepSocial.abi
 
 export const add0x = (str: string): string => {
     str = str.padStart(64,"0")

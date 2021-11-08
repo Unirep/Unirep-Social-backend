@@ -2,11 +2,14 @@ import dotenv from 'dotenv';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import mongoose, { Schema } from 'mongoose';
+import { ethers } from 'ethers'
 
 import ErrorHandler from './ErrorHandler';
 import MasterRouter from './routers/MasterRouter';
 
 import EpochController from './controllers/EpochController';
+import { DEFAULT_ETH_PROVIDER, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI } from './constants';
+import { updateDBFromAttestationEvent, updateDBFromEpochEndedEvent, updateDBFromNewGSTLeafInsertedEvent } from './database/utils';
 
 // load the environment variables from the .env file
 dotenv.config({
@@ -73,3 +76,30 @@ var db = mongoose.connection;
 
 //Bind connection to error event (to get notification of connection errors)
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
+
+// Initialize ethers provider
+const ethProvider = DEFAULT_ETH_PROVIDER
+const provider = new ethers.providers.JsonRpcProvider(ethProvider)
+const unirepSocialContract = new ethers.Contract(
+  UNIREP_SOCIAL,
+  UNIREP_SOCIAL_ABI,
+  provider,
+)
+const unirepContract = new ethers.Contract(
+    UNIREP,
+    UNIREP_ABI,
+    provider,
+  )
+const NewGSTLeafInsertedFilter = unirepContract.filters.NewGSTLeafInserted()
+const AttestationSubmittedFilter = unirepContract.filters.AttestationSubmitted()
+const EpochEndedFilter = unirepContract.filters.EpochEnded()
+
+provider.on(
+  NewGSTLeafInsertedFilter, (event) => updateDBFromNewGSTLeafInsertedEvent(event)
+)
+provider.on(
+  AttestationSubmittedFilter, (event) => updateDBFromAttestationEvent(event)
+)
+provider.on(
+  EpochEndedFilter, (event) => updateDBFromEpochEndedEvent(event)
+)

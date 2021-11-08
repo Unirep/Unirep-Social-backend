@@ -5,6 +5,7 @@ import base64url from 'base64url';
 import Record, { IRecord } from '../database/models/record';
 import Comment, { IComment } from "../database/models/comment";
 import Post from '../database/models/post';
+import { GSTRootExists, nullifierExists } from "../database/utils"
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
 class CommentController {
@@ -23,8 +24,10 @@ class CommentController {
       const decodedPublicSignals = base64url.decode(data.publicSignals.slice(reputationPublicSignalsPrefix.length))
       const publicSignals = JSON.parse(decodedPublicSignals)
       const proof = JSON.parse(decodedProof)
+      const repNullifiers = publicSignals.slice(0, maxReputationBudget)
       const epoch = publicSignals[maxReputationBudget]
       const epochKey = Number(publicSignals[maxReputationBudget + 1]).toString(16)
+      const GSTRoot = publicSignals[maxReputationBudget + 2]
       const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
       const minRep = publicSignals[maxReputationBudget + 5]
 
@@ -35,6 +38,22 @@ class CommentController {
       if (!isProofValid) {
           console.error('Error: invalid reputation proof')
           return
+      }
+
+      // check GST root
+      const validRoot = await GSTRootExists(Number(epoch), GSTRoot)
+      if(!validRoot){
+        console.error(`Error: invalid global state tree root ${GSTRoot}`)
+        return
+      }
+
+      // check nullifiers
+      for (let nullifier of repNullifiers) {
+        const seenNullifier = await nullifierExists(nullifier)
+        if(seenNullifier) {
+          console.error(`Error: invalid reputation nullifier ${nullifier}`)
+          return
+        }
       }
 
       const newComment: IComment = new Comment({
