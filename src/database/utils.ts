@@ -410,9 +410,11 @@ const updateDBFromAttestationEvent = async (
     }
 
     // save reputation nullifiers
-    for(let nullifier of results?.repNullifiers){
-        if(BigInt(nullifier) != BigInt(0))
-            await saveNullifier(Number(_epoch), BigInt(nullifier).toString())
+    if (results?.repNullifiers != undefined) {
+        for(let nullifier of results?.repNullifiers){
+            if(BigInt(nullifier) != BigInt(0))
+                await saveNullifier(Number(_epoch), BigInt(nullifier).toString())
+        }
     }
 }
 
