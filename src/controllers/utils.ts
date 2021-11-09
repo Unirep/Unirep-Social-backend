@@ -1,14 +1,14 @@
 import { Attestation, circuitEpochTreeDepth, circuitUserStateTreeDepth, circuitGlobalStateTreeDepth, computeEmptyUserStateRoot, genNewSMT, SMT_ONE_LEAF } from '@unirep/unirep'
 import { ethers } from 'ethers'
 import { hashLeftRight, IncrementalQuinTree } from '@unirep/crypto'
-import mongoose from 'mongoose'
-import { add0x, DEFAULT_AIRDROPPED_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI } from '../constants'
+import { DEFAULT_ETH_PROVIDER, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL } from '../constants'
 import Attestations, { IAttestation } from '../database/models/attestation'
 import GSTLeaves, { IGSTLeaf, IGSTLeaves } from '../database/models/GSTLeaf'
 import GSTRoots, { IGSTRoots } from '../database/models/GSTRoots'
 import EpochTreeLeaves, { IEpochTreeLeaf } from '../database/models/epochTreeLeaf'
 import Nullifier, { INullifier } from '../database/models/nullifiers'
 import Record, { IRecord } from '../database/models/record';
+import { UnirepSocialContract } from '@unirep/unirep-social'
 
 // /*
 // * Connect to db uri
@@ -417,6 +417,11 @@ const updateDBFromAttestationEvent = async (
                 await saveNullifier(Number(_epoch), BigInt(nullifier).toString())
         }
     } else if (results?.event === "UserSignedUpProof") {
+        // store Unirep Social airdrop event
+        const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
+        const unirepSocialId = await unirepSocialContract.attesterId()
+
+        if (Number(unirepSocialId) !== Number(decodedData?.attestation?.attesterId)) return
         const newRecord: IRecord = new Record({
             to: BigInt(results?.args.epochKey).toString(16),
             from: 'UnirepSocial',
