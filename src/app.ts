@@ -9,7 +9,7 @@ import MasterRouter from './routers/MasterRouter';
 
 import EpochController from './controllers/EpochController';
 import { DEFAULT_ETH_PROVIDER, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI } from './constants';
-import { updateDBFromAttestationEvent, updateDBFromEpochEndedEvent, updateDBFromNewGSTLeafInsertedEvent } from './database/utils';
+import { updateDBFromAttestationEvent, updateDBFromEpochEndedEvent, updateDBFromNewGSTLeafInsertedEvent } from './controllers/utils';
 
 // load the environment variables from the .env file
 dotenv.config({

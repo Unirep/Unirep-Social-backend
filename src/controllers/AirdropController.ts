@@ -13,7 +13,7 @@ import { ethers } from 'ethers';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 import { genUnirepStateFromContract } from '@unirep/unirep';
 import Record, { IRecord } from '../database/models/record';
-import { GSTRootExists } from '../database/utils';
+import { GSTRootExists } from './utils';
 
 class AirdropController {
     defaultMethod() {

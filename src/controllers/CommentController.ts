@@ -5,7 +5,7 @@ import base64url from 'base64url';
 import Record, { IRecord } from '../database/models/record';
 import Comment, { IComment } from "../database/models/comment";
 import Post from '../database/models/post';
-import { GSTRootExists, nullifierExists } from "../database/utils"
+import { GSTRootExists, nullifierExists } from "./utils"
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
 class CommentController {

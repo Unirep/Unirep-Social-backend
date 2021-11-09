@@ -3,7 +3,7 @@ import ErrorHandler from '../ErrorHandler';
 import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x } from '../constants';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 import { verifyProof } from '@unirep/circuits'
-import { epochTreeRootExists, GSTRootExists } from '../database/utils';
+import { epochTreeRootExists, GSTRootExists } from './utils';
 
 class USTController {
     defaultMethod() {

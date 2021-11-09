@@ -2,12 +2,13 @@ import { Attestation, circuitEpochTreeDepth, circuitUserStateTreeDepth, circuitG
 import { ethers } from 'ethers'
 import { hashLeftRight, IncrementalQuinTree } from '@unirep/crypto'
 import mongoose from 'mongoose'
-import { add0x, DEFAULT_ETH_PROVIDER, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI } from '../constants'
-import Attestations, { IAttestation } from './models/attestation'
-import GSTLeaves, { IGSTLeaf, IGSTLeaves } from './models/GSTLeaf'
-import GSTRoots, { IGSTRoots } from './models/GSTRoots'
-import EpochTreeLeaves, { IEpochTreeLeaf } from './models/epochTreeLeaf'
-import Nullifier, { INullifier } from './models/nullifiers'
+import { add0x, DEFAULT_AIRDROPPED_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI } from '../constants'
+import Attestations, { IAttestation } from '../database/models/attestation'
+import GSTLeaves, { IGSTLeaf, IGSTLeaves } from '../database/models/GSTLeaf'
+import GSTRoots, { IGSTRoots } from '../database/models/GSTRoots'
+import EpochTreeLeaves, { IEpochTreeLeaf } from '../database/models/epochTreeLeaf'
+import Nullifier, { INullifier } from '../database/models/nullifiers'
+import Record, { IRecord } from '../database/models/record';
 
 // /*
 // * Connect to db uri
@@ -199,7 +200,7 @@ const verifyAttestationProofsByIndex = async (proofIndex: number | ethers.BigNum
             args?.epochKey,
             args?.proof,
         )
-        if (isProofValid) return args
+        if (isProofValid) return {event: epochKeyProofEvent[0].event, args: args}
     } else if (repProofEvent.length == 1){
         console.log('rep nullifier event')
         args = repProofEvent[0]?.args?.reputationProofData
@@ -215,7 +216,7 @@ const verifyAttestationProofsByIndex = async (proofIndex: number | ethers.BigNum
             args?.graffitiPreImage,
             args?.proof,
         )
-        if (isProofValid) return args
+        if (isProofValid) return {event: repProofEvent[0].event, args: args}
     } else if (signUpProofEvent.length == 1){
         console.log('sign up event')
         args = signUpProofEvent[0]?.args?.signUpProofData
@@ -226,7 +227,7 @@ const verifyAttestationProofsByIndex = async (proofIndex: number | ethers.BigNum
             args?.attesterId,
             args?.proof,
         )
-        if (isProofValid) return args
+        if (isProofValid) return {event: signUpProofEvent[0].event, args: args}
     }
     return args
 }
@@ -374,7 +375,7 @@ const updateDBFromAttestationEvent = async (
         signUp: Boolean(Number(decodedData?.attestation?.signUp)),
     }
 
-    const isGSTExisted = await GSTRootExists(Number(results?.epoch), BigInt(results?.globalStateTree).toString())
+    const isGSTExisted = await GSTRootExists(Number(results?.args.epoch), BigInt(results?.args.globalStateTree).toString())
     if(!isGSTExisted) {
         console.log('Global state tree root mismatches')
         return
@@ -410,11 +411,22 @@ const updateDBFromAttestationEvent = async (
     }
 
     // save reputation nullifiers
-    if (results?.repNullifiers != undefined) {
-        for(let nullifier of results?.repNullifiers){
+    if (results?.event === "ReputationNullifierProof") {
+        for(let nullifier of results?.args?.repNullifiers){
             if(BigInt(nullifier) != BigInt(0))
                 await saveNullifier(Number(_epoch), BigInt(nullifier).toString())
         }
+    } else if (results?.event === "UserSignedUpProof") {
+        const newRecord: IRecord = new Record({
+            to: BigInt(results?.args.epochKey).toString(16),
+            from: 'UnirepSocial',
+            upvote: decodedData?.attestation?.posRep,
+            downvote: decodedData?.attestation?.negRep,
+            epoch: results?.args.epoch,
+            action: 'UST',
+            data: '0',
+        });
+        await newRecord.save();
     }
 }
 

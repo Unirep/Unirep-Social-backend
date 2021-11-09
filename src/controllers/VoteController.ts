@@ -5,7 +5,7 @@ import { IVote } from '../database/models/vote';
 import Post from '../database/models/post';
 import Comment from '../database/models/comment';
 import Record, { IRecord } from '../database/models/record';
-import { GSTRootExists, nullifierExists } from "../database/utils"
+import { GSTRootExists, nullifierExists } from "./utils"
 import base64url from 'base64url';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 

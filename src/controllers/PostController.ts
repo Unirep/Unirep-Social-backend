@@ -4,7 +4,7 @@ import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputati
 import base64url from 'base64url';
 import Post, { IPost } from "../database/models/post";
 import Comment, { IComment } from "../database/models/comment";
-import { GSTRootExists, nullifierExists } from "../database/utils"
+import { GSTRootExists, nullifierExists } from "./utils"
 import Record, { IRecord } from '../database/models/record';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 

@@ -1,9 +1,8 @@
 import base64url from 'base64url';
 
 import ErrorHandler from '../ErrorHandler';
-import { DEFAULT_ETH_PROVIDER, DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, identityCommitmentPrefix, add0x, DEFAULT_AIRDROPPED_KARMA } from '../constants';
+import { DEFAULT_ETH_PROVIDER, DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, identityCommitmentPrefix, add0x } from '../constants';
 import { UnirepSocialContract } from '@unirep/unirep-social';
-import Record, { IRecord } from '../database/models/record';
 
 class SignUpController {
     defaultMethod() {
@@ -22,17 +21,6 @@ class SignUpController {
       const tx = await unirepSocialContract.userSignUp(commitment);
       const epoch = await unirepSocialContract.currentEpoch();
       console.log('transaction: ' + tx.hash + ', sign up epoch: ' + epoch.toString());
-
-      const newRecord: IRecord = new Record({
-        to: epk,
-        from: 'UnirepSocial',
-        upvote: DEFAULT_AIRDROPPED_KARMA,
-        downvote: 0,
-        epoch,
-        action: 'UST',
-        data: '0',
-      });
-      await newRecord.save();
 
       return {transaction: tx.hash, epoch: epoch.toNumber()};
     }
