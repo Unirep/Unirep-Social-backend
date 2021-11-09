@@ -482,24 +482,39 @@ const writeRecord = async (to: string, from: string, posRep: number, negRep: num
         data,
     });
 
-    EpkRecord.findOneAndUpdate(
-        {epk: from, epoch}, 
-        { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep: 0, negRep: posRep + negRep} },
-        { "new": true, "upsert": true }, 
-        (err, record) => {
-            console.log('record is: ' + record);
-            console.log('update epk record error: ' + err);
-    });
-
     if (action === ActionVote) {
+        EpkRecord.findOneAndUpdate(
+            {epk: from, epoch}, 
+            { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep: 0, negRep: 0, spent: posRep + negRep} },
+            { "new": true, "upsert": true }, 
+            (err, record) => {
+                console.log('update voter record is: ' + record);
+                if (err !== null) {
+                    console.log('update voter epk record error: ' + err);
+                }
+        });
+
         EpkRecord.findOneAndUpdate(
             {epk: to, epoch}, 
             { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep, negRep} },
             { "new": true, "upsert": true }, 
             (err, record) => {
-                console.log('record is: ' + record);
-                console.log('update epk record error: ' + err);
+                console.log('update receiver record is: ' + record);
+                if (err !== null) {
+                    console.log('update receiver epk record error: ' + err);
+                }
         });
+    } else {
+        EpkRecord.findOneAndUpdate(
+            {epk: from, epoch}, 
+            { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep: 0, negRep: 0, spent: negRep} },
+            { "new": true, "upsert": true }, 
+            (err, record) => {
+                console.log('update action record is: ' + record);
+                if (err !== null) {
+                    console.log('update action epk record error: ' + err);
+                }
+            });
     }
 
     await newRecord.save();
