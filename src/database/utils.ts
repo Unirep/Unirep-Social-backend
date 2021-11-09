@@ -2,12 +2,14 @@ import { Attestation, circuitEpochTreeDepth, circuitUserStateTreeDepth, circuitG
 import { ethers } from 'ethers'
 import { hashLeftRight, IncrementalQuinTree } from '@unirep/crypto'
 import mongoose from 'mongoose'
-import { add0x, DEFAULT_ETH_PROVIDER, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI } from '../constants'
+import { add0x, DEFAULT_ETH_PROVIDER, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, ActionVote } from '../constants'
 import Attestations, { IAttestation } from './models/attestation'
 import GSTLeaves, { IGSTLeaf, IGSTLeaves } from './models/GSTLeaf'
 import GSTRoots, { IGSTRoots } from './models/GSTRoots'
 import EpochTreeLeaves, { IEpochTreeLeaf } from './models/epochTreeLeaf'
 import Nullifier, { INullifier } from './models/nullifiers'
+import Record, { IRecord } from './models/record'
+import EpkRecord, { IEpkRecord } from './models/epkRecord'
 
 // /*
 // * Connect to db uri
@@ -469,6 +471,40 @@ const updateDBFromEpochEndedEvent = async (
     await newEpochTreeLeaves.save()
 }
 
+const writeRecord = async (to: string, from: string, posRep: number, negRep: number, epoch: number, action: string, data: string) => {
+    const newRecord: IRecord = new Record({
+        to,
+        from,
+        upvote: posRep,
+        downvote: negRep,
+        epoch,
+        action,
+        data,
+    });
+
+    EpkRecord.findOneAndUpdate(
+        {epk: from, epoch}, 
+        { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep: 0, negRep: posRep + negRep} },
+        { "new": true, "upsert": true }, 
+        (err, record) => {
+            console.log('record is: ' + record);
+            console.log('update epk record error: ' + err);
+    });
+
+    if (action === ActionVote) {
+        EpkRecord.findOneAndUpdate(
+            {epk: to, epoch}, 
+            { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep, negRep} },
+            { "new": true, "upsert": true }, 
+            (err, record) => {
+                console.log('record is: ' + record);
+                console.log('update epk record error: ' + err);
+        });
+    }
+
+    await newRecord.save();
+}
+
 export {
     getGSTLeaves,
     getEpochTreeLeaves,
@@ -478,4 +514,5 @@ export {
     updateDBFromNewGSTLeafInsertedEvent,
     updateDBFromAttestationEvent,
     updateDBFromEpochEndedEvent,
+    writeRecord,
 }

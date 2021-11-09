@@ -1,11 +1,10 @@
 import ErrorHandler from '../ErrorHandler';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_POST_KARMA } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_POST_KARMA, ActionPost } from '../constants';
 import base64url from 'base64url';
 import Post, { IPost } from "../database/models/post";
-import Comment, { IComment } from "../database/models/comment";
-import { GSTRootExists, nullifierExists } from "../database/utils"
-import Record, { IRecord } from '../database/models/record';
+import Comment from "../database/models/comment";
+import { GSTRootExists, nullifierExists, writeRecord } from "../database/utils"; 
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
 class PostController {
@@ -131,22 +130,13 @@ class PostController {
         console.log('new post error: ' + err);
         Post.findByIdAndUpdate(
           postId,
-          { transactionHash: tx.hash.toString(), proofIndex },
+          { transactionHash: tx.hash.toString(), proofIndex: proofIndex },
           { "new": true, "upsert": false }, 
           (err) => console.log('update transaction hash of posts error: ' + err)
         );
       });
 
-      const newRecord: IRecord = new Record({
-        to: epochKey,
-        from: epochKey,
-        upvote: 0,
-        downvote: DEFAULT_POST_KARMA,
-        epoch,
-        action: 'Post',
-        data: postId,
-      });
-      await newRecord.save();
+      await writeRecord(epochKey, epochKey, 0, DEFAULT_POST_KARMA, epoch, ActionPost, postId);
       
       return {transaction: tx.hash, postId: newPost._id, currentEpoch: epoch};
     }

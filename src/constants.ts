@@ -25,6 +25,10 @@ export const maxReputationBudget = 10
 export const UNIREP_ABI = Unirep.abi
 export const UNIREP_SOCIAL_ABI = UnirepSocial.abi
 
+export const ActionPost = 'Post'
+export const ActionVote = 'Vote'
+export const ActionComment = 'Comment'
+
 export const add0x = (str: string): string => {
     str = str.padStart(64,"0")
     return str.startsWith('0x') ? str : '0x' + str
