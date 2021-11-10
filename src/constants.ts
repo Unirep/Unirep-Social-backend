@@ -25,9 +25,21 @@ export const maxReputationBudget = 10
 export const UNIREP_ABI = Unirep.abi
 export const UNIREP_SOCIAL_ABI = UnirepSocial.abi
 
-export const ActionPost = 'Post'
-export const ActionVote = 'Vote'
-export const ActionComment = 'Comment'
+export enum ActionType {
+    post = 'post',
+    vote = 'vote',
+    comment = 'comment'
+}
+
+export enum QueryType {
+    popularity = 'p',
+    time = 't',
+    reputation = 'rep',
+    vote = 'vote',
+    upvote = 'uv',
+    comments = 'c',
+    posts = 'p'
+}
 
 export const add0x = (str: string): string => {
     str = str.padStart(64,"0")

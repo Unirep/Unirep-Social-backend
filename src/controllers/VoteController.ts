@@ -1,6 +1,6 @@
 import ErrorHandler from '../ErrorHandler';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, ActionVote } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, ActionType } from '../constants';
 import { IVote } from '../database/models/vote';
 import Post from '../database/models/post';
 import Comment from '../database/models/comment';
@@ -94,7 +94,7 @@ class VoteController {
           { "new": true, "upsert": false }, 
           (err) => console.log('update votes of post error: ' + err));
 
-        await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionVote, data.postId);
+        await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.vote, data.postId);
       } else {
         Comment.findByIdAndUpdate(
           data.postId, 
@@ -105,7 +105,7 @@ class VoteController {
           }).then( async (comment) => {
             if (comment !== undefined && comment !== null) {
               const dataId = `${data.postId}_${comment._id.toString()}`;
-              await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionVote, dataId);
+              await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.vote, dataId);
             }
           });
       }

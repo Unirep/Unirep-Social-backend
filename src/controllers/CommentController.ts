@@ -1,6 +1,6 @@
 import ErrorHandler from '../ErrorHandler';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_COMMENT_KARMA, ActionComment } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_COMMENT_KARMA, ActionType } from '../constants';
 import base64url from 'base64url';
 import Record, { IRecord } from '../database/models/record';
 import Comment, { IComment } from "../database/models/comment";
@@ -97,7 +97,7 @@ class CommentController {
         { "new": true, "upsert": true }, 
         (err) => console.log('update comments of post error: ' + err));
 
-      await writeRecord(epochKey, epochKey, 0, DEFAULT_COMMENT_KARMA, epoch, ActionComment, data.postId + '_' + commentId);
+      await writeRecord(epochKey, epochKey, 0, DEFAULT_COMMENT_KARMA, epoch, ActionType.comment, data.postId + '_' + commentId);
 
       return {transaction: tx.hash, commentId}
     }

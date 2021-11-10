@@ -18,14 +18,26 @@ class PostRouter {
    */
   private _configure() {
     this._router.get('/', async (req: Request, res: Response, next: NextFunction) => {
-        try {
-          const result = await this._controller.listAllPosts();
-          res.status(200).json(result);
+        if (req.query.qtype === undefined) {
+          try {
+            const result = await this._controller.listAllPosts();
+            res.status(200).json(result);
+          }
+          catch (error) {
+            console.log(error);
+            next(error);
+          }
+        } else {
+          try {
+            const result = await this._controller.getPostWithQuery(req.query.qtype.toString(), req.query.subtype!.toString(), parseInt(req.query.start!.toString()), parseInt(req.query.end!.toString()), req.query.lastread!.toString());
+            res.status(200).json(result);
+          }
+          catch (error) {
+            console.log(error);
+            next(error);
+          }
         }
-        catch (error) {
-          console.log(error);
-          next(error);
-        }
+        
     });
     this._router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
       try {

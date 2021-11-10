@@ -1,6 +1,6 @@
 import ErrorHandler from '../ErrorHandler';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_POST_KARMA, ActionPost } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_POST_KARMA, ActionType, QueryType } from '../constants';
 import base64url from 'base64url';
 import Post, { IPost } from "../database/models/post";
 import Comment from "../database/models/comment";
@@ -61,8 +61,34 @@ class PostController {
       return post;
     }
 
-    getPostWithQuery = async () => {
+    getPostWithQuery = async (maintype: string, subtype: string, start: number, end: number, lastRead: string) => {
+      const allPosts = await this.listAllPosts();
+      let ret: any[] = [];
 
+      if (maintype === QueryType.popularity) {
+        let inPosts: any[] = [];
+        let outPosts: any[] = [];
+        // 1. classify posts to [in time range] and [out of time range]
+        allPosts.forEach((post) => {
+          const postTime = Date.parse(post.created_at);
+          if (postTime >= start && postTime <= end) {
+            inPosts = [...inPosts, post];
+          } else {
+            outPosts = [...outPosts, post];
+          }
+        });
+        ret = [...inPosts];
+        // 2. sort each of the groups by subtype
+
+        // 3. see which is the lastRead one, load posts behind it
+      } else if (maintype === QueryType.time) {
+        // subtype is posts --> sort posts by time
+
+        // subtype is comments --> sort comments by time, and get posts of each comment, filter out repeated posts
+
+      }
+
+      return ret;
     }
 
     publishPost = async (data: any) => { // should have content, epk, proof, minRep, nullifiers, publicSignals  
@@ -136,7 +162,7 @@ class PostController {
         );
       });
 
-      await writeRecord(epochKey, epochKey, 0, DEFAULT_POST_KARMA, epoch, ActionPost, postId);
+      await writeRecord(epochKey, epochKey, 0, DEFAULT_POST_KARMA, epoch, ActionType.post, postId);
       
       return {transaction: tx.hash, postId: newPost._id, currentEpoch: epoch};
     }

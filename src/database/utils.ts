@@ -2,7 +2,7 @@ import { Attestation, circuitEpochTreeDepth, circuitUserStateTreeDepth, circuitG
 import { ethers } from 'ethers'
 import { hashLeftRight, IncrementalQuinTree } from '@unirep/crypto'
 import mongoose from 'mongoose'
-import { add0x, DEFAULT_ETH_PROVIDER, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, ActionVote } from '../constants'
+import { add0x, DEFAULT_ETH_PROVIDER, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, ActionType } from '../constants'
 import Attestations, { IAttestation } from './models/attestation'
 import GSTLeaves, { IGSTLeaf, IGSTLeaves } from './models/GSTLeaf'
 import GSTRoots, { IGSTRoots } from './models/GSTRoots'
@@ -482,7 +482,7 @@ const writeRecord = async (to: string, from: string, posRep: number, negRep: num
         data,
     });
 
-    if (action === ActionVote) {
+    if (action === ActionType.vote) {
         EpkRecord.findOneAndUpdate(
             {epk: from, epoch}, 
             { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep: 0, negRep: 0, spent: posRep + negRep} },
