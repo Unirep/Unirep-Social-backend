@@ -33,8 +33,8 @@ class PostController {
                 return retComment;
               });
             } 
-            console.log(posts[i].comments.length);
-            console.log(singleComment);
+            // console.log(posts[i].comments.length);
+            // console.log(singleComment);
             const p = {...(posts[i].toObject()), comments: singleComment};
             ret = [...ret, p];
           }
