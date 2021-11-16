@@ -3,7 +3,7 @@ import ErrorHandler from '../ErrorHandler';
 import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_POST_KARMA, ActionType, QueryType } from '../constants';
 import base64url from 'base64url';
 import Post, { IPost } from "../database/models/post";
-import Comment from "../database/models/comment";
+import Comment, { IComment } from "../database/models/comment";
 import { GSTRootExists, nullifierExists, writeRecord } from "../database/utils"; 
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
@@ -12,32 +12,34 @@ class PostController {
       throw new ErrorHandler(501, 'API: Not implemented method');
     }
 
+    filterOneComment = (comments: IComment[]) => {
+      let score: number = 0;
+      let ret: any = {};
+      for (var i = 0; i < comments.length; i ++) {
+        const _score = comments[i].posRep * 1.5 + comments[i].negRep * 0.5;
+        if (_score >= score) {
+          score = _score;
+          ret = comments[i];
+        }
+      }
+      return ret;
+    }
+
+    commentIdToObject = async (commentIds: string[]) => {
+      const comments = Comment.find({'_id': {$in: commentIds}});
+      return comments;
+    }
+
     listAllPosts = async () => {
-        const allPosts = Post.find({}).then(async (posts) => {
+        const allPosts = Post.find({}).then(async(posts) => {
           let ret: any[] = [];
-          
+
           for (var i = 0; i < posts.length; i ++) {
-            let singleComment: any = {};
-            if (posts[i].comments.length > 0) {
-              console.log('post with comments: ' + posts[i].comments)
-              singleComment = await Comment.find({'_id': {$in: posts[i].comments}}).then(comments => {
-                let score: number = 0;
-                let retComment: any = {};
-                for (var j = 0; j < comments.length; j ++) {
-                  const _score = comments[j].posRep + comments[j].negRep;
-                  if (_score >= score) {
-                    score = _score;
-                    retComment = {...(comments[j].toObject())};
-                  }
-                }
-                return retComment;
-              });
-            } 
-            // console.log(posts[i].comments.length);
-            // console.log(singleComment);
-            const p = {...(posts[i].toObject()), comments: singleComment};
+            const comments = await this.commentIdToObject(posts[i].comments);
+            const p = {...posts[i].toObject(), comments};
             ret = [...ret, p];
           }
+
           return ret;
         });
 
@@ -61,7 +63,7 @@ class PostController {
       return post;
     }
 
-    getPostWithQuery = async (maintype: string, subtype: string, start: number, end: number, lastRead: string) => {
+    getPostWithQuery = async (sort: string, maintype: string, subtype: string, start: number, end: number, lastRead: string) => {
       const allPosts = await this.listAllPosts();
       let ret: any[] = [];
 
@@ -77,9 +79,46 @@ class PostController {
             outPosts = [...outPosts, post];
           }
         });
-        ret = [...inPosts];
-        // 2. sort each of the groups by subtype
-
+        // 2. sort each of the groups by subtype & sort
+        if (subtype === QueryType.reputation) {
+          console.log('query by reputation');
+          if (sort === QueryType.most) {
+            inPosts.sort((a, b) => a.reputation > b.reputation? -1 : 1);
+            outPosts.sort((a, b) => a.reputation > b.reputation? -1 : 1);
+          } else {
+            inPosts.sort((a, b) => a.reputation < b.reputation? 1 : -1);
+            outPosts.sort((a, b) => a.reputation < b.reputation? 1 : -1);
+          }
+        } else if (subtype === QueryType.votes) {
+          console.log('query by votes');
+          if (sort === QueryType.most) {
+            inPosts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? -1 : 1);
+            outPosts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? -1 : 1);
+          } else {
+            inPosts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? 1 : -1);
+            outPosts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? 1 : -1);
+          }
+        } else if (subtype === QueryType.upvotes) {
+          console.log('query by upvotes');
+          if (sort === QueryType.most) {
+            inPosts.sort((a, b) => a.posRep > b.posRep? -1 : 1);
+            outPosts.sort((a, b) => a.posRep < b.posRep? -1 : 1);
+          } else {
+            inPosts.sort((a, b) => a.posRep > b.posRep? 1 : -1);
+            outPosts.sort((a, b) => a.posRep > b.posRep? 1 : -1);
+          }
+        } else if (subtype === QueryType.comments) {
+          console.log('query by comments');
+          if (sort === QueryType.most) {
+            inPosts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1);
+            outPosts.sort((a, b) => a.comments.length < b.comments.length? -1 : 1);
+          } else {
+            inPosts.sort((a, b) => a.comments.length > b.comments.length? 1 : -1);
+            outPosts.sort((a, b) => a.comments.length < b.comments.length? 1 : -1);
+          }
+        } 
+        console.log(inPosts);
+        ret = [...inPosts, outPosts];
         // 3. see which is the lastRead one, load posts behind it
       } else if (maintype === QueryType.time) {
         // subtype is posts --> sort posts by time

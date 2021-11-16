@@ -90,7 +90,7 @@ class VoteController {
       if (data.isPost) {
         Post.findByIdAndUpdate(
           data.postId, 
-          { "$push": { "votes": newVote } },
+          { "$push": { "votes": newVote }, "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
           { "new": true, "upsert": false }, 
           (err) => console.log('update votes of post error: ' + err));
 
@@ -98,7 +98,7 @@ class VoteController {
       } else {
         Comment.findByIdAndUpdate(
           data.postId, 
-          { "$push": { "votes": newVote } },
+          { "$push": { "votes": newVote }, "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
           { "new": true, "upsert": false }, 
           (err) => {
             console.log('update votes of comment error: ' + err);
