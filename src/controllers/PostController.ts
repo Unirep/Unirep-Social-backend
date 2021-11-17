@@ -141,7 +141,7 @@ class PostController {
           }
         }
         tmp = [...allPosts];
-        // subtype is comments --> sort comments by time, and get posts of each comment, filter out repeated posts
+        // subtype is comments --> sort comments by time, and get posts of each comment, filter out repeated posts --> not yet implemented
       }
 
       let ret: any[] = [];
