@@ -22,6 +22,8 @@ export const signUpProofPrefix = 'Unirep.signUp.proof.'
 export const signUpPublicSignalsPrefix = 'Unirep.signUp.publicSignals.'
 export const maxReputationBudget = 10
 
+export const loadPostCount = 10
+
 export const UNIREP_ABI = Unirep.abi
 export const UNIREP_SOCIAL_ABI = UnirepSocial.abi
 

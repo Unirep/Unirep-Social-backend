@@ -1,11 +1,12 @@
 import ErrorHandler from '../ErrorHandler';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_POST_KARMA, ActionType, QueryType } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_POST_KARMA, ActionType, QueryType, loadPostCount } from '../constants';
 import base64url from 'base64url';
 import Post, { IPost } from "../database/models/post";
 import Comment, { IComment } from "../database/models/comment";
 import { GSTRootExists, nullifierExists, writeRecord } from "../database/utils"; 
 import { UnirepSocialContract } from '@unirep/unirep-social';
+import post from '../database/models/post';
 
 class PostController {
     defaultMethod() {
@@ -30,20 +31,66 @@ class PostController {
       return comments;
     }
 
+    sortPosts = (posts: IPost[], sort: string, subtype: string, lastRead: string) => { // must be popularity related
+      if (subtype === QueryType.reputation) {
+        console.log('query by reputation');
+        if (sort === QueryType.most) {
+          posts.sort((a, b) => a.minRep > b.minRep? -1 : 1);
+        } else {
+          posts.sort((a, b) => a.minRep > b.minRep? 1 : -1);
+        }
+      } else if (subtype === QueryType.votes) {
+        console.log('query by votes');
+        if (sort === QueryType.most) {
+          posts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? -1 : 1);
+        } else {
+          posts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? 1 : -1);
+        }
+      } else if (subtype === QueryType.upvotes) {
+        console.log('query by upvotes');
+        if (sort === QueryType.most) {
+          posts.sort((a, b) => a.posRep > b.posRep? -1 : 1);
+        } else {
+          posts.sort((a, b) => a.posRep > b.posRep? 1 : -1);
+        }
+      } else if (subtype === QueryType.comments) {
+        console.log('query by comments');
+        if (sort === QueryType.most) {
+          posts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1);
+        } else {
+          posts.sort((a, b) => a.comments.length > b.comments.length? 1 : -1);
+        }
+      } 
+      
+      let lastReadIndex: number = 0;
+      let hasLastRead: boolean = false;
+      for (var i = 0; i < posts.length; i ++) {
+        if (posts[i]._id !== lastRead) {
+          lastReadIndex = lastReadIndex + 1;
+        } else {
+          hasLastRead = true;
+          break;
+        }
+      }
+
+      let retPosts: IPost[] = [];
+      const startIndex = hasLastRead? lastReadIndex + 1 : 0;
+      for (var i = startIndex; i < posts.length; i ++) {
+        retPosts = [...retPosts, posts[i]];
+      }      
+
+      const ret = {posts: retPosts, hasLastRead};
+      return ret;
+    }
+
     listAllPosts = () => {
       const allPosts = Post.find({}).then(async(posts) => {
         let ret: any[] = [];
-
         for (var i = 0; i < posts.length; i ++) {
-          // const comments = await this.commentIdToObject(posts[i].comments);
-          // const p = {...posts[i].toObject(), comments};
-          // ret = [...ret, p];
           ret = [...ret, posts[i].toObject()];
         }
-
         return ret;
       });
-
       return allPosts;
     }
 
@@ -82,60 +129,27 @@ class PostController {
           }
         });
         // 2. sort each of the groups by subtype & sort
-        if (subtype === QueryType.reputation) {
-          console.log('query by reputation');
-          if (sort === QueryType.most) {
-            inPosts.sort((a, b) => a.reputation > b.reputation? -1 : 1);
-            outPosts.sort((a, b) => a.reputation > b.reputation? -1 : 1);
-          } else {
-            inPosts.sort((a, b) => a.reputation > b.reputation? 1 : -1);
-            outPosts.sort((a, b) => a.reputation > b.reputation? 1 : -1);
-          }
-        } else if (subtype === QueryType.votes) {
-          console.log('query by votes');
-          if (sort === QueryType.most) {
-            inPosts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? -1 : 1);
-            outPosts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? -1 : 1);
-          } else {
-            inPosts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? 1 : -1);
-            outPosts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? 1 : -1);
-          }
-        } else if (subtype === QueryType.upvotes) {
-          console.log('query by upvotes');
-          if (sort === QueryType.most) {
-            inPosts.sort((a, b) => a.posRep > b.posRep? -1 : 1);
-            outPosts.sort((a, b) => a.posRep > b.posRep? -1 : 1);
-          } else {
-            inPosts.sort((a, b) => a.posRep > b.posRep? 1 : -1);
-            outPosts.sort((a, b) => a.posRep > b.posRep? 1 : -1);
-          }
-        } else if (subtype === QueryType.comments) {
-          console.log('query by comments');
-          if (sort === QueryType.most) {
-            inPosts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1);
-            outPosts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1);
-          } else {
-            inPosts.sort((a, b) => a.comments.length > b.comments.length? 1 : -1);
-            outPosts.sort((a, b) => a.comments.length > b.comments.length? 1 : -1);
-          }
-        } 
-        tmp = [...inPosts, ...outPosts];
-        // 3. see which is the lastRead one, load posts behind it
+        const retOfSortInPosts = this.sortPosts(inPosts, sort, subtype, lastRead);
+        
+        tmp = [...retOfSortInPosts.posts];
+        if (retOfSortInPosts.posts.length < loadPostCount) { // has chance to sort less posts
+          const retOfSortOutPosts = this.sortPosts(outPosts, sort, subtype, lastRead);
+          tmp = [...tmp, ...retOfSortOutPosts.posts];
+        }
       } else if (maintype === QueryType.time) {
         // subtype is posts --> sort posts by time
-        if (sort === QueryType.newest) {
-          if (subtype === QueryType.posts) {
+        if (subtype === QueryType.posts) {
+          if (sort === QueryType.newest) {
             console.log('query by newest posts');
             allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
-          } else if (subtype === QueryType.comments) {
+          } else if (sort === QueryType.oldest) {
+            console.log('query by oldest posts');
+            allPosts.sort((a, b) => a.created_at > b.created_at? 1 : -1);          }
+        } else if (subtype === QueryType.comments) {
+          if (sort === QueryType.newest) {
             console.log('query by newest comments');
             allPosts.sort((a, b) => a.updated_at > b.updated_at? -1 : 1);
-          }
-        } else if (sort === QueryType.oldest) {
-          if (subtype === QueryType.posts) {
-            console.log('query by oldest posts');
-            allPosts.sort((a, b) => a.created_at > b.created_at? 1 : -1);
-          } else if (subtype === QueryType.comments) {
+          } else if (sort === QueryType.oldest) {
             console.log('query by oldest comments');
             allPosts.sort((a, b) => a.updated_at > b.updated_at? 1 : -1);
           }
@@ -144,8 +158,10 @@ class PostController {
         // subtype is comments --> sort comments by time, and get posts of each comment, filter out repeated posts --> not yet implemented
       }
 
+      // filter out posts more than loadPostCount
       let ret: any[] = [];
-      for (var i = 0; i < tmp.length; i ++) {
+      const retLength = tmp.length > loadPostCount? loadPostCount : tmp.length;
+      for (var i = 0; i < retLength; i ++) {
         if (tmp[i].comments.length > 0) {
           const comments = await this.commentIdToObject(tmp[i].comments);
           const singleComment = this.filterOneComment(comments);
@@ -154,7 +170,6 @@ class PostController {
         } else {
           ret = [...ret, tmp[i]];
         }
-        
       }
       return ret;
     }
