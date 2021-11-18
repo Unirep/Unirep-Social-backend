@@ -65,7 +65,7 @@ class PostController {
       let lastReadIndex: number = 0;
       let hasLastRead: boolean = false;
       for (var i = 0; i < posts.length; i ++) {
-        if (posts[i]._id !== lastRead) {
+        if (posts[i]._id.toString() !== lastRead) {
           lastReadIndex = lastReadIndex + 1;
         } else {
           hasLastRead = true;
