@@ -1,11 +1,11 @@
 import ErrorHandler from '../ErrorHandler';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_COMMENT_KARMA } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_COMMENT_KARMA, ActionType } from '../constants';
 import base64url from 'base64url';
 import Record, { IRecord } from '../database/models/record';
 import Comment, { IComment } from "../database/models/comment";
 import Post from '../database/models/post';
-import { GSTRootExists, nullifierExists } from "./utils"
+import { GSTRootExists, nullifierExists, writeRecord } from "../controllers/utils"
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
 class CommentController {
@@ -113,16 +113,7 @@ class CommentController {
         { "new": true, "upsert": true }, 
         (err) => console.log('update comments of post error: ' + err));
 
-      const newRecord: IRecord = new Record({
-        to: epochKey,
-        from: epochKey,
-        upvote: 0,
-        downvote: DEFAULT_COMMENT_KARMA,
-        epoch,
-        action: 'Comment',
-        data: data.postId + '_' + commentId,
-      });
-      await newRecord.save();
+      await writeRecord(epochKey, epochKey, 0, DEFAULT_COMMENT_KARMA, epoch, ActionType.comment, data.postId + '_' + commentId);
 
       return {transaction: tx.hash, commentId}
     }

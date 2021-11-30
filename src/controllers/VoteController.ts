@@ -1,11 +1,10 @@
 import ErrorHandler from '../ErrorHandler';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, ActionType } from '../constants';
 import { IVote } from '../database/models/vote';
 import Post from '../database/models/post';
 import Comment from '../database/models/comment';
-import Record, { IRecord } from '../database/models/record';
-import { GSTRootExists, nullifierExists } from "./utils"
+import { GSTRootExists, nullifierExists, writeRecord } from "../controllers/utils"
 import base64url from 'base64url';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
@@ -103,41 +102,25 @@ class VoteController {
         overwriteGraffiti: false,
       };
 
-      let newRecord: IRecord;
       if (data.isPost) {
         Post.findByIdAndUpdate(
           data.postId, 
-          { "$push": { "votes": newVote } },
+          { "$push": { "votes": newVote }, "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
           { "new": true, "upsert": false }, 
           (err) => console.log('update votes of post error: ' + err));
-        newRecord = new Record({
-            to: data.receiver,
-            from: epochKey,
-            upvote: data.upvote,
-            downvote: data.downvote,
-            epoch,
-            action: 'Vote',
-            data: data.postId,
-          });
-          await newRecord.save();
+
+        await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.vote, data.postId);
       } else {
         Comment.findByIdAndUpdate(
           data.postId, 
-          { "$push": { "votes": newVote } },
+          { "$push": { "votes": newVote }, "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
           { "new": true, "upsert": false }, 
-          (err, comment) => {
+          (err) => {
             console.log('update votes of comment error: ' + err);
+          }).then( async (comment) => {
             if (comment !== undefined && comment !== null) {
-              newRecord = new Record({
-                to: data.receiver,
-                from: epochKey,
-                upvote: data.upvote,
-                downvote: data.downvote,
-                epoch,
-                action: 'Vote',
-                data: `${comment.postId}_${data.postId}`,
-              });
-              newRecord.save();
+              const dataId = `${data.postId}_${comment._id.toString()}`;
+              await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.vote, dataId);
             }
           });
       }

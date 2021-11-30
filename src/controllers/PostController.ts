@@ -1,11 +1,10 @@
 import ErrorHandler from '../ErrorHandler';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_POST_KARMA } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_POST_KARMA, ActionType, QueryType } from '../constants';
 import base64url from 'base64url';
 import Post, { IPost } from "../database/models/post";
 import Comment, { IComment } from "../database/models/comment";
-import { GSTRootExists, nullifierExists } from "./utils"
-import Record, { IRecord } from '../database/models/record';
+import { GSTRootExists, nullifierExists, writeRecord } from "../controllers/utils"; 
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
 class PostController {
@@ -13,36 +12,39 @@ class PostController {
       throw new ErrorHandler(501, 'API: Not implemented method');
     }
 
-    listAllPosts = async () => {
-        const allPosts = Post.find({}).then(async (posts) => {
-          let ret: any[] = [];
-          
-          for (var i = 0; i < posts.length; i ++) {
-            let singleComment: any = {};
-            if (posts[i].comments.length > 0) {
-              console.log('post with comments: ' + posts[i].comments)
-              singleComment = await Comment.find({'_id': {$in: posts[i].comments}}).then(comments => {
-                let score: number = 0;
-                let retComment: any = {};
-                for (var j = 0; j < comments.length; j ++) {
-                  const _score = comments[j].posRep + comments[j].negRep;
-                  if (_score >= score) {
-                    score = _score;
-                    retComment = {...(comments[j].toObject())};
-                  }
-                }
-                return retComment;
-              });
-            } 
-            console.log(posts[i].comments.length);
-            console.log(singleComment);
-            const p = {...(posts[i].toObject()), comments: singleComment};
-            ret = [...ret, p];
-          }
-          return ret;
-        });
+    filterOneComment = (comments: IComment[]) => {
+      let score: number = 0;
+      let ret: any = {};
+      for (var i = 0; i < comments.length; i ++) {
+        const _score = comments[i].posRep * 1.5 + comments[i].negRep * 0.5;
+        if (_score >= score) {
+          score = _score;
+          ret = comments[i];
+        }
+      }
+      return ret;
+    }
 
-        return allPosts;
+    commentIdToObject = (commentIds: string[]) => {
+      const comments = Comment.find({'_id': {$in: commentIds}});
+      return comments;
+    }
+
+    listAllPosts = () => {
+      const allPosts = Post.find({}).then(async(posts) => {
+        let ret: any[] = [];
+
+        for (var i = 0; i < posts.length; i ++) {
+          // const comments = await this.commentIdToObject(posts[i].comments);
+          // const p = {...posts[i].toObject(), comments};
+          // ret = [...ret, p];
+          ret = [...ret, posts[i].toObject()];
+        }
+
+        return ret;
+      });
+
+      return allPosts;
     }
 
     getPostWithId = async (postId: string) => {
@@ -62,8 +64,99 @@ class PostController {
       return post;
     }
 
-    getPostWithQuery = async () => {
+    getPostWithQuery = async (sort: string, maintype: string, subtype: string, start: number, end: number, lastRead: string) => {
+      const allPosts = await this.listAllPosts();
+      let tmp: any[] = [];
+      if (maintype === QueryType.popularity) {
+        allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
 
+        let inPosts: any[] = [];
+        let outPosts: any[] = [];
+        // 1. classify posts to [in time range] and [out of time range]
+        allPosts.forEach((post) => {
+          const postTime = Date.parse(post.created_at);
+          if (postTime >= start && postTime <= end) {
+            inPosts = [...inPosts, post];
+          } else {
+            outPosts = [...outPosts, post];
+          }
+        });
+        // 2. sort each of the groups by subtype & sort
+        if (subtype === QueryType.reputation) {
+          console.log('query by reputation');
+          if (sort === QueryType.most) {
+            inPosts.sort((a, b) => a.reputation > b.reputation? -1 : 1);
+            outPosts.sort((a, b) => a.reputation > b.reputation? -1 : 1);
+          } else {
+            inPosts.sort((a, b) => a.reputation > b.reputation? 1 : -1);
+            outPosts.sort((a, b) => a.reputation > b.reputation? 1 : -1);
+          }
+        } else if (subtype === QueryType.votes) {
+          console.log('query by votes');
+          if (sort === QueryType.most) {
+            inPosts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? -1 : 1);
+            outPosts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? -1 : 1);
+          } else {
+            inPosts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? 1 : -1);
+            outPosts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? 1 : -1);
+          }
+        } else if (subtype === QueryType.upvotes) {
+          console.log('query by upvotes');
+          if (sort === QueryType.most) {
+            inPosts.sort((a, b) => a.posRep > b.posRep? -1 : 1);
+            outPosts.sort((a, b) => a.posRep > b.posRep? -1 : 1);
+          } else {
+            inPosts.sort((a, b) => a.posRep > b.posRep? 1 : -1);
+            outPosts.sort((a, b) => a.posRep > b.posRep? 1 : -1);
+          }
+        } else if (subtype === QueryType.comments) {
+          console.log('query by comments');
+          if (sort === QueryType.most) {
+            inPosts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1);
+            outPosts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1);
+          } else {
+            inPosts.sort((a, b) => a.comments.length > b.comments.length? 1 : -1);
+            outPosts.sort((a, b) => a.comments.length > b.comments.length? 1 : -1);
+          }
+        } 
+        tmp = [...inPosts, ...outPosts];
+        // 3. see which is the lastRead one, load posts behind it
+      } else if (maintype === QueryType.time) {
+        // subtype is posts --> sort posts by time
+        if (sort === QueryType.newest) {
+          if (subtype === QueryType.posts) {
+            console.log('query by newest posts');
+            allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
+          } else if (subtype === QueryType.comments) {
+            console.log('query by newest comments');
+            allPosts.sort((a, b) => a.updated_at > b.updated_at? -1 : 1);
+          }
+        } else if (sort === QueryType.oldest) {
+          if (subtype === QueryType.posts) {
+            console.log('query by oldest posts');
+            allPosts.sort((a, b) => a.created_at > b.created_at? 1 : -1);
+          } else if (subtype === QueryType.comments) {
+            console.log('query by oldest comments');
+            allPosts.sort((a, b) => a.updated_at > b.updated_at? 1 : -1);
+          }
+        }
+        tmp = [...allPosts];
+        // subtype is comments --> sort comments by time, and get posts of each comment, filter out repeated posts --> not yet implemented
+      }
+
+      let ret: any[] = [];
+      for (var i = 0; i < tmp.length; i ++) {
+        if (tmp[i].comments.length > 0) {
+          const comments = await this.commentIdToObject(tmp[i].comments);
+          const singleComment = this.filterOneComment(comments);
+          const p = {...tmp[i], comments: [singleComment]};
+          ret = [...ret, p];
+        } else {
+          ret = [...ret, tmp[i]];
+        }
+        
+      }
+      return ret;
     }
 
     publishPost = async (data: any) => { // should have content, epk, proof, minRep, nullifiers, publicSignals  
@@ -146,22 +239,13 @@ class PostController {
         console.log('new post error: ' + err);
         Post.findByIdAndUpdate(
           postId,
-          { transactionHash: tx.hash.toString(), proofIndex },
+          { transactionHash: tx.hash.toString(), proofIndex: proofIndex },
           { "new": true, "upsert": false }, 
           (err) => console.log('update transaction hash of posts error: ' + err)
         );
       });
 
-      const newRecord: IRecord = new Record({
-        to: epochKey,
-        from: epochKey,
-        upvote: 0,
-        downvote: DEFAULT_POST_KARMA,
-        epoch,
-        action: 'Post',
-        data: postId,
-      });
-      await newRecord.save();
+      await writeRecord(epochKey, epochKey, 0, DEFAULT_POST_KARMA, epoch, ActionType.post, postId);
       
       return {transaction: tx.hash, postId: newPost._id, currentEpoch: epoch};
     }

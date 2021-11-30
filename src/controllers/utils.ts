@@ -2,7 +2,7 @@ import mongoose, { Schema } from 'mongoose';
 import { Attestation, circuitEpochTreeDepth, circuitUserStateTreeDepth, circuitGlobalStateTreeDepth, computeEmptyUserStateRoot, genNewSMT, SMT_ONE_LEAF } from '@unirep/unirep'
 import { ethers } from 'ethers'
 import { hashLeftRight, IncrementalQuinTree } from '@unirep/crypto'
-import { DEFAULT_AIRDROPPED_KARMA, DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI } from '../constants'
+import { DEFAULT_AIRDROPPED_KARMA, DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, ActionType } from '../constants'
 import Attestations, { IAttestation } from '../database/models/attestation'
 import GSTLeaves, { IGSTLeaf, IGSTLeaves } from '../database/models/GSTLeaf'
 import GSTRoots, { IGSTRoots } from '../database/models/GSTRoots'
@@ -11,6 +11,7 @@ import Nullifier, { INullifier } from '../database/models/nullifiers'
 import Record, { IRecord } from '../database/models/record';
 import Post, { IPost } from "../database/models/post";
 import Comment, { IComment } from "../database/models/comment";
+import EpkRecord, { IEpkRecord } from '../database/models/epkRecord';
 
 const getGSTLeaves = async (epoch: number): Promise<IGSTLeaf[]> => {
     const leaves = await GSTLeaves.findOne({epoch: epoch})
@@ -609,6 +610,55 @@ const updateDBFromEpochEndedEvent = async (
     await newEpochTreeLeaves.save()
 }
 
+const writeRecord = async (to: string, from: string, posRep: number, negRep: number, epoch: number, action: string, data: string) => {
+    const newRecord: IRecord = new Record({
+        to,
+        from,
+        upvote: posRep,
+        downvote: negRep,
+        epoch,
+        action,
+        data,
+    });
+
+    if (action === ActionType.vote) {
+        EpkRecord.findOneAndUpdate(
+            {epk: from, epoch}, 
+            { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep: 0, negRep: 0, spent: posRep + negRep} },
+            { "new": true, "upsert": true }, 
+            (err, record) => {
+                console.log('update voter record is: ' + record);
+                if (err !== null) {
+                    console.log('update voter epk record error: ' + err);
+                }
+        });
+
+        EpkRecord.findOneAndUpdate(
+            {epk: to, epoch}, 
+            { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep, negRep} },
+            { "new": true, "upsert": true }, 
+            (err, record) => {
+                console.log('update receiver record is: ' + record);
+                if (err !== null) {
+                    console.log('update receiver epk record error: ' + err);
+                }
+        });
+    } else {
+        EpkRecord.findOneAndUpdate(
+            {epk: from, epoch}, 
+            { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep: 0, negRep: 0, spent: negRep} },
+            { "new": true, "upsert": true }, 
+            (err, record) => {
+                console.log('update action record is: ' + record);
+                if (err !== null) {
+                    console.log('update action epk record error: ' + err);
+                }
+            });
+    }
+
+    await newRecord.save();
+}
+
 export {
     getGSTLeaves,
     getEpochTreeLeaves,
@@ -620,4 +670,5 @@ export {
     updateDBFromNewGSTLeafInsertedEvent,
     updateDBFromAttestationEvent,
     updateDBFromEpochEndedEvent,
+    writeRecord,
 }
