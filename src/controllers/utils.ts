@@ -1,54 +1,16 @@
+import mongoose, { Schema } from 'mongoose';
 import { Attestation, circuitEpochTreeDepth, circuitUserStateTreeDepth, circuitGlobalStateTreeDepth, computeEmptyUserStateRoot, genNewSMT, SMT_ONE_LEAF } from '@unirep/unirep'
 import { ethers } from 'ethers'
 import { hashLeftRight, IncrementalQuinTree } from '@unirep/crypto'
-import mongoose from 'mongoose'
-import { add0x, DEFAULT_AIRDROPPED_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI } from '../constants'
+import { DEFAULT_AIRDROPPED_KARMA, DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI } from '../constants'
 import Attestations, { IAttestation } from '../database/models/attestation'
 import GSTLeaves, { IGSTLeaf, IGSTLeaves } from '../database/models/GSTLeaf'
 import GSTRoots, { IGSTRoots } from '../database/models/GSTRoots'
 import EpochTreeLeaves, { IEpochTreeLeaf } from '../database/models/epochTreeLeaf'
 import Nullifier, { INullifier } from '../database/models/nullifiers'
 import Record, { IRecord } from '../database/models/record';
-
-// /*
-// * Connect to db uri
-// * @param dbUri mongoose database uri
-// */
-// const connectDB = async(dbUri: string): Promise<typeof mongoose> => {
-
-//     const db = await mongoose.connect(
-//         dbUri, 
-//          { useNewUrlParser: true, 
-//            useFindAndModify: false, 
-//            useUnifiedTopology: true
-//          }
-//      )
-    
-//      return db
-// }
-
-// /*
-// * Initialize the database by dropping the existing database
-// * returns true if it is successfully deleted
-// * @param db mongoose type database object
-// */
-// const initDB = async(db: typeof mongoose)=> {
-
-//     const deletedDb = await db.connection.db.dropDatabase()
-
-//     return deletedDb
-// }
-
-// /*
-// * Disconnect to db uri
-// * @param db mongoose type database object
-// */
-// const disconnectDB = (db: typeof mongoose): void => {
-
-//     db.disconnect()
-
-//     return
-// }
+import Post, { IPost } from "../database/models/post";
+import Comment, { IComment } from "../database/models/comment";
 
 const getGSTLeaves = async (epoch: number): Promise<IGSTLeaf[]> => {
     const leaves = await GSTLeaves.findOne({epoch: epoch})
@@ -279,6 +241,162 @@ const updateGSTLeaf = async (
 }
 
 /*
+* When a PostSubmitted event comes
+* update the database
+* @param event PostSubmitted event
+*/
+const updateDBFromPostSubmittedEvent = async (
+    event: ethers.Event,
+    startBlock: number  = DEFAULT_START_BLOCK,
+) => {
+
+    // The event has been processed
+    if(event.blockNumber <= startBlock) return
+
+    const postId = new mongoose.Types.ObjectId(event.topics[2].slice(-24))
+    const findPost = await Post.findById(postId)
+    const ethProvider = DEFAULT_ETH_PROVIDER
+    const provider = new ethers.providers.JsonRpcProvider(ethProvider)
+    const unirepContract = new ethers.Contract(
+        UNIREP,
+        UNIREP_ABI,
+        provider,
+    )
+
+    const iface = new ethers.utils.Interface(UNIREP_SOCIAL_ABI)
+    const decodedData = iface.decodeEventLog("PostSubmitted",event.data)
+    const reputatoinProof = decodedData?.proofRelated
+    const proofNullifier = await unirepContract.hashReputationProof(reputatoinProof)
+    const proofIndex = await unirepContract.getProofIndex(proofNullifier)
+    
+    if(findPost){
+        findPost?.set('status', 1, { "new": true, "upsert": false})
+        findPost?.set('transactionHash', event.transactionHash, { "new": true, "upsert": false})
+        findPost?.set('proofIndex', Number(proofIndex), { "new": true, "upsert": false})
+        await findPost?.save()
+        console.log(`Database: updated ${postId} post`)
+    } else {
+        const _transactionHash = event.transactionHash
+        const _epoch = Number(event?.topics[1])
+        const _epochKey = BigInt(event.topics[3]).toString(16)
+        const _minRep = Number(decodedData?.proofRelated.minRep._hex)
+
+        const newpost: IPost = new Post({
+            _id: postId,
+            transactionHash: _transactionHash,
+            content: decodedData?._hahsedContent,
+            epochKey: _epochKey,
+            epoch: _epoch,
+            proofIndex: Number(proofIndex),
+            proveMinRep: _minRep !== null ? true : false,
+            minRep: _minRep,
+            posRep: 0,
+            negRep: 0,
+            comments: [],
+            status: 1
+        });
+        newpost.set({ "new": true, "upsert": false})
+
+        await newpost.save()
+        console.log(`Database: updated ${postId} post`)
+
+        const record = await Record.findOne({data: postId._id.toString()})
+        if(record === null) {
+            const newRecord: IRecord = new Record({
+                to: _epochKey,
+                from: _epochKey,
+                upvote: 0,
+                downvote: DEFAULT_POST_KARMA,
+                epoch: _epoch,
+                action: 'Post',
+                data: postId,
+            });
+            await newRecord.save();
+        }
+    }
+}
+
+/*
+* When a CommentSubmitted event comes
+* update the database
+* @param event CommentSubmitted event
+*/
+const updateDBFromCommentSubmittedEvent = async (
+    event: ethers.Event,
+    startBlock: number  = DEFAULT_START_BLOCK,
+) => {
+
+    // The event has been processed
+    if(event.blockNumber <= startBlock) return
+
+    const iface = new ethers.utils.Interface(UNIREP_SOCIAL_ABI)
+    const decodedData = iface.decodeEventLog("CommentSubmitted",event.data)
+    const commentId = new mongoose.Types.ObjectId(decodedData?._commentId._hex.slice(-24))
+    const postId = new mongoose.Types.ObjectId(event.topics[2].slice(-24))
+    const _epoch = Number(event.topics[1])
+    const _epochKey = BigInt(event.topics[3]).toString(16)
+    const _minRep = Number(decodedData?.proofRelated.minRep._hex)
+    const findComment = await Comment.findById(commentId)
+    const ethProvider = DEFAULT_ETH_PROVIDER
+    const provider = new ethers.providers.JsonRpcProvider(ethProvider)
+    const unirepContract = new ethers.Contract(
+        UNIREP,
+        UNIREP_ABI,
+        provider,
+    )
+        
+    const reputatoinProof = decodedData?.proofRelated
+    const proofNullifier = await unirepContract.hashReputationProof(reputatoinProof)
+    const proofIndex = await unirepContract.getProofIndex(proofNullifier)
+    
+    if(findComment) {
+        findComment?.set('status', 1, { "new": true, "upsert": false})
+        findComment?.set('transactionHash', event.transactionHash, { "new": true, "upsert": false})
+        findComment?.set('proofIndex', Number(proofIndex), { "new": true, "upsert": false})
+        await findComment?.save()
+    } else {
+        const newComment: IComment = new Comment({
+            _id: commentId,
+            transactionHash: event.transactionHash,
+            postId: postId._id.toString(),
+            content: decodedData?._hahsedContent, // TODO: hashedContent
+            epochKey: _epochKey,
+            proofIndex: Number(proofIndex),
+            epoch: _epoch,
+            proveMinRep: _minRep !== 0 ? true : false,
+            minRep: _minRep,
+            posRep: 0,
+            negRep: 0,
+            status: 1
+        });
+        newComment.set({ "new": true, "upsert": false})
+
+        await newComment.save()
+
+        Post.findByIdAndUpdate(
+            postId, 
+            { "$push": { "comments": commentId._id.toString() } },
+            { "new": true, "upsert": true }, 
+            (err) => console.log('update comments of post error: ' + err)
+        );
+    }
+
+    const record = await Record.findOne({data: postId._id.toString() + '_' + commentId._id.toString()})
+    if(record === null) {
+        const newRecord: IRecord = new Record({
+            to: _epochKey,
+            from: _epochKey,
+            upvote: 0,
+            downvote: DEFAULT_COMMENT_KARMA,
+            epoch: _epoch,
+            action: 'Comment',
+            data: postId._id.toString() + '_' + commentId._id.toString(),
+        });
+        await newRecord.save();
+    }
+}
+
+/*
 * When a newGSTLeafInserted event comes
 * update the database
 * @param event newGSTLeafInserted event
@@ -417,16 +535,26 @@ const updateDBFromAttestationEvent = async (
                 await saveNullifier(Number(_epoch), BigInt(nullifier).toString())
         }
     } else if (results?.event === "UserSignedUpProof") {
-        const newRecord: IRecord = new Record({
-            to: BigInt(results?.args.epochKey).toString(16),
-            from: 'UnirepSocial',
-            upvote: decodedData?.attestation?.posRep,
-            downvote: decodedData?.attestation?.negRep,
-            epoch: results?.args.epoch,
-            action: 'UST',
-            data: '0',
-        });
-        await newRecord.save();
+        const ethProvider = DEFAULT_ETH_PROVIDER
+        const provider = new ethers.providers.JsonRpcProvider(ethProvider)
+        const unirepContract = new ethers.Contract(
+            UNIREP,
+            UNIREP_ABI,
+            provider,
+        )
+        const unirepSocialID = await unirepContract.attesters(UNIREP_SOCIAL)
+        if(Number(unirepSocialID) === Number(decodedData?.attestation?.attesterId)){
+            const newRecord: IRecord = new Record({
+                to: BigInt(results?.args.epochKey).toString(16),
+                from: 'UnirepSocial',
+                upvote: decodedData?.attestation?.posRep,
+                downvote: decodedData?.attestation?.negRep,
+                epoch: results?.args.epoch,
+                action: 'UST',
+                data: '0',
+            });
+            await newRecord.save((err) => console.log('save airdrop record error: ' + err));
+        }
     }
 }
 
@@ -487,6 +615,8 @@ export {
     GSTRootExists,
     epochTreeRootExists,
     nullifierExists,
+    updateDBFromPostSubmittedEvent,
+    updateDBFromCommentSubmittedEvent,
     updateDBFromNewGSTLeafInsertedEvent,
     updateDBFromAttestationEvent,
     updateDBFromEpochEndedEvent,

@@ -9,6 +9,7 @@ export interface IRecord extends Document {
     epoch: number
     action: string
     data: string
+    transactionHash: string
   }
   
   const RecordSchema: Schema = new Schema({
@@ -18,7 +19,8 @@ export interface IRecord extends Document {
     downvote: {type: Number, required: true},
     epoch: { type: Number, required: true },
     action: { type: String, required: true },
-    data: { type: String }
+    data: { type: String },
+    transactionHash: { type: String },
   }, { 
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
   });

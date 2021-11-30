@@ -111,9 +111,9 @@ class PostController {
       
       const newPost: IPost = new Post({
         content: data.content,
-        epochKey,
-        epoch,
-        epkProof: proof.map((n)=>add0x(BigInt(n).toString(16))),
+        epochKey: epochKey,
+        epoch: epoch,
+        // epkProof: proof.map((n)=>add0x(BigInt(n).toString(16))),
         proveMinRep: minRep !== null ? true : false,
         minRep: Number(minRep),
         posRep: 0,
@@ -124,6 +124,7 @@ class PostController {
 
       const postId = newPost._id.toString();
       const tx = await unirepSocialContract.publishPost(postId, publicSignals, proof, data.content);
+      await tx.wait()
       console.log('transaction hash: ' + tx.hash + ', epoch key of epoch ' + epoch + ': ' + epochKey);
 
       const proofIndex = await unirepSocialContract.getReputationProofIndex(publicSignals, proof) // proof index should wait until on chain --> server listening

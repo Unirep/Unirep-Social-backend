@@ -61,7 +61,7 @@ class CommentController {
         content: data.content, // TODO: hashedContent
         epochKey,
         epoch,
-        epkProof: proof.map((n)=>add0x(BigInt(n).toString(16))),
+        // epkProof: proof.map((n)=>add0x(BigInt(n).toString(16))),
         proveMinRep: minRep !== 0 ? true : false,
         minRep: Number(minRep),
         posRep: 0,
@@ -78,6 +78,7 @@ class CommentController {
         commentId,
         data.content,
       );
+      await tx.wait()
       const proofIndex = await unirepSocialContract.getReputationProofIndex(publicSignals, proof)
       console.log('transaction: ' + tx.hash + ', proof index: ' + proofIndex);
 
