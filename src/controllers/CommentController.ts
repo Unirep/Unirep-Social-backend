@@ -18,6 +18,7 @@ class CommentController {
 
       const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
       await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
+      const unirepSocialId = await unirepSocialContract.attesterId()
 
       // Parse Inputs
       const decodedProof = base64url.decode(data.proof.slice(reputationProofPrefix.length))
@@ -28,9 +29,23 @@ class CommentController {
       const epoch = publicSignals[maxReputationBudget]
       const epochKey = Number(publicSignals[maxReputationBudget + 1]).toString(16)
       const GSTRoot = publicSignals[maxReputationBudget + 2]
+      const attesterId = publicSignals[maxReputationBudget + 3]
       const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
       const minRep = publicSignals[maxReputationBudget + 5]
 
+      // check attester ID
+      if(Number(unirepSocialId) !== Number(attesterId)) {
+          console.error('Error: proof with wrong attester ID')
+          return
+      }
+
+      // check reputation amount
+      if(Number(repNullifiersAmount) !== DEFAULT_COMMENT_KARMA) {
+          console.error('Error: proof with wrong reputation amount')
+          return
+      }
+
+      // check proof
       const isProofValid = await unirepSocialContract.verifyReputation(
         publicSignals,
         proof,
