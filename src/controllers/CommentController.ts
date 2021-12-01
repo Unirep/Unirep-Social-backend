@@ -99,21 +99,7 @@ class CommentController {
 
       await newComment.save((err, comment) => {
         console.log('new comment error: ' + err);
-        Comment.findByIdAndUpdate(
-          commentId,
-          { transactionHash: tx.hash.toString(), proofIndex },
-          { "new": true, "upsert": false }, 
-          (err) => console.log('update transaction hash of comments error: ' + err)
-        );
       });
-
-      Post.findByIdAndUpdate(
-        data.postId, 
-        { "$push": { "comments": commentId } },
-        { "new": true, "upsert": true }, 
-        (err) => console.log('update comments of post error: ' + err));
-
-      await writeRecord(epochKey, epochKey, 0, DEFAULT_COMMENT_KARMA, epoch, ActionType.comment, data.postId + '_' + commentId);
 
       return {transaction: tx.hash, commentId}
     }

@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { updateDBFromAttestationEvent, updateDBFromCommentSubmittedEvent, updateDBFromEpochEndedEvent, updateDBFromNewGSTLeafInsertedEvent, updateDBFromPostSubmittedEvent } from "../../controllers/utils";
+import { updateDBFromAttestationEvent, updateDBFromCommentSubmittedEvent, updateDBFromEpochEndedEvent, updateDBFromNewGSTLeafInsertedEvent, updateDBFromPostSubmittedEvent, updateDBFromVoteSubmittedEvent } from "../../controllers/utils";
 
 export const initDB = async (
     unirepContract: ethers.Contract,
@@ -13,41 +13,6 @@ export const initDB = async (
     const epochEndedEvents =  await unirepContract.queryFilter(epochEndedFilter)
     const sequencerFilter = unirepContract.filters.Sequencer()
     const sequencerEvents =  await unirepContract.queryFilter(sequencerFilter)
-
-    // proof events
-    const signUpFilter = unirepContract.filters.UserSignUp()
-    const signUpEvents = await unirepContract.queryFilter(signUpFilter)
-
-    const transitionFilter = unirepContract.filters.UserStateTransitionProof()
-    const transitionEvents = await unirepContract.queryFilter(transitionFilter)
-
-    const startTransitionFilter = unirepContract.filters.StartedTransitionProof()
-    const startTransitionEvents = await unirepContract.queryFilter(startTransitionFilter)
-
-    const processAttestationsFilter = unirepContract.filters.ProcessedAttestationsProof()
-    const processAttestationsEvents = await unirepContract.queryFilter(processAttestationsFilter)
-
-    const epochKeyProofFilter = unirepContract.filters.EpochKeyProof()
-    const epochKeyProofEvent = await unirepContract.queryFilter(epochKeyProofFilter)
-
-    const repProofFilter = unirepContract.filters.ReputationNullifierProof()
-    const repProofEvent = await unirepContract.queryFilter(repProofFilter)
-
-    const signUpProofFilter = unirepContract.filters.UserSignedUpProof()
-    const signUpProofEvent = await unirepContract.queryFilter(signUpProofFilter)
-
-    const proofIndexMap = {}
-    const events = signUpEvents.concat(
-        transitionEvents, 
-        startTransitionEvents, 
-        processAttestationsEvents, 
-        epochKeyProofEvent, 
-        repProofEvent, 
-        signUpProofEvent
-    )
-    for (const event of events) {
-        proofIndexMap[Number(event?.args?._proofIndex)] = event
-    }
 
     newGSTLeafInsertedEvents.reverse()
     attestationSubmittedEvents.reverse()
@@ -88,6 +53,10 @@ export const initDB = async (
 
     for (const event of commentEvents) {
         await updateDBFromCommentSubmittedEvent(event)
+    }
+
+    for (const event of voteEvents) {
+        await updateDBFromVoteSubmittedEvent(event)
     }
 
     return latestBlock

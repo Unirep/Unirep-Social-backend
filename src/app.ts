@@ -9,7 +9,7 @@ import MasterRouter from './routers/MasterRouter';
 
 import EpochController from './controllers/EpochController';
 import { DEFAULT_ETH_PROVIDER, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI } from './constants';
-import { updateDBFromAttestationEvent, updateDBFromCommentSubmittedEvent, updateDBFromEpochEndedEvent, updateDBFromNewGSTLeafInsertedEvent, updateDBFromPostSubmittedEvent } from './controllers/utils';
+import { updateDBFromAttestationEvent, updateDBFromCommentSubmittedEvent, updateDBFromEpochEndedEvent, updateDBFromNewGSTLeafInsertedEvent, updateDBFromPostSubmittedEvent, updateDBFromVoteSubmittedEvent } from './controllers/utils';
 import { initDB } from './database/models/utils';
 
 // load the environment variables from the .env file
@@ -116,5 +116,8 @@ initDB(unirepContract, unirepSocialContract).then((res) => {
   )
   provider.on(
     commentFilter, (event) => updateDBFromCommentSubmittedEvent(event, startBlock)
+  )
+  provider.on(
+    voteFilter, (event) => updateDBFromVoteSubmittedEvent(event, startBlock)
   )
 })

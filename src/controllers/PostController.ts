@@ -234,19 +234,9 @@ class PostController {
       await tx.wait()
       console.log('transaction hash: ' + tx.hash + ', epoch key of epoch ' + epoch + ': ' + epochKey);
 
-      const proofIndex = await unirepSocialContract.getReputationProofIndex(publicSignals, proof) // proof index should wait until on chain --> server listening
       await newPost.save((err, post) => {
         console.log('new post error: ' + err);
-        Post.findByIdAndUpdate(
-          postId,
-          { transactionHash: tx.hash.toString(), proofIndex: proofIndex },
-          { "new": true, "upsert": false }, 
-          (err) => console.log('update transaction hash of posts error: ' + err)
-        );
       });
-
-      await writeRecord(epochKey, epochKey, 0, DEFAULT_POST_KARMA, epoch, ActionType.post, postId);
-      
       return {transaction: tx.hash, postId: newPost._id, currentEpoch: epoch};
     }
   }

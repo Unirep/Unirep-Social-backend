@@ -109,7 +109,7 @@ class VoteController {
           { "new": true, "upsert": false }, 
           (err) => console.log('update votes of post error: ' + err));
 
-        await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.vote, data.postId);
+        await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.vote, tx.hash.toString(), data.postId);
       } else {
         Comment.findByIdAndUpdate(
           data.postId, 
@@ -120,7 +120,7 @@ class VoteController {
           }).then( async (comment) => {
             if (comment !== undefined && comment !== null) {
               const dataId = `${data.postId}_${comment._id.toString()}`;
-              await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.vote, dataId);
+              await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.vote, tx.hash.toString(), dataId);
             }
           });
       }

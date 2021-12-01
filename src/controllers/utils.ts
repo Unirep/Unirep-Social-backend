@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import { Attestation, circuitEpochTreeDepth, circuitUserStateTreeDepth, circuitGlobalStateTreeDepth, computeEmptyUserStateRoot, genNewSMT, SMT_ONE_LEAF } from '@unirep/unirep'
+import { Attestation, circuitEpochTreeDepth, circuitUserStateTreeDepth, circuitGlobalStateTreeDepth, computeEmptyUserStateRoot, genNewSMT, SMT_ONE_LEAF, formatProofForSnarkjsVerification } from '@unirep/unirep'
 import { ethers } from 'ethers'
 import { hashLeftRight, IncrementalQuinTree } from '@unirep/crypto'
 import { DEFAULT_AIRDROPPED_KARMA, DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, ActionType } from '../constants'
@@ -12,6 +12,7 @@ import Record, { IRecord } from '../database/models/record';
 import Post, { IPost } from "../database/models/post";
 import Comment, { IComment } from "../database/models/comment";
 import EpkRecord, { IEpkRecord } from '../database/models/epkRecord';
+import Proof, { IProof } from '../database/models/proof';
 
 const getGSTLeaves = async (epoch: number): Promise<IGSTLeaf[]> => {
     const leaves = await GSTLeaves.findOne({epoch: epoch})
@@ -266,9 +267,11 @@ const updateDBFromPostSubmittedEvent = async (
 
     const iface = new ethers.utils.Interface(UNIREP_SOCIAL_ABI)
     const decodedData = iface.decodeEventLog("PostSubmitted",event.data)
-    const reputatoinProof = decodedData?.proofRelated
-    const proofNullifier = await unirepContract.hashReputationProof(reputatoinProof)
+    const reputationProof = decodedData?.proofRelated
+    const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
     const proofIndex = await unirepContract.getProofIndex(proofNullifier)
+
+    // TODO: verify proof before storing
     
     if(findPost){
         findPost?.set('status', 1, { "new": true, "upsert": false})
@@ -301,18 +304,9 @@ const updateDBFromPostSubmittedEvent = async (
         await newpost.save()
         console.log(`Database: updated ${postId} post`)
 
-        const record = await Record.findOne({data: postId._id.toString()})
+        const record = await Record.findOne({transactionHash: _transactionHash})
         if(record === null) {
-            const newRecord: IRecord = new Record({
-                to: _epochKey,
-                from: _epochKey,
-                upvote: 0,
-                downvote: DEFAULT_POST_KARMA,
-                epoch: _epoch,
-                action: 'Post',
-                data: postId,
-            });
-            await newRecord.save();
+            await writeRecord(_epochKey, _epochKey, 0, DEFAULT_POST_KARMA, _epoch, ActionType.post, _transactionHash, postId._id.toString());
         }
     }
 }
@@ -332,6 +326,7 @@ const updateDBFromCommentSubmittedEvent = async (
 
     const iface = new ethers.utils.Interface(UNIREP_SOCIAL_ABI)
     const decodedData = iface.decodeEventLog("CommentSubmitted",event.data)
+    const _transactionHash = event.transactionHash
     const commentId = new mongoose.Types.ObjectId(decodedData?._commentId._hex.slice(-24))
     const postId = new mongoose.Types.ObjectId(event.topics[2].slice(-24))
     const _epoch = Number(event.topics[1])
@@ -346,19 +341,21 @@ const updateDBFromCommentSubmittedEvent = async (
         provider,
     )
         
-    const reputatoinProof = decodedData?.proofRelated
-    const proofNullifier = await unirepContract.hashReputationProof(reputatoinProof)
+    const reputationProof = decodedData?.proofRelated
+    const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
     const proofIndex = await unirepContract.getProofIndex(proofNullifier)
+
+    // TODO: verify proof before storing
     
     if(findComment) {
         findComment?.set('status', 1, { "new": true, "upsert": false})
-        findComment?.set('transactionHash', event.transactionHash, { "new": true, "upsert": false})
+        findComment?.set('transactionHash', _transactionHash, { "new": true, "upsert": false})
         findComment?.set('proofIndex', Number(proofIndex), { "new": true, "upsert": false})
         await findComment?.save()
     } else {
         const newComment: IComment = new Comment({
             _id: commentId,
-            transactionHash: event.transactionHash,
+            transactionHash: _transactionHash,
             postId: postId._id.toString(),
             content: decodedData?._hahsedContent, // TODO: hashedContent
             epochKey: _epochKey,
@@ -382,19 +379,51 @@ const updateDBFromCommentSubmittedEvent = async (
         );
     }
 
-    const record = await Record.findOne({data: postId._id.toString() + '_' + commentId._id.toString()})
+    const record = await Record.findOne({transactionHash: _transactionHash})
     if(record === null) {
-        const newRecord: IRecord = new Record({
-            to: _epochKey,
-            from: _epochKey,
-            upvote: 0,
-            downvote: DEFAULT_COMMENT_KARMA,
-            epoch: _epoch,
-            action: 'Comment',
-            data: postId._id.toString() + '_' + commentId._id.toString(),
-        });
-        await newRecord.save();
+        await writeRecord(_epochKey, _epochKey, 0, DEFAULT_COMMENT_KARMA, _epoch, ActionType.comment, _transactionHash, postId._id.toString() + '_' + commentId._id.toString());
     }
+}
+
+/*
+* When a VoteSubmitted event comes
+* update the database
+* @param event VoteSubmitted event
+*/
+const updateDBFromVoteSubmittedEvent = async (
+    event: ethers.Event,
+    startBlock: number  = DEFAULT_START_BLOCK,
+) => {
+
+    // The event has been processed
+    if(event.blockNumber <= startBlock) return
+
+    const iface = new ethers.utils.Interface(UNIREP_SOCIAL_ABI)
+    const decodedData = iface.decodeEventLog("VoteSubmitted",event.data)
+    const _transactionHash = event.transactionHash
+    const _epoch = Number(event.topics[1])
+    const _fromEpochKey = BigInt(event.topics[2]).toString(16)
+    const _toEpochKey = BigInt(event.topics[3]).toString(16)
+    const _posRep = Number(decodedData?.upvoteValue._hex)
+    const _negRep = Number(decodedData?.downvoteValue._hex)
+    
+    const ethProvider = DEFAULT_ETH_PROVIDER
+    const provider = new ethers.providers.JsonRpcProvider(ethProvider)
+    const unirepContract = new ethers.Contract(
+        UNIREP,
+        UNIREP_ABI,
+        provider,
+    )
+        
+    const reputationProof = decodedData?.proofRelated
+    const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
+    const proofIndex = await unirepContract.getProofIndex(proofNullifier)
+
+    // TODO: verify proof before storing
+
+    const findVote = await Record.findOne({transactionHash: _transactionHash})
+    if(findVote === null)
+        await writeRecord(_toEpochKey, _fromEpochKey, _posRep, _negRep, _epoch, ActionType.vote, _transactionHash, '');
 }
 
 /*
@@ -553,6 +582,7 @@ const updateDBFromAttestationEvent = async (
                 epoch: results?.args.epoch,
                 action: 'UST',
                 data: '0',
+                transactionHash: event.transactionHash,
             });
             await newRecord.save((err) => console.log('save airdrop record error: ' + err));
         }
@@ -610,7 +640,7 @@ const updateDBFromEpochEndedEvent = async (
     await newEpochTreeLeaves.save()
 }
 
-const writeRecord = async (to: string, from: string, posRep: number, negRep: number, epoch: number, action: string, data: string) => {
+const writeRecord = async (to: string, from: string, posRep: number, negRep: number, epoch: number, action: string, txHash: string, data: string) => {
     const newRecord: IRecord = new Record({
         to,
         from,
@@ -619,6 +649,7 @@ const writeRecord = async (to: string, from: string, posRep: number, negRep: num
         epoch,
         action,
         data,
+        transactionHash: txHash,
     });
 
     if (action === ActionType.vote) {
@@ -667,6 +698,7 @@ export {
     nullifierExists,
     updateDBFromPostSubmittedEvent,
     updateDBFromCommentSubmittedEvent,
+    updateDBFromVoteSubmittedEvent,
     updateDBFromNewGSTLeafInsertedEvent,
     updateDBFromAttestationEvent,
     updateDBFromEpochEndedEvent,
