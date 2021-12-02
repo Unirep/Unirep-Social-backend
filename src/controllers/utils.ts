@@ -271,20 +271,20 @@ const updateDBFromPostSubmittedEvent = async (
     const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
     const proofIndex = await unirepContract.getProofIndex(proofNullifier)
 
+    const _transactionHash = event.transactionHash
+    const _epoch = Number(event?.topics[1])
+    const _epochKey = BigInt(event.topics[3]).toString(16)
+    const _minRep = Number(decodedData?.proofRelated.minRep._hex)
+
     // TODO: verify proof before storing
     
     if(findPost){
         findPost?.set('status', 1, { "new": true, "upsert": false})
-        findPost?.set('transactionHash', event.transactionHash, { "new": true, "upsert": false})
+        findPost?.set('transactionHash', _transactionHash, { "new": true, "upsert": false})
         findPost?.set('proofIndex', Number(proofIndex), { "new": true, "upsert": false})
         await findPost?.save()
         console.log(`Database: updated ${postId} post`)
     } else {
-        const _transactionHash = event.transactionHash
-        const _epoch = Number(event?.topics[1])
-        const _epochKey = BigInt(event.topics[3]).toString(16)
-        const _minRep = Number(decodedData?.proofRelated.minRep._hex)
-
         const newpost: IPost = new Post({
             _id: postId,
             transactionHash: _transactionHash,
@@ -303,11 +303,11 @@ const updateDBFromPostSubmittedEvent = async (
 
         await newpost.save()
         console.log(`Database: updated ${postId} post`)
+    }
 
-        const record = await Record.findOne({transactionHash: _transactionHash})
-        if(record === null) {
-            await writeRecord(_epochKey, _epochKey, 0, DEFAULT_POST_KARMA, _epoch, ActionType.post, _transactionHash, postId._id.toString());
-        }
+    const record = await Record.findOne({transactionHash: _transactionHash})
+    if(record === null) {
+        await writeRecord(_epochKey, _epochKey, 0, DEFAULT_POST_KARMA, _epoch, ActionType.post, _transactionHash, postId._id.toString());
     }
 }
 
@@ -370,14 +370,14 @@ const updateDBFromCommentSubmittedEvent = async (
         newComment.set({ "new": true, "upsert": false})
 
         await newComment.save()
-
-        Post.findByIdAndUpdate(
-            postId, 
-            { "$push": { "comments": commentId._id.toString() } },
-            { "new": true, "upsert": true }, 
-            (err) => console.log('update comments of post error: ' + err)
-        );
     }
+
+    Post.findByIdAndUpdate(
+        postId, 
+        { "$push": { "comments": commentId._id.toString() } },
+        { "new": true, "upsert": true }, 
+        (err) => console.log('update comments of post error: ' + err)
+    );
 
     const record = await Record.findOne({transactionHash: _transactionHash})
     if(record === null) {

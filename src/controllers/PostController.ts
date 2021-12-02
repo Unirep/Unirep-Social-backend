@@ -182,13 +182,13 @@ class PostController {
       // check attester ID
       if(Number(unirepSocialId) !== Number(attesterId)) {
         console.error('Error: proof with wrong attester ID')
-        return
+        return {transaction: undefined, postId: undefined, currentEpoch: epoch}
       }
 
       // check reputation amount
       if(Number(repNullifiersAmount) !== DEFAULT_POST_KARMA) {
         console.error('Error: proof with wrong reputation amount')
-        return
+        return {transaction: undefined, postId: undefined, currentEpoch: epoch}
       }
 
       const isProofValid = await unirepSocialContract.verifyReputation(
@@ -197,14 +197,14 @@ class PostController {
       )
       if (!isProofValid) {
           console.error('Error: invalid reputation proof')
-          return
+          return {transaction: undefined, postId: undefined, currentEpoch: epoch}
       }
 
       // check GST root
       const validRoot = await GSTRootExists(Number(epoch), GSTRoot)
       if(!validRoot){
         console.error(`Error: invalid global state tree root ${GSTRoot}`)
-        return
+        return {transaction: undefined, postId: undefined, currentEpoch: epoch}
       }
 
       // check nullifiers
@@ -212,7 +212,7 @@ class PostController {
         const seenNullifier = await nullifierExists(nullifier)
         if(seenNullifier) {
           console.error(`Error: invalid reputation nullifier ${nullifier}`)
-          return
+          return {transaction: undefined, postId: undefined, currentEpoch: epoch}
         }
       }
       
