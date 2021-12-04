@@ -8,7 +8,8 @@ import {
     UNIREP_SOCIAL, 
     DEFAULT_ETH_PROVIDER,  
     DEFAULT_START_BLOCK,
-    DEFAULT_AIRDROPPED_KARMA } from '../constants';
+    DEFAULT_AIRDROPPED_KARMA, 
+    UNIREP_SOCIAL_ATTESTER_ID} from '../constants';
 import { ethers } from 'ethers';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 import Record, { IRecord } from '../database/models/record';
@@ -45,8 +46,8 @@ class AirdropController {
 
         // Verify proof
         // Check if attester ID matches Unirep Social
-        const _attesterId = await unirepSocialContract.attesterId()
-        if(_attesterId.toNumber() != attesterId) {
+        const _attesterId = UNIREP_SOCIAL_ATTESTER_ID
+        if(_attesterId != Number(attesterId)) {
             console.error('Error: invalid attester ID proof')
             return
         }

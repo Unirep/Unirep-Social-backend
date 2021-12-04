@@ -565,7 +565,7 @@
 
 "@unirep/unirep-social@git+https://github.com/Unirep/unirep-social.git":
   version "0.0.2"
-  resolved "git+https://github.com/Unirep/unirep-social.git#3912ed80323087e471d7c9afce4c207b27d54bb2"
+  resolved "git+https://github.com/Unirep/unirep-social.git#84cbf632e1fc2d6fdd8ce4ebf7b81d2b6b3c1fdb"
   dependencies:
     "@unirep/circuits" "git+https://github.com/Unirep/circuits.git"
     "@unirep/contracts" "git+https://github.com/Unirep/contracts.git"
@@ -579,7 +579,7 @@
 
 "@unirep/unirep@git+https://github.com/Unirep/unirep.git":
   version "0.0.3"
-  resolved "git+https://github.com/Unirep/unirep.git#4426fe5d8627d05f5476b0fbb2bbebc79652136d"
+  resolved "git+https://github.com/Unirep/unirep.git#c2b4087fb523cce1fce16a84d4d57040e785e19b"
   dependencies:
     "@unirep/circuits" "git+https://github.com/Unirep/circuits.git"
     "@unirep/contracts" "git+https://github.com/Unirep/contracts.git"

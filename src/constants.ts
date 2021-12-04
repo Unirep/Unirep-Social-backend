@@ -6,6 +6,7 @@ export const UNIREP = '0x8021567131aCE794d2A365B72f800E8B71b2486F';
 export const UNIREP_SOCIAL = '0x4D15B2E51aa7d1b4fcBcd702d2AdBc94D85748e2';
 export const DEFAULT_ETH_PROVIDER = 'http://localhost:8545';
 export const DEFAULT_START_BLOCK = 0;
+export const UNIREP_SOCIAL_ATTESTER_ID = 1
 
 export const DEFAULT_POST_KARMA = 5
 export const DEFAULT_COMMENT_KARMA = 3

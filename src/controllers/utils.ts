@@ -1,8 +1,9 @@
+import base64url from 'base64url';
 import mongoose, { Schema } from 'mongoose';
 import { Attestation, circuitEpochTreeDepth, circuitUserStateTreeDepth, circuitGlobalStateTreeDepth, computeEmptyUserStateRoot, genNewSMT, SMT_ONE_LEAF, formatProofForSnarkjsVerification } from '@unirep/unirep'
 import { ethers } from 'ethers'
 import { hashLeftRight, IncrementalQuinTree } from '@unirep/crypto'
-import { DEFAULT_AIRDROPPED_KARMA, DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, ActionType } from '../constants'
+import { DEFAULT_AIRDROPPED_KARMA, DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, ActionType, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget } from '../constants'
 import Attestations, { IAttestation } from '../database/models/attestation'
 import GSTLeaves, { IGSTLeaf, IGSTLeaves } from '../database/models/GSTLeaf'
 import GSTRoots, { IGSTRoots } from '../database/models/GSTRoots'
@@ -12,7 +13,7 @@ import Record, { IRecord } from '../database/models/record';
 import Post, { IPost } from "../database/models/post";
 import Comment, { IComment } from "../database/models/comment";
 import EpkRecord, { IEpkRecord } from '../database/models/epkRecord';
-import Proof, { IProof } from '../database/models/proof';
+import { verifyProof } from '@unirep/circuits';
 
 const getGSTLeaves = async (epoch: number): Promise<IGSTLeaf[]> => {
     const leaves = await GSTLeaves.findOne({epoch: epoch})
@@ -53,6 +54,35 @@ const saveNullifier = async (_epoch: number, _nullifier: string) => {
         nullifier: _nullifier
     })
     await nullifier.save()
+}
+
+const verifyReputationProof = async(publicSignals: string, proof: string): Promise<boolean> => {
+    const repNullifiers = publicSignals.slice(0, maxReputationBudget)
+    const epoch = publicSignals[maxReputationBudget]
+    const GSTRoot = publicSignals[maxReputationBudget + 2]
+
+    const isProofValid = await verifyProof('proveReputation', formatProofForSnarkjsVerification(proof), publicSignals)
+    if (!isProofValid) {
+        console.error('Error: invalid reputation proof')
+        return false
+    }
+
+    // check GST root
+    const validRoot = await GSTRootExists(Number(epoch), GSTRoot)
+    if(!validRoot){
+        console.error(`Error: invalid global state tree root ${GSTRoot}`)
+        return false
+    }
+
+    // check nullifiers
+    for (let nullifier of repNullifiers) {
+        const seenNullifier = await nullifierExists(nullifier)
+        if(seenNullifier) {
+            console.error(`Error: invalid reputation nullifier ${nullifier}`)
+            return false
+        }
+    }
+    return true
 }
 
 const verifyNewGSTProofByIndex = async(proofIndex: number | ethers.BigNumber): Promise<ethers.Event | void> => {
@@ -300,7 +330,6 @@ const updateDBFromPostSubmittedEvent = async (
             status: 1
         });
         newpost.set({ "new": true, "upsert": false})
-
         await newpost.save()
         console.log(`Database: updated ${postId} post`)
     }
@@ -696,6 +725,7 @@ export {
     GSTRootExists,
     epochTreeRootExists,
     nullifierExists,
+    verifyReputationProof,
     updateDBFromPostSubmittedEvent,
     updateDBFromCommentSubmittedEvent,
     updateDBFromVoteSubmittedEvent,
