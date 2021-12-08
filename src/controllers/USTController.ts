@@ -2,7 +2,7 @@ import ErrorHandler from '../ErrorHandler';
 
 import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x } from '../constants';
 import { UnirepSocialContract } from '@unirep/unirep-social';
-import { verifyProof } from '@unirep/circuits'
+import { CircuitName, verifyProof } from '@unirep/circuits'
 import { epochTreeRootExists, GSTRootExists } from './utils';
 
 class USTController {
@@ -16,7 +16,7 @@ class USTController {
       const results = data.results;
 
       // Start user state transition proof
-      let isValid = await verifyProof('startTransition', results.startTransitionProof.proof, results.startTransitionProof.publicSignals)
+      let isValid = await verifyProof(CircuitName.startTransition, results.startTransitionProof.proof, results.startTransitionProof.publicSignals)
       if (!isValid) {
           console.error('Error: start state transition proof generated is not valid!')
           return
@@ -24,7 +24,7 @@ class USTController {
 
       // Process attestations proofs
       for (let i = 0; i < results.processAttestationProofs.length; i++) {
-          const isValid = await verifyProof('processAttestations', results.processAttestationProofs[i].proof, results.processAttestationProofs[i].publicSignals)
+          const isValid = await verifyProof(CircuitName.processAttestations, results.processAttestationProofs[i].proof, results.processAttestationProofs[i].publicSignals)
           if (!isValid) {
               console.error('Error: process attestations proof generated is not valid!')
               return
@@ -32,7 +32,7 @@ class USTController {
       }
 
       // User state transition proof
-      isValid = await verifyProof('userStateTransition', results.finalTransitionProof.proof, results.finalTransitionProof.publicSignals)
+      isValid = await verifyProof(CircuitName.userStateTransition, results.finalTransitionProof.proof, results.finalTransitionProof.publicSignals)
       if (!isValid) {
           console.error('Error: user state transition proof generated is not valid!')
           return
