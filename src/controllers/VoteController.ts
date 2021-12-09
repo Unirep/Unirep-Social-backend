@@ -84,7 +84,7 @@ class VoteController {
       };
 
       if (data.isPost) {
-        Post.findByIdAndUpdate(
+        await Post.findByIdAndUpdate(
           data.postId, 
           { "$push": { "votes": newVote }, "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
           { "new": true, "upsert": false }, 
@@ -92,7 +92,7 @@ class VoteController {
 
         await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.vote, tx.hash.toString(), data.postId);
       } else {
-        Comment.findByIdAndUpdate(
+        await Comment.findByIdAndUpdate(
           data.postId, 
           { "$push": { "votes": newVote }, "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
           { "new": true, "upsert": false }, 

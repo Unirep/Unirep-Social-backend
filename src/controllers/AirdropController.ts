@@ -7,12 +7,8 @@ import {
     DEPLOYER_PRIV_KEY, 
     UNIREP_SOCIAL, 
     DEFAULT_ETH_PROVIDER,  
-    DEFAULT_START_BLOCK,
-    DEFAULT_AIRDROPPED_KARMA, 
     UNIREP_SOCIAL_ATTESTER_ID} from '../constants';
-import { ethers } from 'ethers';
 import { UnirepSocialContract } from '@unirep/unirep-social';
-import Record, { IRecord } from '../database/models/record';
 import { GSTRootExists } from './utils';
 
 class AirdropController {
@@ -21,13 +17,8 @@ class AirdropController {
     }
 
     getAirdrop = async (data: any) => {
-        // Ethereum provider
-        const provider = new ethers.providers.JsonRpcProvider(DEFAULT_ETH_PROVIDER)
-
         // Unirep Social contract
         const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER)
-        // Unirep contract
-        const unirepContract = await unirepSocialContract.getUnirep()
 
         // Parse Inputs
         const decodedProof = base64url.decode(data.proof.slice(signUpProofPrefix.length))
@@ -37,6 +28,7 @@ class AirdropController {
         const epk = publicSignals[1]
         const GSTRoot = publicSignals[2]
         const attesterId = publicSignals[3]
+        const userHasSignedUp = publicSignals[4]
         const proof = JSON.parse(decodedProof)
 
         console.log('in airdrop controller:')
@@ -49,6 +41,12 @@ class AirdropController {
         const _attesterId = UNIREP_SOCIAL_ATTESTER_ID
         if(_attesterId != Number(attesterId)) {
             console.error('Error: invalid attester ID proof')
+            return
+        }
+
+        // Check if user has signed up in Unirep Social
+        if(Number(userHasSignedUp) === 0) {
+            console.error('Error: user has not signed up in Unirep Social')
             return
         }
 

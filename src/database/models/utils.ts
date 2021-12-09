@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { updateDBFromAttestationEvent, updateDBFromCommentSubmittedEvent, updateDBFromEpochEndedEvent, updateDBFromNewGSTLeafInsertedEvent, updateDBFromPostSubmittedEvent, updateDBFromVoteSubmittedEvent } from "../../controllers/utils";
+import { updateDBFromAirdropSubmittedEvent, updateDBFromAttestationEvent, updateDBFromCommentSubmittedEvent, updateDBFromEpochEndedEvent, updateDBFromNewGSTLeafInsertedEvent, updateDBFromPostSubmittedEvent, updateDBFromVoteSubmittedEvent } from "../../controllers/utils";
 
 export const initDB = async (
     unirepContract: ethers.Contract,
@@ -47,6 +47,9 @@ export const initDB = async (
     const voteFilter = unirepSocialContract.filters.VoteSubmitted()
     const voteEvents =  await unirepSocialContract.queryFilter(voteFilter)
 
+    const airdropFilter = unirepSocialContract.filters.AirdropSubmitted()
+    const airdropEvents =  await unirepSocialContract.queryFilter(airdropFilter)
+
     for (const event of postEvents) {
         await updateDBFromPostSubmittedEvent(event)
     }
@@ -57,6 +60,10 @@ export const initDB = async (
 
     for (const event of voteEvents) {
         await updateDBFromVoteSubmittedEvent(event)
+    }
+
+    for (const event of airdropEvents) {
+        await updateDBFromAirdropSubmittedEvent(event)
     }
 
     return latestBlock

@@ -1,9 +1,9 @@
-import base64url from 'base64url';
-import mongoose, { Schema } from 'mongoose';
+import mongoose from 'mongoose';
 import { Attestation, circuitEpochTreeDepth, circuitUserStateTreeDepth, circuitGlobalStateTreeDepth, computeEmptyUserStateRoot, genNewSMT, SMT_ONE_LEAF, formatProofForSnarkjsVerification } from '@unirep/unirep'
 import { ethers } from 'ethers'
+import { getUnirepContract } from '@unirep/contracts';
 import { hashLeftRight, IncrementalQuinTree } from '@unirep/crypto'
-import { DEFAULT_AIRDROPPED_KARMA, DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, ActionType, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget } from '../constants'
+import { DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, ActionType, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget } from '../constants'
 import Attestations, { IAttestation } from '../database/models/attestation'
 import GSTLeaves, { IGSTLeaf, IGSTLeaves } from '../database/models/GSTLeaf'
 import GSTRoots, { IGSTRoots } from '../database/models/GSTRoots'
@@ -12,7 +12,7 @@ import Nullifier, { INullifier } from '../database/models/nullifiers'
 import Record, { IRecord } from '../database/models/record';
 import Post, { IPost } from "../database/models/post";
 import Comment, { IComment } from "../database/models/comment";
-import EpkRecord, { IEpkRecord } from '../database/models/epkRecord';
+import EpkRecord from '../database/models/epkRecord';
 import { CircuitName, verifyProof } from '@unirep/circuits';
 
 const getGSTLeaves = async (epoch: number): Promise<IGSTLeaf[]> => {
@@ -89,11 +89,7 @@ const verifyNewGSTProofByIndex = async(proofIndex: number | ethers.BigNumber): P
     console.log('proof index: ',Number(proofIndex))
     const ethProvider = DEFAULT_ETH_PROVIDER
     const provider = new ethers.providers.JsonRpcProvider(ethProvider)
-    const unirepContract = new ethers.Contract(
-        UNIREP,
-        UNIREP_ABI,
-        provider,
-    )
+    const unirepContract = getUnirepContract(UNIREP, provider)
     const signUpFilter = unirepContract.filters.UserSignUp(proofIndex)
     const signUpEvents = await unirepContract.queryFilter(signUpFilter)
     // found user sign up event, then continue
@@ -143,11 +139,7 @@ const verifyNewGSTProofByIndex = async(proofIndex: number | ethers.BigNumber): P
 const verifyProcessAttestationEvents = async(startBlindedUserState: ethers.BigNumber, finalBlindedUserState: ethers.BigNumber, _proofIndexes: ethers.BigNumber[]): Promise<boolean> => {
     const ethProvider = DEFAULT_ETH_PROVIDER
     const provider = new ethers.providers.JsonRpcProvider(ethProvider)
-    const unirepContract = new ethers.Contract(
-        UNIREP,
-        UNIREP_ABI,
-        provider,
-    )
+    const unirepContract = getUnirepContract(UNIREP, provider)
 
     let currentBlindedUserState = startBlindedUserState
     // The rest are process attestations proofs
@@ -172,11 +164,7 @@ const verifyProcessAttestationEvents = async(startBlindedUserState: ethers.BigNu
 const verifyAttestationProofsByIndex = async (proofIndex: number | ethers.BigNumber): Promise<any> => {
     const ethProvider = DEFAULT_ETH_PROVIDER
     const provider = new ethers.providers.JsonRpcProvider(ethProvider)
-    const unirepContract = new ethers.Contract(
-        UNIREP,
-        UNIREP_ABI,
-        provider,
-    )
+    const unirepContract = getUnirepContract(UNIREP, provider)
 
     const epochKeyProofFilter = unirepContract.filters.EpochKeyProof(proofIndex)
     const epochKeyProofEvent = await unirepContract.queryFilter(epochKeyProofFilter)
@@ -301,11 +289,7 @@ const updateDBFromPostSubmittedEvent = async (
     const findPost = await Post.findById(postId)
     const ethProvider = DEFAULT_ETH_PROVIDER
     const provider = new ethers.providers.JsonRpcProvider(ethProvider)
-    const unirepContract = new ethers.Contract(
-        UNIREP,
-        UNIREP_ABI,
-        provider,
-    )
+    const unirepContract = getUnirepContract(UNIREP, provider)
 
     const iface = new ethers.utils.Interface(UNIREP_SOCIAL_ABI)
     const decodedData = iface.decodeEventLog("PostSubmitted",event.data)
@@ -378,11 +362,7 @@ const updateDBFromCommentSubmittedEvent = async (
     const findComment = await Comment.findById(commentId)
     const ethProvider = DEFAULT_ETH_PROVIDER
     const provider = new ethers.providers.JsonRpcProvider(ethProvider)
-    const unirepContract = new ethers.Contract(
-        UNIREP,
-        UNIREP_ABI,
-        provider,
-    )
+    const unirepContract = getUnirepContract(UNIREP, provider)
         
     const reputationProof = decodedData?.proofRelated
     const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
@@ -417,12 +397,18 @@ const updateDBFromCommentSubmittedEvent = async (
         await newComment.save()
     }
 
-    Post.findByIdAndUpdate(
-        postId, 
-        { "$push": { "comments": commentId._id.toString() } },
-        { "new": true, "upsert": true }, 
-        (err) => console.log('update comments of post error: ' + err)
-    );
+    const findPost = await Post.findById(postId)
+    if(findPost === undefined) {
+        console.log('cannot find post ID', postId)
+        return
+    }
+    const commentExists = await Post.findOne({"comments": commentId._id.toString()})
+    if(commentExists === null) {
+        findPost?.comments.push(commentId._id.toString())
+        findPost?.set({ "new": true, "upsert": true })
+        console.log(findPost)
+        await findPost?.save((err) => console.log('update comments of post error: ' + err))
+    }
 
     const record = await Record.findOne({transactionHash: _transactionHash})
     if(record === null) {
@@ -454,11 +440,7 @@ const updateDBFromVoteSubmittedEvent = async (
     
     const ethProvider = DEFAULT_ETH_PROVIDER
     const provider = new ethers.providers.JsonRpcProvider(ethProvider)
-    const unirepContract = new ethers.Contract(
-        UNIREP,
-        UNIREP_ABI,
-        provider,
-    )
+    const unirepContract = getUnirepContract(UNIREP, provider)
         
     const reputationProof = decodedData?.proofRelated
     const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
@@ -471,6 +453,53 @@ const updateDBFromVoteSubmittedEvent = async (
     const findVote = await Record.findOne({transactionHash: _transactionHash})
     if(findVote === null)
         await writeRecord(_toEpochKey, _fromEpochKey, _posRep, _negRep, _epoch, ActionType.vote, _transactionHash, '');
+}
+
+/*
+* When a AirdropSubmitted event comes
+* update the database
+* @param event AirdropSubmitted event
+*/
+const updateDBFromAirdropSubmittedEvent = async (
+    event: ethers.Event,
+    startBlock: number  = DEFAULT_START_BLOCK,
+) => {
+
+    // The event has been processed
+    if(event.blockNumber <= startBlock) return
+
+    const iface = new ethers.utils.Interface(UNIREP_SOCIAL_ABI)
+    const decodedData = iface.decodeEventLog("AirdropSubmitted",event.data)
+    const _transactionHash = event.transactionHash
+    const _epoch = Number(event.topics[1])
+    const _epochKey = BigInt(event.topics[2]).toString(16)
+    const signUpProof = decodedData?.proofRelated
+    
+    const ethProvider = DEFAULT_ETH_PROVIDER
+    const provider = new ethers.providers.JsonRpcProvider(ethProvider)
+    const unirepContract = getUnirepContract(UNIREP, provider)
+    
+    const proofNullifier = await unirepContract.hashSignUpProof(signUpProof)
+    const proofIndex = await unirepContract.getProofIndex(proofNullifier)
+
+    // TODO: verify proof before storing
+    const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
+    if (isProofValid === false) return
+
+    const findRecord = await Record.findOne({transactionHash: _transactionHash})
+    if(findRecord === null) {
+        const newRecord: IRecord = new Record({
+            to: _epochKey,
+            from: 'UnirepSocial',
+            upvote: decodedData?.attestation?.posRep,
+            downvote: decodedData?.attestation?.negRep,
+            epoch: _epoch,
+            action: 'UST',
+            data: '0',
+            transactionHash: event.transactionHash,
+        });
+        await newRecord.save((err) => console.log('save airdrop record error: ' + err));
+    }
 }
 
 /*
@@ -619,31 +648,6 @@ const updateDBFromAttestationEvent = async (
     if(res){
         console.log('Database: saved submitted attestation')
     }
-
-    // save reputation nullifiers
-    if (proofEvent === "UserSignedUpProof") {
-        const ethProvider = DEFAULT_ETH_PROVIDER
-        const provider = new ethers.providers.JsonRpcProvider(ethProvider)
-        const unirepContract = new ethers.Contract(
-            UNIREP,
-            UNIREP_ABI,
-            provider,
-        )
-        const unirepSocialID = await unirepContract.attesters(UNIREP_SOCIAL)
-        if(Number(unirepSocialID) === Number(decodedData?.attestation?.attesterId)){
-            const newRecord: IRecord = new Record({
-                to: BigInt(args?.epochKey).toString(16),
-                from: 'UnirepSocial',
-                upvote: decodedData?.attestation?.posRep,
-                downvote: decodedData?.attestation?.negRep,
-                epoch: args?.epoch,
-                action: 'UST',
-                data: '0',
-                transactionHash: event.transactionHash,
-            });
-            await newRecord.save((err) => console.log('save airdrop record error: ' + err));
-        }
-    }
 }
 
 /*
@@ -757,6 +761,7 @@ export {
     updateDBFromPostSubmittedEvent,
     updateDBFromCommentSubmittedEvent,
     updateDBFromVoteSubmittedEvent,
+    updateDBFromAirdropSubmittedEvent,
     updateDBFromNewGSTLeafInsertedEvent,
     updateDBFromAttestationEvent,
     updateDBFromEpochEndedEvent,
