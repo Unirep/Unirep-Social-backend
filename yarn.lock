@@ -545,7 +545,7 @@
 
 "@unirep/contracts@git+https://github.com/Unirep/contracts.git":
   version "1.0.4"
-  resolved "git+https://github.com/Unirep/contracts.git#8c1858992f9d8b0bfde602cf1aec75ff55d9c250"
+  resolved "git+https://github.com/Unirep/contracts.git#e93e4d93347727fe31828654c1484f8a24f8d120"
   dependencies:
     "@openzeppelin/contracts" "^4.3.2"
     "@unirep/circuits" "git+https://github.com/Unirep/circuits.git"
@@ -564,8 +564,8 @@
     typescript "^4.4.2"
 
 "@unirep/unirep-social@git+https://github.com/Unirep/unirep-social.git":
-  version "0.0.2"
-  resolved "git+https://github.com/Unirep/unirep-social.git#df8ab2c2c52bef425899d3bba0e1b43ee4bfa640"
+  version "0.0.3"
+  resolved "git+https://github.com/Unirep/unirep-social.git#9cc4a799ac07cadf8ed9246e1d0c8d54393802ca"
   dependencies:
     "@unirep/circuits" "git+https://github.com/Unirep/circuits.git"
     "@unirep/contracts" "git+https://github.com/Unirep/contracts.git"
@@ -578,8 +578,8 @@
     typescript "^4.0.5"
 
 "@unirep/unirep@git+https://github.com/Unirep/unirep.git":
-  version "0.0.3"
-  resolved "git+https://github.com/Unirep/unirep.git#81bff2f3c97e130290685b371bc621961766ea9a"
+  version "0.0.4"
+  resolved "git+https://github.com/Unirep/unirep.git#637c6add8b1fb1bca4c52019b2bc0096aad7f9dd"
   dependencies:
     "@unirep/circuits" "git+https://github.com/Unirep/circuits.git"
     "@unirep/contracts" "git+https://github.com/Unirep/contracts.git"

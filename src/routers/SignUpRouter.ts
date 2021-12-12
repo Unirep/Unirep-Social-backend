@@ -28,17 +28,17 @@ class SignUpRouter {
       }
     });
 
-    this._router.post('/', async (req: Request, res: Response, next: NextFunction) => {
-      try {
-        console.log('sign up unirep user')
-        const result = await this._controller.signUpUnirepUser(req.body);
-        res.status(200).json(result);
-      }
-      catch (error) {
-        console.log(error);
-        next(error);
-      }
-    });
+    // this._router.post('/', async (req: Request, res: Response, next: NextFunction) => {
+    //   try {
+    //     console.log('sign up unirep user')
+    //     const result = await this._controller.signUpUnirepUser(req.body);
+    //     res.status(200).json(result);
+    //   }
+    //   catch (error) {
+    //     console.log(error);
+    //     next(error);
+    //   }
+    // });
   }
 }
 

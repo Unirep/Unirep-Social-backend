@@ -3,7 +3,7 @@ import { Attestation, circuitEpochTreeDepth, circuitUserStateTreeDepth, circuitG
 import { ethers } from 'ethers'
 import { getUnirepContract } from '@unirep/contracts';
 import { hashLeftRight, IncrementalQuinTree } from '@unirep/crypto'
-import { DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, ActionType, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget } from '../constants'
+import { DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, ActionType, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_AIRDROPPED_KARMA } from '../constants'
 import Attestations, { IAttestation } from '../database/models/attestation'
 import GSTLeaves, { IGSTLeaf, IGSTLeaves } from '../database/models/GSTLeaf'
 import GSTRoots, { IGSTRoots } from '../database/models/GSTRoots'
@@ -177,7 +177,6 @@ const verifyAttestationProofsByIndex = async (proofIndex: number | ethers.BigNum
     let args
 
     if (epochKeyProofEvent.length == 1){
-        console.log('epoch key event')
         args = epochKeyProofEvent[0]?.args?.epochKeyProofData
         isProofValid = await unirepContract.verifyEpochKeyValidity(
             args?.globalStateTree,
@@ -187,7 +186,6 @@ const verifyAttestationProofsByIndex = async (proofIndex: number | ethers.BigNum
         )
         proofEvent = epochKeyProofEvent[0].event
     } else if (repProofEvent.length == 1){
-        console.log('rep nullifier event')
         args = repProofEvent[0]?.args?.reputationProofData
         isProofValid = await unirepContract.verifyReputation(
             args?.repNullifiers,
@@ -203,7 +201,6 @@ const verifyAttestationProofsByIndex = async (proofIndex: number | ethers.BigNum
         )
         proofEvent = repProofEvent[0].event
     } else if (signUpProofEvent.length == 1){
-        console.log('sign up event')
         args = signUpProofEvent[0]?.args?.signUpProofData
         isProofValid = await unirepContract.verifyUserSignUp(
             args?.epoch,
@@ -217,6 +214,7 @@ const verifyAttestationProofsByIndex = async (proofIndex: number | ethers.BigNum
     }
     if(!isProofValid) {
         console.log('Reputation proof index ', Number(proofIndex), ' is invalid')
+        return {isProofValid, proofEvent, args}
     }
     const isGSTExisted = await GSTRootExists(Number(args?.epoch), BigInt(args?.globalStateTree).toString())
     if(!isGSTExisted) {
@@ -406,7 +404,6 @@ const updateDBFromCommentSubmittedEvent = async (
     if(commentExists === null) {
         findPost?.comments.push(commentId._id.toString())
         findPost?.set({ "new": true, "upsert": true })
-        console.log(findPost)
         await findPost?.save((err) => console.log('update comments of post error: ' + err))
     }
 
@@ -474,7 +471,7 @@ const updateDBFromAirdropSubmittedEvent = async (
     const _epoch = Number(event.topics[1])
     const _epochKey = BigInt(event.topics[2]).toString(16)
     const signUpProof = decodedData?.proofRelated
-    
+
     const ethProvider = DEFAULT_ETH_PROVIDER
     const provider = new ethers.providers.JsonRpcProvider(ethProvider)
     const unirepContract = getUnirepContract(UNIREP, provider)
@@ -491,8 +488,8 @@ const updateDBFromAirdropSubmittedEvent = async (
         const newRecord: IRecord = new Record({
             to: _epochKey,
             from: 'UnirepSocial',
-            upvote: decodedData?.attestation?.posRep,
-            downvote: decodedData?.attestation?.negRep,
+            upvote: DEFAULT_AIRDROPPED_KARMA,
+            downvote: 0,
             epoch: _epoch,
             action: 'UST',
             data: '0',
@@ -592,7 +589,6 @@ const updateDBFromAttestationEvent = async (
     const proofIndex = decodedData?._proofIndex
 
     const { isProofValid, proofEvent, args } = await verifyAttestationProofsByIndex(proofIndex)
-    console.log(Number(proofIndex),isProofValid, proofEvent)
     if (isProofValid === false) return
     if (BigInt(_epochKey) !== BigInt(args?.epochKey)) return
     if (decodedData?._event === "spendReputation") {

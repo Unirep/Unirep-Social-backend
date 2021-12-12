@@ -9,7 +9,7 @@ import MasterRouter from './routers/MasterRouter';
 
 import EpochController from './controllers/EpochController';
 import { DEFAULT_ETH_PROVIDER, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI } from './constants';
-import { updateDBFromAttestationEvent, updateDBFromCommentSubmittedEvent, updateDBFromEpochEndedEvent, updateDBFromNewGSTLeafInsertedEvent, updateDBFromPostSubmittedEvent, updateDBFromVoteSubmittedEvent } from './controllers/utils';
+import { updateDBFromAirdropSubmittedEvent, updateDBFromAttestationEvent, updateDBFromCommentSubmittedEvent, updateDBFromEpochEndedEvent, updateDBFromNewGSTLeafInsertedEvent, updateDBFromPostSubmittedEvent, updateDBFromVoteSubmittedEvent } from './controllers/utils';
 import { initDB } from './database/models/utils';
 
 // load the environment variables from the .env file
@@ -97,6 +97,7 @@ const EpochEndedFilter = unirepContract.filters.EpochEnded()
 const postFilter = unirepSocialContract.filters.PostSubmitted()
 const commentFilter = unirepSocialContract.filters.CommentSubmitted()
 const voteFilter = unirepSocialContract.filters.VoteSubmitted()
+const airdropFilter = unirepSocialContract.filters.AirdropSubmitted()
 
 var startBlock = 0
 initDB(unirepContract, unirepSocialContract).then((res) => {
@@ -119,5 +120,8 @@ initDB(unirepContract, unirepSocialContract).then((res) => {
   )
   provider.on(
     voteFilter, (event) => updateDBFromVoteSubmittedEvent(event, startBlock)
+  )
+  provider.on(
+    airdropFilter, (event) => updateDBFromAirdropSubmittedEvent(event, startBlock)
   )
 })

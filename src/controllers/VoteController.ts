@@ -36,15 +36,18 @@ class VoteController {
 
       let postProofIndex: number = 0
       if (data.isPost) {
-        Post.findById(data.postId, (err, post) => {
-          console.log('find post proof index: ' + post.proofIndex);
-          postProofIndex = post.proofIndex;
-        });
+        const post = await Post.findById(data.postId)
+        console.log('find post proof index: ' + post?.proofIndex);
+        if(post !== null) postProofIndex = post.proofIndex;
       } else {
-        Comment.findById(data.postId, (err, comment) => {
-          console.log('find comment proof index: ' + comment.proofIndex);
-          postProofIndex = comment.proofIndex;
-        });
+        const comment = await Comment.findById(data.postId);
+        console.log('find comment proof index: ' + comment?.proofIndex);
+        if(comment !== null) postProofIndex = comment.proofIndex;
+      }
+
+      if(Number(postProofIndex) === 0) {
+        console.error('Error: cannot find post proof index')
+        return {error: 'Error: cannot find post proof index', transaction: undefined, currentEpoch: epoch};
       }
 
       // check attester ID
@@ -67,8 +70,9 @@ class VoteController {
 
       console.log(`Attesting to epoch key ${data.receiver} with pos rep ${data.upvote}, neg rep ${data.downvote}`)
       
+      console.log('post proof index', postProofIndex)
       const tx = await unirepSocialContract.vote(publicSignals, proof, receiver, postProofIndex, data.upvote, data.downvote);
-      // await tx.wait()
+      await tx.wait()
 
       // save to db data
       const voteProofIndex = (await unirepSocialContract.getReputationProofIndex(publicSignals, proof)).toNumber()
@@ -84,28 +88,34 @@ class VoteController {
       };
 
       if (data.isPost) {
-        await Post.findByIdAndUpdate(
-          data.postId, 
-          { "$push": { "votes": newVote }, "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
-          { "new": true, "upsert": false }, 
-          (err) => console.log('update votes of post error: ' + err));
+        try {
+          await Post.findByIdAndUpdate(data.postId, 
+            { "$push": { "votes": newVote }, "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
+            { "new": true, "upsert": false })
+        } catch(e) {
+          console.log('update votes of post error: ' + e)
+          return {error: e, transaction: tx.hash};
+        }
 
         await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.vote, tx.hash.toString(), data.postId);
       } else {
-        await Comment.findByIdAndUpdate(
-          data.postId, 
-          { "$push": { "votes": newVote }, "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
-          { "new": true, "upsert": false }, 
-          (err) => {
-            console.log('update votes of comment error: ' + err);
-          }).then( async (comment) => {
-            if (comment !== undefined && comment !== null) {
-              const dataId = `${data.postId}_${comment._id.toString()}`;
-              await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.vote, tx.hash.toString(), dataId);
-            }
-          });
+        try {
+          const comment = await Comment.findByIdAndUpdate(
+            data.postId, 
+            { "$push": { "votes": newVote }, "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
+            { "new": true, "upsert": false }
+          )
+          if (comment !== undefined && comment !== null) {
+            const dataId = `${data.postId}_${comment._id.toString()}`;
+            await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.vote, tx.hash.toString(), dataId);
+          }
+
+        } catch (e) {
+            console.log('update votes of comment error: ' + e);
+            return {error: e, transaction: tx.hash};
+        }
       }
-    
+      
       return {error: undefined, transaction: tx.hash};
     }
   }
