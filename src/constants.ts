@@ -27,9 +27,10 @@ export const UNIREP_ABI = Unirep.abi
 export const UNIREP_SOCIAL_ABI = UnirepSocial.abi
 
 export enum ActionType {
-    post = 'post',
-    vote = 'vote',
-    comment = 'comment'
+    Post = "Post",
+    Comment = "Comment",
+    Vote = "Vote",
+    UST = "UST",
 }
 
 export enum QueryType {

@@ -86,7 +86,7 @@ class VoteController {
           return {error: e, transaction: tx.hash};
         }
 
-        await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.vote, tx.hash.toString(), data.postId);
+        await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.Vote, tx.hash.toString(), data.postId);
       } else {
         try {
           const comment = await Comment.findByIdAndUpdate(
@@ -96,7 +96,7 @@ class VoteController {
           )
           if (comment !== undefined && comment !== null) {
             const dataId = `${data.postId}_${comment._id.toString()}`;
-            await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.vote, tx.hash.toString(), dataId);
+            await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.Vote, tx.hash.toString(), dataId);
           }
 
         } catch (e) {

@@ -110,7 +110,7 @@ const verifyUSTProof = async(results): Promise<string | undefined> => {
     }
 
     // check nullifiers
-    for (let nullifier of results.finalTransitionProof.epkNullifier) {
+    for (let nullifier of results.finalTransitionProof.epochKeyNullifiers) {
         const seenNullifier = await nullifierExists(nullifier)
         if(seenNullifier) {
             error = `Error: invalid reputation nullifier ${nullifier}`

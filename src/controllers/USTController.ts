@@ -3,6 +3,8 @@ import ErrorHandler from '../ErrorHandler';
 import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER } from '../constants';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 import { verifyUSTProof } from './utils';
+import { updateGSTLeaf } from '../database/utils';
+import { IGSTLeaf } from '../database/models/GSTLeaf';
 
 class USTController {
     defaultMethod() {
@@ -12,6 +14,7 @@ class USTController {
     userStateTransition = async (data: any) => {
       const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
       await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
+      const currentEpoch = await unirepSocialContract.currentEpoch()
       const results = data.results;
 
       const error = await verifyUSTProof(results)
@@ -22,6 +25,12 @@ class USTController {
 
       if(txList[0] != undefined){
           console.log('Transaction hash:', txList[txList.length - 1]?.hash)
+          // save GST leaf before gen airdrop proof
+          const newLeaf: IGSTLeaf = {
+            transactionHash: txList[txList.length - 1]?.hash,
+            hashedLeaf: results.finalTransitionProof.newGlobalStateTreeLeaf
+          }
+          await updateGSTLeaf(newLeaf, Number(currentEpoch))
       }
 
       return {transaction: txList[txList.length - 1]?.hash}

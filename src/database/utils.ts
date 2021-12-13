@@ -125,7 +125,6 @@ const checkAndSaveNullifiers = async (_epoch: number, _nullifiers: string[], _tx
 }
 
 const verifyNewGSTProofByIndex = async(proofIndex: number | ethers.BigNumber): Promise<ethers.Event | void> => {
-    console.log('proof index: ',Number(proofIndex))
     const ethProvider = DEFAULT_ETH_PROVIDER
     const provider = new ethers.providers.JsonRpcProvider(ethProvider)
     const unirepContract = getUnirepContract(UNIREP, provider)
@@ -397,7 +396,7 @@ const updateDBFromPostSubmittedEvent = async (
 
     const record = await Record.findOne({transactionHash: _transactionHash})
     if(record === null) {
-        await writeRecord(_epochKey, _epochKey, 0, DEFAULT_POST_KARMA, _epoch, ActionType.post, _transactionHash, postId._id.toString());
+        await writeRecord(_epochKey, _epochKey, 0, DEFAULT_POST_KARMA, _epoch, ActionType.Post, _transactionHash, postId._id.toString());
     }
 }
 
@@ -477,7 +476,7 @@ const updateDBFromCommentSubmittedEvent = async (
 
     const record = await Record.findOne({transactionHash: _transactionHash})
     if(record === null) {
-        await writeRecord(_epochKey, _epochKey, 0, DEFAULT_COMMENT_KARMA, _epoch, ActionType.comment, _transactionHash, postId._id.toString() + '_' + commentId._id.toString());
+        await writeRecord(_epochKey, _epochKey, 0, DEFAULT_COMMENT_KARMA, _epoch, ActionType.Comment, _transactionHash, postId._id.toString() + '_' + commentId._id.toString());
     }
 }
 
@@ -520,7 +519,7 @@ const updateDBFromVoteSubmittedEvent = async (
 
     const findVote = await Record.findOne({transactionHash: _transactionHash})
     if(findVote === null)
-        await writeRecord(_toEpochKey, _fromEpochKey, _posRep, _negRep, _epoch, ActionType.vote, _transactionHash, '');
+        await writeRecord(_toEpochKey, _fromEpochKey, _posRep, _negRep, _epoch, ActionType.Vote, _transactionHash, '');
 }
 
 /*
@@ -560,7 +559,7 @@ const updateDBFromAirdropSubmittedEvent = async (
             from: 'UnirepSocial',
             upvote: DEFAULT_AIRDROPPED_KARMA,
             downvote: 0,
-            epoch: _epoch,
+            epoch: _epoch + 1, // for user better understanding
             action: 'UST',
             data: '0',
             transactionHash: event.transactionHash,
@@ -762,7 +761,7 @@ const writeRecord = async (to: string, from: string, posRep: number, negRep: num
         transactionHash: txHash,
     });
 
-    if (action === ActionType.vote) {
+    if (action === ActionType.Vote) {
         EpkRecord.findOneAndUpdate(
             {epk: from, epoch}, 
             { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep: 0, negRep: 0, spent: posRep + negRep} },
@@ -853,7 +852,6 @@ const initDB = async (
     const airdropEvents =  await unirepSocialContract.queryFilter(airdropFilter)
 
     for (const event of signUpEvents) {
-        console.log(event)
         await updateDBFromUserSignUpEvent(event)
     }
 
@@ -878,6 +876,7 @@ const initDB = async (
 
 export {
     getGSTLeaves,
+    updateGSTLeaf,
     getEpochTreeLeaves,
     GSTRootExists,
     epochTreeRootExists,
