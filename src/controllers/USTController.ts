@@ -1,9 +1,8 @@
 import ErrorHandler from '../ErrorHandler';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER } from '../constants';
 import { UnirepSocialContract } from '@unirep/unirep-social';
-import { CircuitName, verifyProof } from '@unirep/circuits'
-import { epochTreeRootExists, GSTRootExists } from './utils';
+import { verifyUSTProof } from './utils';
 
 class USTController {
     defaultMethod() {
@@ -15,43 +14,8 @@ class USTController {
       await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
       const results = data.results;
 
-      // Start user state transition proof
-      let isValid = await verifyProof(CircuitName.startTransition, results.startTransitionProof.proof, results.startTransitionProof.publicSignals)
-      if (!isValid) {
-          console.error('Error: start state transition proof generated is not valid!')
-          return
-      }
-
-      // Process attestations proofs
-      for (let i = 0; i < results.processAttestationProofs.length; i++) {
-          const isValid = await verifyProof(CircuitName.processAttestations, results.processAttestationProofs[i].proof, results.processAttestationProofs[i].publicSignals)
-          if (!isValid) {
-              console.error('Error: process attestations proof generated is not valid!')
-              return
-          }
-      }
-
-      // User state transition proof
-      isValid = await verifyProof(CircuitName.userStateTransition, results.finalTransitionProof.proof, results.finalTransitionProof.publicSignals)
-      if (!isValid) {
-          console.error('Error: user state transition proof generated is not valid!')
-          return
-      }
-
-      // Check epoch tree root
-      const epoch = Number(results.finalTransitionProof.transitionedFromEpoch)
-      const GSTRoot = results?.finalTransitionProof?.fromGSTRoot
-      const epochTreeRoot = results.finalTransitionProof.fromEpochTree
-      const isGSTExisted = await GSTRootExists(epoch, GSTRoot)
-      const isEpochTreeExisted = await epochTreeRootExists(epoch, epochTreeRoot)
-      if(!isGSTExisted) {
-        console.log('Global state tree root mismatches')
-        return
-      }
-      if(!isEpochTreeExisted){
-        console.log('Epoch tree root mismatches')
-        return
-      }
+      const error = await verifyUSTProof(results)
+      if(error !== undefined) return {error, transactionHash: undefined}
 
       // submit user state transition proofs
       const txList = await unirepSocialContract.userStateTransition(results)

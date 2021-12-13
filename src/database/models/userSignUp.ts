@@ -4,13 +4,13 @@ import { Schema, Document } from 'mongoose';
   
 export interface IUserSignUp extends Document {
     transactionHash: string
-    hashedLeaf: string
+    commitment: string
     epoch: number
 }
 
 const UserSignUpSchema: Schema = new Schema({
     transactionHash: { type: String },
-    hashedLeaf: { type: String },
+    commitment: { type: String },
     epoch: { type: Number },
 }, { collection: 'Users' })
 

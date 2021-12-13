@@ -9,7 +9,7 @@ import {
     DEFAULT_ETH_PROVIDER,  
     UNIREP_SOCIAL_ATTESTER_ID} from '../constants';
 import { UnirepSocialContract } from '@unirep/unirep-social';
-import { GSTRootExists } from './utils';
+import { verifyAirdropProof } from './utils';
 
 class AirdropController {
     defaultMethod() {
@@ -19,6 +19,7 @@ class AirdropController {
     getAirdrop = async (data: any) => {
         // Unirep Social contract
         const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER)
+        const unirepSocialId = UNIREP_SOCIAL_ATTESTER_ID
 
         // Parse Inputs
         const decodedProof = base64url.decode(data.proof.slice(signUpProofPrefix.length))
@@ -37,34 +38,9 @@ class AirdropController {
         console.log('end in airdrop controller.')
 
         // Verify proof
-        // Check if attester ID matches Unirep Social
-        const _attesterId = UNIREP_SOCIAL_ATTESTER_ID
-        if(_attesterId != Number(attesterId)) {
-            console.error('Error: invalid attester ID proof')
-            return
-        }
-
-        // Check if user has signed up in Unirep Social
-        if(Number(userHasSignedUp) === 0) {
-            console.error('Error: user has not signed up in Unirep Social')
-            return
-        }
-
-        // Check if Global state tree root exists
-        const validRoot = await GSTRootExists(Number(epoch), GSTRoot)
-        if(!validRoot){
-            console.error(`Error: invalid global state tree root ${GSTRoot}`)
-            return
-        }
-
-        // Verify the proof on-chain
-        const isProofValid = await unirepSocialContract.verifyUserSignUp(
-            publicSignals,
-            proof,
-        )
-        if (!isProofValid) {
-            console.error('Error: invalid user sign up proof')
-            return
+        const error = await verifyAirdropProof(publicSignals, proof, Number(unirepSocialId))
+        if (error !== undefined) {
+            return {error: error, transaction: undefined};
         }
 
         // Connect a signer

@@ -1,12 +1,13 @@
 import ErrorHandler from '../ErrorHandler';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, ActionType, UNIREP_SOCIAL_ATTESTER_ID } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, ActionType, UNIREP_SOCIAL_ATTESTER_ID } from '../constants';
 import { IVote } from '../database/models/vote';
 import Post from '../database/models/post';
 import Comment from '../database/models/comment';
-import { verifyReputationProof, writeRecord } from "../controllers/utils"
+import { verifyReputationProof } from "../controllers/utils"
 import base64url from 'base64url';
 import { UnirepSocialContract } from '@unirep/unirep-social';
+import { writeRecord } from '../database/utils';
 
 
 class VoteController {
