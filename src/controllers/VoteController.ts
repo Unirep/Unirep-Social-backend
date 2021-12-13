@@ -33,6 +33,7 @@ class VoteController {
       const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
       const minRep = publicSignals[maxReputationBudget + 5]
       const receiver = BigInt(parseInt(data.receiver, 16))
+      let error
 
       let postProofIndex: number = 0
       if (data.isPost) {
@@ -46,26 +47,13 @@ class VoteController {
       }
 
       if(Number(postProofIndex) === 0) {
-        console.error('Error: cannot find post proof index')
-        return {error: 'Error: cannot find post proof index', transaction: undefined, currentEpoch: epoch};
+        error = 'Error: cannot find post proof index'
+        return {error: error, transaction: undefined, currentEpoch: epoch};
       }
 
-      // check attester ID
-      if(Number(unirepSocialId) !== Number(attesterId)) {
-        console.error('Error: proof with wrong attester ID')
-        return {error: 'Error: proof with wrong attester ID', transaction: undefined, currentEpoch: epoch};
-      }
-
-      // check reputation amount
-      if(Number(repNullifiersAmount) !== (data.upvote + data.downvote)) {
-        console.error('Error: proof with wrong reputation amount')
-        return {error: 'Error: proof with wrong reputation amount', transaction: undefined, currentEpoch: epoch};
-      }
-
-      const isProofValid = await verifyReputationProof(publicSignals, proof)
-      if (!isProofValid) {
-        console.error('Error: invalid reputation proof')
-        return {error: 'Error: invalid reputation proof', transaction: undefined, currentEpoch: epoch};
+      error = await verifyReputationProof(publicSignals, proof, data.upvote + data.downvote, Number(unirepSocialId))
+      if (error !== undefined) {
+        return {error: error, transaction: undefined, postId: undefined, currentEpoch: epoch};
       }
 
       console.log(`Attesting to epoch key ${data.receiver} with pos rep ${data.upvote}, neg rep ${data.downvote}`)
@@ -116,7 +104,7 @@ class VoteController {
         }
       }
       
-      return {error: undefined, transaction: tx.hash};
+      return {error: error, transaction: tx.hash};
     }
   }
 

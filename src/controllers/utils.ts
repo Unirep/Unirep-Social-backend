@@ -37,7 +37,20 @@ const epochTreeRootExists = async (epoch: number, epochTreeRoot: string | BigInt
     return false
 }
 
-const nullifierExists = async (nullifier: string, epoch?: number): Promise<boolean> => {
+const nullifierExists = async (nullifier: string, txHash?: string, epoch?: number): Promise<boolean> => {
+    // post and attestation submitted both emit nullifiers, but we cannot make sure which one comes first
+    // use txHash to differenciate if the nullifier submitted is the same
+    // If the same nullifier appears in different txHash, then the nullifier is invalid
+    if (txHash != undefined) {
+        const sameNullifier = await Nullifier.findOne({
+            $or: [
+                {epoch: epoch, transactionHash: txHash, nullifier: nullifier},
+                {transactionHash: txHash, nullifier: nullifier},
+            ]
+        })
+        if (sameNullifier != undefined) return false
+    }
+
     const n = await Nullifier.findOne({
         $or: [
             {epoch: epoch, nullifier: nullifier},
@@ -48,41 +61,66 @@ const nullifierExists = async (nullifier: string, epoch?: number): Promise<boole
     return false
 }
 
-const saveNullifier = async (_epoch: number, _nullifier: string) => {
-    const nullifier: INullifier = new Nullifier({
-        epoch: _epoch,
-        nullifier: _nullifier
-    })
-    await nullifier.save()
+const checkAndSaveNullifiers = async (_epoch: number, _nullifiers: string[], _txHash: string): Promise<boolean> => {
+    // check nullifiers
+    for (let nullifier of _nullifiers) {
+        const seenNullifier = await nullifierExists(nullifier, _txHash)
+        if(seenNullifier) {
+            console.error(`Error: seen nullifier ${nullifier}`)
+            return false
+        }
+    }
+    // save nullifiers
+    for(let _nullifier of _nullifiers){
+        if(BigInt(_nullifier) != BigInt(0)){
+            const nullifier: INullifier = new Nullifier({
+                epoch: _epoch,
+                nullifier: _nullifier,
+                transactionHash: _txHash,
+            })
+            await nullifier.save()
+        }    
+    }
+    return true
 }
 
-const verifyReputationProof = async(publicSignals: string, proof: string): Promise<boolean> => {
+const verifyReputationProof = async(publicSignals: string, proof: string, spendReputation: number, unirepSocialId: number): Promise<string | undefined> => {
+    let error
     const repNullifiers = publicSignals.slice(0, maxReputationBudget)
     const epoch = publicSignals[maxReputationBudget]
     const GSTRoot = publicSignals[maxReputationBudget + 2]
+    const attesterId = publicSignals[maxReputationBudget + 3]
+    const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
+
+    // check attester ID
+    if(Number(unirepSocialId) !== Number(attesterId)) {
+        error = 'Error: proof with wrong attester ID'
+      }
+
+    // check reputation amount
+    if(Number(repNullifiersAmount) !== spendReputation) {
+        error = 'Error: proof with wrong reputation amount'
+    }
 
     const isProofValid = await verifyProof(CircuitName.proveReputation, formatProofForSnarkjsVerification(proof), publicSignals)
     if (!isProofValid) {
-        console.error('Error: invalid reputation proof')
-        return false
+        error = 'Error: invalid reputation proof'
     }
 
     // check GST root
     const validRoot = await GSTRootExists(Number(epoch), GSTRoot)
     if(!validRoot){
-        console.error(`Error: invalid global state tree root ${GSTRoot}`)
-        return false
+        error = `Error: global state tree root ${GSTRoot} is not in epoch ${Number(epoch)}`
     }
 
     // check nullifiers
     for (let nullifier of repNullifiers) {
         const seenNullifier = await nullifierExists(nullifier)
         if(seenNullifier) {
-            console.error(`Error: invalid reputation nullifier ${nullifier}`)
-            return false
+            error = `Error: invalid reputation nullifier ${nullifier}`
         }
     }
-    return true
+    return error
 }
 
 const verifyNewGSTProofByIndex = async(proofIndex: number | ethers.BigNumber): Promise<ethers.Event | void> => {
@@ -303,6 +341,9 @@ const updateDBFromPostSubmittedEvent = async (
     // TODO: verify proof before storing
     const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
     if (isProofValid === false) return
+    const repNullifiers = decodedData?.proofRelated?.repNullifiers.map(n => BigInt(n).toString())
+    const success = await checkAndSaveNullifiers(Number(_epoch), repNullifiers, event.transactionHash)
+    if (!success) return
     
     if(findPost){
         findPost?.set('status', 1, { "new": true, "upsert": false})
@@ -369,6 +410,9 @@ const updateDBFromCommentSubmittedEvent = async (
     // TODO: verify proof before storing
     const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
     if (isProofValid === false) return
+    const repNullifiers = decodedData?.proofRelated?.repNullifiers.map(n => BigInt(n).toString())
+    const success = await checkAndSaveNullifiers(Number(_epoch), repNullifiers, event.transactionHash)
+    if (!success) return
     
     if(findComment) {
         findComment?.set('status', 1, { "new": true, "upsert": false})
@@ -446,6 +490,9 @@ const updateDBFromVoteSubmittedEvent = async (
     // TODO: verify proof before storing
     const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
     if (isProofValid === false) return
+    const repNullifiers = decodedData?.proofRelated?.repNullifiers.map(n => BigInt(n).toString())
+    const success = await checkAndSaveNullifiers(Number(_epoch), repNullifiers, event.transactionHash)
+    if (!success) return
 
     const findVote = await Record.findOne({transactionHash: _transactionHash})
     if(findVote === null)
@@ -545,19 +592,9 @@ const updateDBFromNewGSTLeafInsertedEvent = async (
             return
         }
 
-        // check nullifiers
-        for (let nullifier of epkNullifier) {
-            const seenNullifier = await nullifierExists(nullifier)
-            if(seenNullifier) {
-                console.error(`Error: seen epk nullifier ${nullifier}`)
-                return
-            }
-        }
-        // save nullifiers
-        for(let nullifier of epkNullifier){
-            if(BigInt(nullifier) != BigInt(0))
-                await saveNullifier(Number(_epoch), nullifier)
-        }
+        // check and save nullifiers
+        const success = await checkAndSaveNullifiers(Number(_epoch), epkNullifier, event.transactionHash)
+        if (!success) return
     }
 
     // save the new leaf
@@ -593,16 +630,9 @@ const updateDBFromAttestationEvent = async (
     if (BigInt(_epochKey) !== BigInt(args?.epochKey)) return
     if (decodedData?._event === "spendReputation") {
         // check nullifiers
-        for (let nullifier of args?.repNullifiers) {
-            const seenNullifier = await nullifierExists(BigInt(nullifier).toString())
-            if(seenNullifier) {
-                console.log(`Error: invalid reputation nullifier ${nullifier}`)
-            }
-        }
-        for(let nullifier of args?.repNullifiers){
-            if(BigInt(nullifier) != BigInt(0))
-                await saveNullifier(Number(_epoch), BigInt(nullifier).toString())
-        }
+        const repNullifiers = args?.repNullifiers.map(n => BigInt(n).toString())
+        const success = await checkAndSaveNullifiers(Number(_epoch), repNullifiers, event.transactionHash)
+        if (!success) return
     }
 
     const newAttestation: IAttestation = {

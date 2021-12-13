@@ -178,23 +178,11 @@ class PostController {
       const attesterId = publicSignals[maxReputationBudget + 3]
       const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
       const minRep = publicSignals[maxReputationBudget + 5]
+      let error
 
-      // check attester ID
-      if(Number(unirepSocialId) !== Number(attesterId)) {
-        console.error('Error: proof with wrong attester ID')
-        return {error: 'Error: proof with wrong attester ID', transaction: undefined, postId: undefined, currentEpoch: epoch};
-      }
-
-      // check reputation amount
-      if(Number(repNullifiersAmount) !== DEFAULT_POST_KARMA) {
-        console.error('Error: proof with wrong reputation amount')
-        return {error: 'Error: proof with wrong reputation amount', transaction: undefined, postId: undefined, currentEpoch: epoch};
-    }
-
-      const isProofValid = await verifyReputationProof(publicSignals, proof)
-      if (!isProofValid) {
-        console.error('Error: invalid reputation proof')
-        return {error: 'Error: invalid reputation proof', transaction: undefined, postId: undefined, currentEpoch: epoch};
+      error = await verifyReputationProof(publicSignals, proof, DEFAULT_POST_KARMA, Number(unirepSocialId))
+      if (error !== undefined) {
+        return {error: error, transaction: undefined, postId: undefined, currentEpoch: epoch};
       }
       
       const newPost: IPost = new Post({
@@ -217,8 +205,9 @@ class PostController {
 
       await newPost.save((err, post) => {
         console.log('new post error: ' + err);
+        error = err;
       });
-      return {error: undefined, transaction: tx.hash, postId: newPost._id, currentEpoch: epoch};
+      return {error: error, transaction: tx.hash, postId: newPost._id, currentEpoch: epoch};
     }
   }
 
