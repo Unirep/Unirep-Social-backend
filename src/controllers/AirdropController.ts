@@ -46,7 +46,12 @@ class AirdropController {
         // Connect a signer
         await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY)
         // submit epoch key to unirep social contract
-        const tx = await unirepSocialContract.airdrop(publicSignals, proof)
+        let tx
+        try {
+            tx = await unirepSocialContract.airdrop(publicSignals, proof)
+        } catch(e) {
+            return {error: e, transaction: tx?.hash}
+        }
 
         if(tx != undefined){
             console.log(`The user of epoch key ${epk} will get airdrop in the next epoch`)

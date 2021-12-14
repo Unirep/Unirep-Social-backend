@@ -199,15 +199,21 @@ class PostController {
       });
 
       const postId = newPost._id.toString();
-      const tx = await unirepSocialContract.publishPost(postId, publicSignals, proof, data.content);
-      // await tx.wait()
-      console.log('transaction hash: ' + tx.hash + ', epoch key of epoch ' + epoch + ': ' + epochKey);
+      let tx
+      try {
+        tx = await unirepSocialContract.publishPost(postId, publicSignals, proof, data.content);
+        // await tx.wait()
+        console.log('transaction hash: ' + tx.hash + ', epoch key of epoch ' + epoch + ': ' + epochKey);
 
-      await newPost.save((err, post) => {
-        console.log('new post error: ' + err);
-        error = err;
-      });
-      return {error: error, transaction: tx.hash, postId: newPost._id, currentEpoch: epoch};
+        await newPost.save((err, post) => {
+          console.log('new post error: ' + err);
+          error = err;
+        });
+        return {error: error, transaction: tx.hash, postId: newPost._id, currentEpoch: epoch};
+      } catch (e) {
+        return {error: e, transaction: tx?.hash, postId: newPost._id, currentEpoch: epoch}
+      }
+      
     }
   }
 

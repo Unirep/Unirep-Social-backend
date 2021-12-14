@@ -17,8 +17,13 @@ class SignUpController {
       const decodedCommitment = base64url.decode(encodedCommitment);
       const commitment = add0x(decodedCommitment);
       console.log(commitment);
-
-      const tx = await unirepSocialContract.userSignUp(commitment);
+      
+      let tx
+      try {
+        tx = await unirepSocialContract.userSignUp(commitment);
+      } catch (e) {
+        return {error: e, transaction: tx?.hash}
+      }
       const epoch = await unirepSocialContract.currentEpoch();
       console.log('transaction: ' + tx.hash + ', sign up epoch: ' + epoch.toString());
 

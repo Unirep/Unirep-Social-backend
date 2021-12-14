@@ -21,7 +21,12 @@ class USTController {
       if(error !== undefined) return {error, transactionHash: undefined}
 
       // submit user state transition proofs
-      const txList = await unirepSocialContract.userStateTransition(results)
+      let txList
+      try {
+        txList = await unirepSocialContract.userStateTransition(results)
+      } catch(e) {
+        return {error: e, transaction: txList[txList.length - 1]?.hash}
+      } 
 
       if(txList[0] != undefined){
           console.log('Transaction hash:', txList[txList.length - 1]?.hash)

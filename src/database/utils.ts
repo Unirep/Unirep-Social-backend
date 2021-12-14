@@ -326,6 +326,7 @@ const updateDBFromUserSignUpEvent = async (
     const findUser = await userSignUp.findOne(query)
     if (findUser === null) {
         const newUser: IUserSignUp = new userSignUp(query)
+        newUser.set({ "new": true, "upsert": false})
         await newUser.save()
         console.log('saved user: ', _commitment)
     }
@@ -559,7 +560,7 @@ const updateDBFromAirdropSubmittedEvent = async (
             from: 'UnirepSocial',
             upvote: DEFAULT_AIRDROPPED_KARMA,
             downvote: 0,
-            epoch: _epoch + 1, // for user better understanding
+            epoch: _epoch,
             action: 'UST',
             data: '0',
             transactionHash: event.transactionHash,

@@ -60,7 +60,13 @@ class VoteController {
       console.log(`Attesting to epoch key ${data.receiver} with pos rep ${data.upvote}, neg rep ${data.downvote}`)
       
       console.log('post proof index', postProofIndex)
-      const tx = await unirepSocialContract.vote(publicSignals, proof, receiver, postProofIndex, data.upvote, data.downvote);
+      let tx
+      try {
+        tx = await unirepSocialContract.vote(publicSignals, proof, receiver, postProofIndex, data.upvote, data.downvote);
+      } catch(e) {
+        return {error: e, transaction: tx?.hash, postId: undefined, currentEpoch: epoch};
+      }
+      
       await tx.wait()
 
       // save to db data

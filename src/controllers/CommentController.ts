@@ -51,17 +51,22 @@ class CommentController {
       });
 
       const commentId = newComment._id.toString();
-
-      const tx = await unirepSocialContract.leaveComment(
-        publicSignals,
-        proof,
-        data.postId,
-        commentId,
-        data.content,
-      );
+      let tx
+      try {
+        tx = await unirepSocialContract.leaveComment(
+          publicSignals,
+          proof,
+          data.postId,
+          commentId,
+          data.content,
+        );
+      } catch(e) {
+        return {error: e}
+      }
+      
       // await tx.wait()
-      const proofIndex = await unirepSocialContract.getReputationProofIndex(publicSignals, proof)
-      console.log('transaction: ' + tx.hash + ', proof index: ' + proofIndex);
+      // const proofIndex = await unirepSocialContract.getReputationProofIndex(publicSignals, proof)
+      // console.log('transaction: ' + tx.hash + ', proof index: ' + proofIndex);
 
       await newComment.save((err, comment) => {
         console.log('new comment error: ' + err);
