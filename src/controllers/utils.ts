@@ -1,15 +1,21 @@
 import { CircuitName, verifyProof } from '@unirep/circuits';
 import { formatProofForSnarkjsVerification } from '@unirep/unirep';
 import { maxReputationBudget } from '../constants';
+import records from '../database/models/epkRecord';
 import { epochTreeRootExists, GSTRootExists, nullifierExists } from '../database/utils';
 
-const verifyReputationProof = async(publicSignals: string, proof: string, spendReputation: number, unirepSocialId: number): Promise<string | undefined> => {
+const verifyReputationProof = async(publicSignals: string, proof: string, spendReputation: number, unirepSocialId: number, currentEpoch: number): Promise<string | undefined> => {
     let error
     const repNullifiers = publicSignals.slice(0, maxReputationBudget)
     const epoch = publicSignals[maxReputationBudget]
     const GSTRoot = publicSignals[maxReputationBudget + 2]
     const attesterId = publicSignals[maxReputationBudget + 3]
     const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
+
+    // check if epoch is correct
+    if(Number(epoch) != Number(currentEpoch)) {
+        error = 'Error: epoch of the proof mismatches current epoch'
+    }
 
     // check attester ID
     if(Number(unirepSocialId) !== Number(attesterId)) {
@@ -42,13 +48,18 @@ const verifyReputationProof = async(publicSignals: string, proof: string, spendR
     return error
 }
 
-const verifyAirdropProof = async(publicSignals: string, proof: string, unirepSocialId: number): Promise<string | undefined> => {
+const verifyAirdropProof = async(publicSignals: string, proof: string, unirepSocialId: number, currentEpoch: number): Promise<string | undefined> => {
     let error
     const epoch = publicSignals[0]
-    const epk = publicSignals[1]
+    const epk = BigInt(publicSignals[1]).toString(16)
     const GSTRoot = publicSignals[2]
     const attesterId = publicSignals[3]
     const userHasSignedUp = publicSignals[4]
+
+    // check if epoch is correct
+    if(Number(epoch) != Number(currentEpoch)) {
+        error = 'Error: epoch of the proof mismatches current epoch'
+    }
 
     // check attester ID
     if(Number(unirepSocialId) !== Number(attesterId)) {
@@ -69,6 +80,12 @@ const verifyAirdropProof = async(publicSignals: string, proof: string, unirepSoc
     const validRoot = await GSTRootExists(Number(epoch), GSTRoot)
     if(!validRoot){
         error = `Error: global state tree root ${GSTRoot} is not in epoch ${Number(epoch)}`
+    }
+
+    // Has been airdropped before
+    const findRecord = await records.find({to: epk, from: "UnirepSocial"})
+    if(findRecord){
+        error = `Error: the epoch key has been airdropped`
     }
 
     return error

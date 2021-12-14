@@ -13,7 +13,6 @@ class EpochController {
         const unirepContract = await unirepSocialContract.getUnirep()
         await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
         
-        await unirepSocialContract.fastForward()
         const currentEpoch = await unirepContract.currentEpoch()
         const tx = await unirepSocialContract.epochTransition()
 
