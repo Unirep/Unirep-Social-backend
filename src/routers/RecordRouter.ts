@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import Record from '../database/models/record';
 import EpkRecord from '../database/models/epkRecord';
+import userSignUp from '../database/models/userSignUp';
 
 class RecordRouter {
   private _router = Router();
@@ -34,6 +35,13 @@ class RecordRouter {
             });
         }
       });
+      
+      this._router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+        const commitment = req.query.commitment
+        userSignUp.find({commitment: commitment?.toString()}, (err, records) => {
+          res.status(200).json(records)
+        })
+      })
   }
 }
 

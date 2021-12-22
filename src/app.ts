@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import mongoose, { Schema } from 'mongoose';
+import mongoose from 'mongoose';
 import { ethers } from 'ethers'
 
 import ErrorHandler from './ErrorHandler';
@@ -9,7 +9,7 @@ import MasterRouter from './routers/MasterRouter';
 
 import EpochController from './controllers/EpochController';
 import { DEFAULT_ETH_PROVIDER, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI } from './constants';
-import { updateDBFromAttestationEvent, updateDBFromEpochEndedEvent, updateDBFromNewGSTLeafInsertedEvent } from './database/utils';
+import { initDB, updateDBFromAirdropSubmittedEvent, updateDBFromAttestationEvent, updateDBFromCommentSubmittedEvent, updateDBFromEpochEndedEvent, updateDBFromNewGSTLeafInsertedEvent, updateDBFromPostSubmittedEvent, updateDBFromUserSignUpEvent, updateDBFromVoteSubmittedEvent } from './database/utils';
 
 // load the environment variables from the .env file
 dotenv.config({
@@ -93,13 +93,38 @@ const unirepContract = new ethers.Contract(
 const NewGSTLeafInsertedFilter = unirepContract.filters.NewGSTLeafInserted()
 const AttestationSubmittedFilter = unirepContract.filters.AttestationSubmitted()
 const EpochEndedFilter = unirepContract.filters.EpochEnded()
+const userSignUpFilter = unirepSocialContract.filters.UserSignedUp()
+const postFilter = unirepSocialContract.filters.PostSubmitted()
+const commentFilter = unirepSocialContract.filters.CommentSubmitted()
+const voteFilter = unirepSocialContract.filters.VoteSubmitted()
+const airdropFilter = unirepSocialContract.filters.AirdropSubmitted()
 
-provider.on(
-  NewGSTLeafInsertedFilter, (event) => updateDBFromNewGSTLeafInsertedEvent(event)
-)
-provider.on(
-  AttestationSubmittedFilter, (event) => updateDBFromAttestationEvent(event)
-)
-provider.on(
-  EpochEndedFilter, (event) => updateDBFromEpochEndedEvent(event)
-)
+var startBlock = 0
+initDB(unirepContract, unirepSocialContract).then((res) => {
+  startBlock = res 
+  console.log('start block', startBlock)
+  provider.on(
+    NewGSTLeafInsertedFilter, (event) => updateDBFromNewGSTLeafInsertedEvent(event, startBlock)
+  )
+  provider.on(
+    AttestationSubmittedFilter, (event) => updateDBFromAttestationEvent(event, startBlock)
+  )
+  provider.on(
+    EpochEndedFilter, (event) => updateDBFromEpochEndedEvent(event, startBlock)
+  )
+  provider.on(
+    userSignUpFilter, (event) => updateDBFromUserSignUpEvent(event, startBlock)
+  )
+  provider.on(
+    postFilter, (event) => updateDBFromPostSubmittedEvent(event, startBlock)
+  )
+  provider.on(
+    commentFilter, (event) => updateDBFromCommentSubmittedEvent(event, startBlock)
+  )
+  provider.on(
+    voteFilter, (event) => updateDBFromVoteSubmittedEvent(event, startBlock)
+  )
+  provider.on(
+    airdropFilter, (event) => updateDBFromAirdropSubmittedEvent(event, startBlock)
+  )
+})

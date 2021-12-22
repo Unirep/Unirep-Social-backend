@@ -9,7 +9,7 @@ export interface IComment extends Document {
     hashedContent: string
     epoch: number
     epochKey: string
-    epkProof: [ string ]
+    // epkProof: [ string ]
     proofIndex: number
     proveMinRep: boolean
     minRep: number
@@ -26,7 +26,7 @@ export interface IComment extends Document {
     hashedContent: {type: String},
     epoch: { type: Number, required: true },
     epochKey: { type: String, required: true },
-    epkProof: { type: [], required: true },
+    // epkProof: { type: [], required: true },
     proofIndex: { type: Number },
     proveMinRep: { type: Boolean },
     minRep: { type: Number },

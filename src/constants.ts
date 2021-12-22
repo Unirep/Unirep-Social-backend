@@ -2,10 +2,11 @@ import UnirepSocial from "../node_modules/@unirep/unirep-social/artifacts/contra
 import Unirep from "../node_modules/@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json"
 
 export const DEPLOYER_PRIV_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
-export const UNIREP = '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6';
-export const UNIREP_SOCIAL = '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318';
+export const UNIREP = '0x8021567131aCE794d2A365B72f800E8B71b2486F';
+export const UNIREP_SOCIAL = '0x4D15B2E51aa7d1b4fcBcd702d2AdBc94D85748e2';
 export const DEFAULT_ETH_PROVIDER = 'http://localhost:8545';
 export const DEFAULT_START_BLOCK = 0;
+export const UNIREP_SOCIAL_ATTESTER_ID = 1
 
 export const DEFAULT_POST_KARMA = 5
 export const DEFAULT_COMMENT_KARMA = 3
@@ -28,9 +29,10 @@ export const UNIREP_ABI = Unirep.abi
 export const UNIREP_SOCIAL_ABI = UnirepSocial.abi
 
 export enum ActionType {
-    post = 'post',
-    vote = 'vote',
-    comment = 'comment'
+    Post = "Post",
+    Comment = "Comment",
+    Vote = "Vote",
+    UST = "UST",
 }
 
 export enum QueryType {

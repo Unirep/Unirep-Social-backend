@@ -1,12 +1,13 @@
 import ErrorHandler from '../ErrorHandler';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, ActionType } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, ActionType, UNIREP_SOCIAL_ATTESTER_ID } from '../constants';
 import { IVote } from '../database/models/vote';
 import Post from '../database/models/post';
 import Comment from '../database/models/comment';
-import { GSTRootExists, nullifierExists, writeRecord } from "../database/utils"
+import { verifyReputationProof } from "../controllers/utils"
 import base64url from 'base64url';
 import { UnirepSocialContract } from '@unirep/unirep-social';
+import { writeRecord } from '../database/utils';
 
 
 class VoteController {
@@ -19,6 +20,9 @@ class VoteController {
 
       const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
       await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
+      const unirepSocialId = UNIREP_SOCIAL_ATTESTER_ID
+      const unirepContract = await unirepSocialContract.getUnirep()
+      const currentEpoch = await unirepContract.currentEpoch()
 
       const decodedProof = base64url.decode(data.proof.slice(reputationProofPrefix.length))
       const decodedPublicSignals = base64url.decode(data.publicSignals.slice(reputationPublicSignalsPrefix.length))
@@ -28,51 +32,44 @@ class VoteController {
       const epoch = publicSignals[maxReputationBudget]
       const epochKey = Number(publicSignals[maxReputationBudget + 1]).toString(16)
       const GSTRoot = publicSignals[maxReputationBudget + 2]
+      const attesterId = publicSignals[maxReputationBudget + 3]
       const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
       const minRep = publicSignals[maxReputationBudget + 5]
       const receiver = BigInt(parseInt(data.receiver, 16))
+      let error
 
       let postProofIndex: number = 0
       if (data.isPost) {
-        Post.findById(data.postId, (err, post) => {
-          console.log('find post proof index: ' + post.proofIndex);
-          postProofIndex = post.proofIndex;
-        });
+        const post = await Post.findById(data.postId)
+        console.log('find post proof index: ' + post?.proofIndex);
+        if(post !== null) postProofIndex = post.proofIndex;
       } else {
-        Comment.findById(data.postId, (err, comment) => {
-          console.log('find comment proof index: ' + comment.proofIndex);
-          postProofIndex = comment.proofIndex;
-        });
+        const comment = await Comment.findById(data.postId);
+        console.log('find comment proof index: ' + comment?.proofIndex);
+        if(comment !== null) postProofIndex = comment.proofIndex;
       }
 
-      const isProofValid = await unirepSocialContract.verifyReputation(
-        publicSignals,
-        proof,
-      )
-      if (!isProofValid) {
-          console.error('Error: invalid reputation proof')
-          return
+      if(Number(postProofIndex) === 0) {
+        error = 'Error: cannot find post proof index'
+        return {error: error, transaction: undefined, currentEpoch: epoch};
       }
 
-      // check GST root
-      const validRoot = await GSTRootExists(Number(epoch), GSTRoot)
-      if(!validRoot){
-        console.error(`Error: invalid global state tree root ${GSTRoot}`)
-        return
-      }
-
-      // check nullifiers
-      for (let nullifier of repNullifiers) {
-        const seenNullifier = await nullifierExists(nullifier)
-        if(seenNullifier) {
-          console.error(`Error: invalid reputation nullifier ${nullifier}`)
-          return
-        }
+      error = await verifyReputationProof(publicSignals, proof, data.upvote + data.downvote, Number(unirepSocialId), currentEpoch)
+      if (error !== undefined) {
+        return {error: error, transaction: undefined, postId: undefined, currentEpoch: epoch};
       }
 
       console.log(`Attesting to epoch key ${data.receiver} with pos rep ${data.upvote}, neg rep ${data.downvote}`)
       
-      const tx = await unirepSocialContract.vote(publicSignals, proof, receiver, postProofIndex, data.upvote, data.downvote);
+      console.log('post proof index', postProofIndex)
+      let tx
+      try {
+        tx = await unirepSocialContract.vote(publicSignals, proof, receiver, postProofIndex, data.upvote, data.downvote);
+      } catch(e) {
+        return {error: e, transaction: tx?.hash, postId: undefined, currentEpoch: epoch};
+      }
+      
+      await tx.wait()
 
       // save to db data
       const voteProofIndex = (await unirepSocialContract.getReputationProofIndex(publicSignals, proof)).toNumber()
@@ -88,29 +85,35 @@ class VoteController {
       };
 
       if (data.isPost) {
-        Post.findByIdAndUpdate(
-          data.postId, 
-          { "$push": { "votes": newVote }, "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
-          { "new": true, "upsert": false }, 
-          (err) => console.log('update votes of post error: ' + err));
+        try {
+          await Post.findByIdAndUpdate(data.postId, 
+            { "$push": { "votes": newVote }, "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
+            { "new": true, "upsert": false })
+        } catch(e) {
+          console.log('update votes of post error: ' + e)
+          return {error: e, transaction: tx.hash};
+        }
 
-        await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.vote, data.postId);
+        await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.Vote, tx.hash.toString(), data.postId);
       } else {
-        Comment.findByIdAndUpdate(
-          data.postId, 
-          { "$push": { "votes": newVote }, "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
-          { "new": true, "upsert": false }, 
-          (err) => {
-            console.log('update votes of comment error: ' + err);
-          }).then( async (comment) => {
-            if (comment !== undefined && comment !== null) {
-              const dataId = `${data.postId}_${comment._id.toString()}`;
-              await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.vote, dataId);
-            }
-          });
+        try {
+          const comment = await Comment.findByIdAndUpdate(
+            data.postId, 
+            { "$push": { "votes": newVote }, "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
+            { "new": true, "upsert": false }
+          )
+          if (comment !== undefined && comment !== null) {
+            const dataId = `${data.postId}_${comment._id.toString()}`;
+            await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.Vote, tx.hash.toString(), dataId);
+          }
+
+        } catch (e) {
+            console.log('update votes of comment error: ' + e);
+            return {error: e, transaction: tx.hash};
+        }
       }
-    
-      return {transaction: tx.hash};
+      
+      return {error: error, transaction: tx.hash};
     }
   }
 
