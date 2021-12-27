@@ -103,7 +103,7 @@ class VoteController {
             { "new": true, "upsert": false }
           )
           if (comment !== undefined && comment !== null) {
-            const dataId = `${data.postId}_${comment._id.toString()}`;
+            const dataId = `${comment.postId}_${comment._id.toString()}`;
             await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.Vote, tx.hash.toString(), dataId);
           }
 
