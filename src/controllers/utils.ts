@@ -1,7 +1,7 @@
 import { CircuitName, verifyProof } from '@unirep/circuits';
 import { formatProofForSnarkjsVerification } from '@unirep/unirep';
 import { maxReputationBudget } from '../constants';
-import records from '../database/models/epkRecord';
+import Record from '../database/models/record';
 import { epochTreeRootExists, GSTRootExists, nullifierExists } from '../database/utils';
 
 const verifyReputationProof = async(publicSignals: string, proof: string, spendReputation: number, unirepSocialId: number, currentEpoch: number): Promise<string | undefined> => {
@@ -83,7 +83,7 @@ const verifyAirdropProof = async(publicSignals: string, proof: string, unirepSoc
     }
 
     // Has been airdropped before
-    const findRecord = await records.find({to: epk, from: "UnirepSocial"})
+    const findRecord = await Record.findOne({to: epk, from: "UnirepSocial"})
     if(findRecord){
         error = `Error: the epoch key has been airdropped`
     }
