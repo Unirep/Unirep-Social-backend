@@ -27,7 +27,7 @@ class PostController {
     }
 
     commentIdToObject = (commentIds: string[]) => {
-      const comments = Comment.find({'_id': {$in: commentIds}});
+      const comments = Comment.find({transactionHash: {$in: commentIds}});
       return comments;
     }
 
@@ -95,10 +95,10 @@ class PostController {
     }
 
     getPostWithId = async (postId: string) => {
-      const post = Post.findById(postId).then(async (p) => {
+      const post = Post.findOne({ transactionHash: postId }).then(async (p) => {
         if (p !== null) {
           if (p.comments.length > 0) {
-            const comments = await Comment.find({'_id': {$in: p.comments}});
+            const comments = await Comment.find({ transactionHash: {$in: p.comments} });
             return {...(p.toObject()), comments};
           } else {
             return p.toObject();
@@ -201,36 +201,37 @@ class PostController {
       if (error !== undefined) {
         return {error: error, transaction: undefined, postId: undefined, currentEpoch: epoch};
       }
-      
-      const newPost: IPost = new Post({
-        content: data.content,
-        epochKey: epochKey,
-        epoch: epoch,
-        // epkProof: proof.map((n)=>add0x(BigInt(n).toString(16))),
-        proveMinRep: minRep !== null ? true : false,
-        minRep: Number(minRep),
-        posRep: 0,
-        negRep: 0,
-        comments: [],
-        status: 0
-      });
 
-      const postId = newPost._id.toString();
+      const randomNum = (Math.floor(Math.random() * (10^16))).toString()
+
       let tx
       try {
-        tx = await unirepSocialContract.publishPost(postId, publicSignals, proof, data.content);
+        tx = await unirepSocialContract.publishPost(randomNum, publicSignals, proof, data.content);
         // await tx.wait()
         console.log('transaction hash: ' + tx.hash + ', epoch key of epoch ' + epoch + ': ' + epochKey);
+
+        const newPost: IPost = new Post({
+          content: data.content,
+          epochKey: epochKey,
+          epoch: epoch,
+          // epkProof: proof.map((n)=>add0x(BigInt(n).toString(16))),
+          proveMinRep: minRep !== null ? true : false,
+          minRep: Number(minRep),
+          posRep: 0,
+          negRep: 0,
+          comments: [],
+          status: 0,
+          transactionHash: tx.hash
+        });
 
         await newPost.save((err, post) => {
           console.log('new post error: ' + err);
           error = err;
         });
-        return {error: error, transaction: tx.hash, postId: newPost._id, currentEpoch: epoch};
+        return {error: error, transaction: tx.hash, currentEpoch: epoch};
       } catch (e) {
-        return {error: e, transaction: tx?.hash, postId: newPost._id, currentEpoch: epoch}
+        return {error: e, transaction: tx?.hash, currentEpoch: epoch}
       }
-      
     }
   }
 

@@ -40,11 +40,11 @@ class VoteController {
 
       let postProofIndex: number = 0
       if (data.isPost) {
-        const post = await Post.findById(data.postId)
+        const post = await Post.findOne({ transactionHash: data.dataId })
         console.log('find post proof index: ' + post?.proofIndex);
         if(post !== null) postProofIndex = post.proofIndex;
       } else {
-        const comment = await Comment.findById(data.postId);
+        const comment = await Comment.findOne({ transactionHash: data.dataId });
         console.log('find comment proof index: ' + comment?.proofIndex);
         if(comment !== null) postProofIndex = comment.proofIndex;
       }
@@ -86,7 +86,8 @@ class VoteController {
 
       if (data.isPost) {
         try {
-          await Post.findByIdAndUpdate(data.postId, 
+          await Post.findOneAndUpdate(
+            { transactionHash: data.dataId }, 
             { "$push": { "votes": newVote }, "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
             { "new": true, "upsert": false })
         } catch(e) {
@@ -94,16 +95,16 @@ class VoteController {
           return {error: e, transaction: tx.hash};
         }
 
-        await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.Vote, tx.hash.toString(), data.postId);
+        await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.Vote, tx.hash.toString(), data.dataId);
       } else {
         try {
-          const comment = await Comment.findByIdAndUpdate(
-            data.postId, 
+          const comment = await Comment.findOneAndUpdate(
+            { transactionHash: data.dataId }, 
             { "$push": { "votes": newVote }, "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
             { "new": true, "upsert": false }
           )
           if (comment !== undefined && comment !== null) {
-            const dataId = `${comment.postId}_${comment._id.toString()}`;
+            const dataId = `${comment.postId}_${comment.transactionHash}`;
             await writeRecord(data.receiver, epochKey, data.upvote, data.downvote, epoch, ActionType.Vote, tx.hash.toString(), dataId);
           }
 

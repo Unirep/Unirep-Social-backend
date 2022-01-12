@@ -37,45 +37,42 @@ class CommentController {
       error = await verifyReputationProof(publicSignals, proof, DEFAULT_COMMENT_KARMA, Number(unirepSocialId), currentEpoch)
       if (error !== undefined) {
         return {error: error, transaction: undefined, postId: undefined, currentEpoch: epoch};
-      }
+      } 
 
-      const newComment: IComment = new Comment({
-        postId: data.postId,
-        content: data.content, // TODO: hashedContent
-        epochKey,
-        epoch,
-        // epkProof: proof.map((n)=>add0x(BigInt(n).toString(16))),
-        proveMinRep: minRep !== 0 ? true : false,
-        minRep: Number(minRep),
-        posRep: 0,
-        negRep: 0,
-        status: 0
-      });
-
-      const commentId = newComment._id.toString();
+      const randomNum = (Math.floor(Math.random() * (10^16))).toString()
       let tx
       try {
         tx = await unirepSocialContract.leaveComment(
           publicSignals,
           proof,
           data.postId,
-          commentId,
+          randomNum,
           data.content,
         );
+
+        const newComment: IComment = new Comment({
+          postId: data.postId,
+          content: data.content, // TODO: hashedContent
+          epochKey,
+          epoch,
+          // epkProof: proof.map((n)=>add0x(BigInt(n).toString(16))),
+          proveMinRep: minRep !== 0 ? true : false,
+          minRep: Number(minRep),
+          posRep: 0,
+          negRep: 0,
+          status: 0,
+          transactionHash: tx.hash
+        });
+  
+        await newComment.save((err, comment) => {
+          console.log('new comment error: ' + err);
+          error = err
+        });
+
+        return {error: error, transaction: tx.hash, currentEpoch: epoch}
       } catch(e) {
         return {error: e}
       }
-      
-      // await tx.wait()
-      // const proofIndex = await unirepSocialContract.getReputationProofIndex(publicSignals, proof)
-      // console.log('transaction: ' + tx.hash + ', proof index: ' + proofIndex);
-
-      await newComment.save((err, comment) => {
-        console.log('new comment error: ' + err);
-        error = err
-      });
-
-      return {error: error, transaction: tx.hash, commentId: commentId, currentEpoch: epoch}
     }
   }
 

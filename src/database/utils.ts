@@ -345,8 +345,8 @@ const updateDBFromPostSubmittedEvent = async (
     // The event has been processed
     if(event.blockNumber <= startBlock) return
 
-    const postId = new mongoose.Types.ObjectId(event.topics[2].slice(-24))
-    const findPost = await Post.findById(postId)
+    const postId = event.transactionHash
+    const findPost = await Post.findOne({ transactionHash: postId })
     const ethProvider = DEFAULT_ETH_PROVIDER
     const provider = new ethers.providers.JsonRpcProvider(ethProvider)
     const unirepContract = getUnirepContract(UNIREP, provider)
@@ -377,7 +377,6 @@ const updateDBFromPostSubmittedEvent = async (
         console.log(`Database: updated ${postId} post`)
     } else {
         const newpost: IPost = new Post({
-            _id: postId,
             transactionHash: _transactionHash,
             content: decodedData?._hahsedContent,
             epochKey: _epochKey,
@@ -395,9 +394,9 @@ const updateDBFromPostSubmittedEvent = async (
         console.log(`Database: updated ${postId} post`)
     }
 
-    const record = await Record.findOne({transactionHash: _transactionHash})
+    const record = await Record.findOne({ transactionHash: _transactionHash })
     if(record === null) {
-        await writeRecord(_epochKey, _epochKey, 0, DEFAULT_POST_KARMA, _epoch, ActionType.Post, _transactionHash, postId._id.toString());
+        await writeRecord(_epochKey, _epochKey, 0, DEFAULT_POST_KARMA, _epoch, ActionType.Post, _transactionHash, _transactionHash);
     }
 }
 
@@ -417,12 +416,12 @@ const updateDBFromCommentSubmittedEvent = async (
     const iface = new ethers.utils.Interface(UNIREP_SOCIAL_ABI)
     const decodedData = iface.decodeEventLog("CommentSubmitted",event.data)
     const _transactionHash = event.transactionHash
-    const commentId = new mongoose.Types.ObjectId(decodedData?._commentId._hex.slice(-24))
-    const postId = new mongoose.Types.ObjectId(event.topics[2].slice(-24))
+    const commentId = event.transactionHash
+    const postId = event.topics[2]
     const _epoch = Number(event.topics[1])
     const _epochKey = BigInt(event.topics[3]).toString(16)
     const _minRep = Number(decodedData?.proofRelated.minRep._hex)
-    const findComment = await Comment.findById(commentId)
+    const findComment = await Comment.findOne({ transactionHash: commentId })
     const ethProvider = DEFAULT_ETH_PROVIDER
     const provider = new ethers.providers.JsonRpcProvider(ethProvider)
     const unirepContract = getUnirepContract(UNIREP, provider)
@@ -445,9 +444,8 @@ const updateDBFromCommentSubmittedEvent = async (
         await findComment?.save()
     } else {
         const newComment: IComment = new Comment({
-            _id: commentId,
             transactionHash: _transactionHash,
-            postId: postId._id.toString(),
+            postId,
             content: decodedData?._hahsedContent, // TODO: hashedContent
             epochKey: _epochKey,
             proofIndex: Number(proofIndex),
@@ -463,21 +461,21 @@ const updateDBFromCommentSubmittedEvent = async (
         await newComment.save()
     }
 
-    const findPost = await Post.findById(postId)
+    const findPost = await Post.findOne({ transactionHash: postId })
     if(findPost === undefined) {
         console.log('cannot find post ID', postId)
         return
     }
-    const commentExists = await Post.findOne({"comments": commentId._id.toString()})
+    const commentExists = await Post.findOne({ comments: {$in: [commentId]} })
     if(commentExists === null) {
-        findPost?.comments.push(commentId._id.toString())
+        findPost?.comments.push(commentId)
         findPost?.set({ "new": true, "upsert": true })
         await findPost?.save((err) => console.log('update comments of post error: ' + err))
     }
 
-    const record = await Record.findOne({transactionHash: _transactionHash})
+    const record = await Record.findOne({ transactionHash: _transactionHash })
     if(record === null) {
-        await writeRecord(_epochKey, _epochKey, 0, DEFAULT_COMMENT_KARMA, _epoch, ActionType.Comment, _transactionHash, postId._id.toString() + '_' + commentId._id.toString());
+        await writeRecord(_epochKey, _epochKey, 0, DEFAULT_COMMENT_KARMA, _epoch, ActionType.Comment, _transactionHash, postId + '_' + _transactionHash);
     }
 }
 
