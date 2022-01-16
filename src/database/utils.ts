@@ -394,10 +394,7 @@ const updateDBFromPostSubmittedEvent = async (
         console.log(`Database: updated ${postId} post`)
     }
 
-    const record = await Record.findOne({ transactionHash: _transactionHash })
-    if(record === null) {
-        await writeRecord(_epochKey, _epochKey, 0, DEFAULT_POST_KARMA, _epoch, ActionType.Post, _transactionHash, _transactionHash);
-    }
+    await writeRecord(_epochKey, _epochKey, 0, DEFAULT_POST_KARMA, _epoch, ActionType.Post, _transactionHash, _transactionHash);
 }
 
 /*
@@ -473,10 +470,7 @@ const updateDBFromCommentSubmittedEvent = async (
         await findPost?.save((err) => console.log('update comments of post error: ' + err))
     }
 
-    const record = await Record.findOne({ transactionHash: _transactionHash })
-    if(record === null) {
-        await writeRecord(_epochKey, _epochKey, 0, DEFAULT_COMMENT_KARMA, _epoch, ActionType.Comment, _transactionHash, postId + '_' + _transactionHash);
-    }
+    await writeRecord(_epochKey, _epochKey, 0, DEFAULT_COMMENT_KARMA, _epoch, ActionType.Comment, _transactionHash, postId + '_' + _transactionHash);
 }
 
 /*
@@ -516,9 +510,7 @@ const updateDBFromVoteSubmittedEvent = async (
     const success = await checkAndSaveNullifiers(Number(_epoch), repNullifiers, event.transactionHash)
     if (!success) return
 
-    const findVote = await Record.findOne({transactionHash: _transactionHash})
-    if(findVote === null)
-        await writeRecord(_toEpochKey, _fromEpochKey, _posRep, _negRep, _epoch, ActionType.Vote, _transactionHash, '');
+    await writeRecord(_toEpochKey, _fromEpochKey, _posRep, _negRep, _epoch, ActionType.Vote, _transactionHash, '');
 }
 
 /*
@@ -749,6 +741,10 @@ const updateDBFromEpochEndedEvent = async (
 }
 
 const writeRecord = async (to: string, from: string, posRep: number, negRep: number, epoch: number, action: string, txHash: string, data: string) => {
+    // If the record is saved before, then ignore the transaction hash
+    const record = await Record.findOne({ transactionHash: txHash })
+    if(record !== null) return
+
     const newRecord: IRecord = new Record({
         to,
         from,
