@@ -3,7 +3,6 @@ import { Schema, Document } from 'mongoose';
 
 export interface IVote {
   transactionHash: string
-  proofIndex: number
   epoch: number
   voter: string
   posRep: number

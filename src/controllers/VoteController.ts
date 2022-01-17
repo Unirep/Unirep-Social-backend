@@ -28,13 +28,8 @@ class VoteController {
       const decodedPublicSignals = base64url.decode(data.publicSignals.slice(reputationPublicSignalsPrefix.length))
       const publicSignals = JSON.parse(decodedPublicSignals)
       const proof = JSON.parse(decodedProof)
-      const repNullifiers = publicSignals.slice(0, maxReputationBudget)
       const epoch = publicSignals[maxReputationBudget]
       const epochKey = Number(publicSignals[maxReputationBudget + 1]).toString(16)
-      const GSTRoot = publicSignals[maxReputationBudget + 2]
-      const attesterId = publicSignals[maxReputationBudget + 3]
-      const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
-      const minRep = publicSignals[maxReputationBudget + 5]
       const receiver = BigInt(parseInt(data.receiver, 16))
       let error
 
@@ -69,13 +64,9 @@ class VoteController {
         return {error: e, transaction: tx?.hash, postId: undefined, currentEpoch: epoch};
       }
       
-      await tx.wait()
-
       // save to db data
-      const voteProofIndex = (await unirepSocialContract.getReputationProofIndex(publicSignals, proof)).toNumber()
       const newVote: IVote = {
         transactionHash: tx.hash.toString(),
-        proofIndex: voteProofIndex,
         epoch,
         voter: epochKey,
         posRep: data.upvote,
