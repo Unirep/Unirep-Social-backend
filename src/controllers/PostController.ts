@@ -62,8 +62,9 @@ class PostController {
     getPostWithQuery = async (query: string, lastRead: string) => {
       // get posts and sort
       const allPosts = await this.listAllPosts();
+      allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
       if (query === QueryType.New) {
-        allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
+        // allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
       } else if (query === QueryType.Boost) {
         allPosts.sort((a, b) => a.upvote > b.upvote? -1 : 1);
       } else if (query === QueryType.Comments) {
@@ -71,7 +72,7 @@ class PostController {
       } else if (query === QueryType.Squash) {
         allPosts.sort((a, b) => a.downvote > b.downvote? -1 : 1); 
       } else if (query === QueryType.Rep) {
-        allPosts.sort((a, b) => (a.upvote - a.downvote) > (b.upvote - b.downvote)? -1 : 1); 
+        allPosts.sort((a, b) => (a.upvote - a.downvote) >= (b.upvote - b.downvote)? -1 : 1); 
       }
 
       // filter out posts more than loadPostCount
