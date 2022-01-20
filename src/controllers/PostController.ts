@@ -31,58 +31,6 @@ class PostController {
       return comments;
     }
 
-    sortPosts = (posts: IPost[], sort: string, subtype: string, lastRead: string) => { // must be popularity related
-      if (subtype === QueryType.reputation) {
-        console.log('query by reputation');
-        if (sort === QueryType.most) {
-          posts.sort((a, b) => a.minRep > b.minRep? -1 : 1);
-        } else {
-          posts.sort((a, b) => a.minRep > b.minRep? 1 : -1);
-        }
-      } else if (subtype === QueryType.votes) {
-        console.log('query by votes');
-        if (sort === QueryType.most) {
-          posts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? -1 : 1);
-        } else {
-          posts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? 1 : -1);
-        }
-      } else if (subtype === QueryType.upvotes) {
-        console.log('query by upvotes');
-        if (sort === QueryType.most) {
-          posts.sort((a, b) => a.posRep > b.posRep? -1 : 1);
-        } else {
-          posts.sort((a, b) => a.posRep > b.posRep? 1 : -1);
-        }
-      } else if (subtype === QueryType.comments) {
-        console.log('query by comments');
-        if (sort === QueryType.most) {
-          posts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1);
-        } else {
-          posts.sort((a, b) => a.comments.length > b.comments.length? 1 : -1);
-        }
-      } 
-      
-      let lastReadIndex: number = 0;
-      let hasLastRead: boolean = false;
-      for (var i = 0; i < posts.length; i ++) {
-        if (posts[i]._id.toString() !== lastRead) {
-          lastReadIndex = lastReadIndex + 1;
-        } else {
-          hasLastRead = true;
-          break;
-        }
-      }
-
-      let retPosts: IPost[] = [];
-      const startIndex = hasLastRead? lastReadIndex + 1 : 0;
-      for (var i = startIndex; i < posts.length; i ++) {
-        retPosts = [...retPosts, posts[i]];
-      }      
-
-      const ret = {posts: retPosts, hasLastRead};
-      return ret;
-    }
-
     listAllPosts = () => {
       const allPosts = Post.find({}).then(async(posts) => {
         let ret: any[] = [];
@@ -111,67 +59,38 @@ class PostController {
       return post;
     }
 
-    getPostWithQuery = async (sort: string, maintype: string, subtype: string, start: number, end: number, lastRead: string) => {
+    getPostWithQuery = async (query: string, lastRead: string) => {
+      // get posts and sort
       const allPosts = await this.listAllPosts();
-      let tmp: any[] = [];
-      if (maintype === QueryType.popularity) {
+      if (query === QueryType.New) {
         allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
-
-        let inPosts: any[] = [];
-        let outPosts: any[] = [];
-        // 1. classify posts to [in time range] and [out of time range]
-        allPosts.forEach((post) => {
-          const postTime = Date.parse(post.created_at);
-          if (postTime >= start && postTime <= end) {
-            inPosts = [...inPosts, post];
-          } else {
-            outPosts = [...outPosts, post];
-          }
-        });
-        // 2. sort each of the groups by subtype & sort
-        const retOfSortInPosts = this.sortPosts(inPosts, sort, subtype, lastRead);
-        
-        tmp = [...retOfSortInPosts.posts];
-        if (retOfSortInPosts.posts.length < loadPostCount) { // has chance to sort less posts
-          const retOfSortOutPosts = this.sortPosts(outPosts, sort, subtype, lastRead);
-          tmp = [...tmp, ...retOfSortOutPosts.posts];
-        }
-      } else if (maintype === QueryType.time) {
-        // subtype is posts --> sort posts by time
-        if (subtype === QueryType.posts) {
-          if (sort === QueryType.newest) {
-            console.log('query by newest posts');
-            allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
-          } else if (sort === QueryType.oldest) {
-            console.log('query by oldest posts');
-            allPosts.sort((a, b) => a.created_at > b.created_at? 1 : -1);          }
-        } else if (subtype === QueryType.comments) {
-          if (sort === QueryType.newest) {
-            console.log('query by newest comments');
-            allPosts.sort((a, b) => a.updated_at > b.updated_at? -1 : 1);
-          } else if (sort === QueryType.oldest) {
-            console.log('query by oldest comments');
-            allPosts.sort((a, b) => a.updated_at > b.updated_at? 1 : -1);
-          }
-        }
-        tmp = [...allPosts];
-        // subtype is comments --> sort comments by time, and get posts of each comment, filter out repeated posts --> not yet implemented
+      } else if (query === QueryType.Boost) {
+        allPosts.sort((a, b) => a.upvote > b.upvote? -1 : 1);
+      } else if (query === QueryType.Comments) {
+        allPosts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1); 
+      } else if (query === QueryType.Squash) {
+        allPosts.sort((a, b) => a.downvote > b.downvote? -1 : 1); 
+      } else if (query === QueryType.Rep) {
+        allPosts.sort((a, b) => (a.upvote - a.downvote) > (b.upvote - b.downvote)? -1 : 1); 
       }
 
       // filter out posts more than loadPostCount
-      let ret: any[] = [];
-      const retLength = tmp.length > loadPostCount? loadPostCount : tmp.length;
-      for (var i = 0; i < retLength; i ++) {
-        if (tmp[i].comments.length > 0) {
-          const comments = await this.commentIdToObject(tmp[i].comments);
-          const singleComment = this.filterOneComment(comments);
-          const p = {...tmp[i], comments: [singleComment]};
-          ret = [...ret, p];
+      if (lastRead === '0') {
+        return allPosts.slice(0, Math.min(loadPostCount, allPosts.length));
+      } else {
+        console.log('last read is : ' + lastRead);
+        let index : number = -1;
+        allPosts.forEach((p, i) => {
+          if (p.transactionHash === lastRead) {
+            index = i;
+          }
+        });
+        if (index > -1) {
+          return allPosts.slice(index+1, Math.min(allPosts.length, loadPostCount));
         } else {
-          ret = [...ret, tmp[i]];
+          return allPosts.slice(0, loadPostCount);
         }
       }
-      return ret;
     }
 
     publishPost = async (data: any) => { // should have content, epk, proof, minRep, nullifiers, publicSignals  

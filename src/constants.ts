@@ -36,17 +36,11 @@ export enum ActionType {
 }
 
 export enum QueryType {
-    most = 'most',
-    fewest = 'fewest',
-    newest = 'newest', 
-    oldest ='oldest',
-    popularity = 'popularity',
-    time = 'time',
-    reputation = 'reputation',
-    votes = 'votes',
-    upvotes = 'upvotes',
-    comments = 'comments',
-    posts = 'posts'
+    New = 'new',
+    Boost = 'boost',
+    Comments = 'comments',
+    Squash = 'squash',
+    Rep = 'rep',
 }
 
 export const add0x = (str: string): string => {
