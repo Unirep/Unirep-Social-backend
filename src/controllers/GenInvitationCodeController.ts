@@ -18,6 +18,6 @@ class GenInvitationCodeController {
 
         return randomOutput;
     }
-  }
+}
 
-  export = new GenInvitationCodeController();
+ export = new GenInvitationCodeController();

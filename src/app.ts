@@ -9,7 +9,7 @@ import MasterRouter from './routers/MasterRouter';
 
 import EpochController from './controllers/EpochController';
 import { DEFAULT_ETH_PROVIDER, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI } from './constants';
-import { initDB, updateDBFromAirdropSubmittedEvent, updateDBFromAttestationEvent, updateDBFromCommentSubmittedEvent, updateDBFromEpochEndedEvent, updateDBFromNewGSTLeafInsertedEvent, updateDBFromPostSubmittedEvent, updateDBFromUserSignUpEvent, updateDBFromVoteSubmittedEvent } from './database/utils';
+import { initDB, updateDBFromAirdropSubmittedEvent, updateDBFromAttestationEvent, updateDBFromCommentSubmittedEvent, updateDBFromEpochEndedEvent, updateDBFromPostSubmittedEvent, updateDBFromUnirepUserSignUpEvent, updateDBFromUserSignUpEvent, updateDBFromUSTEvent, updateDBFromVoteSubmittedEvent } from './database/utils';
 
 // load the environment variables from the .env file
 dotenv.config({
@@ -90,9 +90,11 @@ const unirepContract = new ethers.Contract(
     UNIREP_ABI,
     provider,
   )
-const NewGSTLeafInsertedFilter = unirepContract.filters.NewGSTLeafInserted()
+const UserSignedUpFilter = unirepContract.filters.UserSignedUp()
+const UserStateTransitionedFilter = unirepContract.filters.UserStateTransitioned()
 const AttestationSubmittedFilter = unirepContract.filters.AttestationSubmitted()
 const EpochEndedFilter = unirepContract.filters.EpochEnded()
+
 const userSignUpFilter = unirepSocialContract.filters.UserSignedUp()
 const postFilter = unirepSocialContract.filters.PostSubmitted()
 const commentFilter = unirepSocialContract.filters.CommentSubmitted()
@@ -104,7 +106,10 @@ initDB(unirepContract, unirepSocialContract).then((res) => {
   startBlock = res 
   console.log('start block', startBlock)
   provider.on(
-    NewGSTLeafInsertedFilter, (event) => updateDBFromNewGSTLeafInsertedEvent(event, startBlock)
+    UserSignedUpFilter, (event) => updateDBFromUnirepUserSignUpEvent(event, startBlock)
+  )
+  provider.on(
+    UserStateTransitionedFilter, (event) => updateDBFromUSTEvent(event, startBlock)
   )
   provider.on(
     AttestationSubmittedFilter, (event) => updateDBFromAttestationEvent(event, startBlock)

@@ -1,41 +1,55 @@
-import { CircuitName, verifyProof } from '@unirep/circuits';
-import { formatProofForSnarkjsVerification } from '@unirep/unirep';
-import { maxReputationBudget } from '../constants';
+import base64url from 'base64url';
+import { Circuit, verifyProof } from '@unirep/circuits';
+import { ReputationProof, SignUpProof, UserTransitionProof } from '@unirep/contracts';
 import Record from '../database/models/record';
 import { epochTreeRootExists, GSTRootExists, nullifierExists } from '../database/utils';
+import { reputationProofPrefix, reputationPublicSignalsPrefix } from '../constants';
 
-const verifyReputationProof = async(publicSignals: string, proof: string, spendReputation: number, unirepSocialId: number, currentEpoch: number): Promise<string | undefined> => {
+const decodeReputationProof = (proof: string, publicSignals: string) => {
+    const decodedProof = base64url.decode(proof.slice(reputationProofPrefix.length))
+    const decodedPublicSignals = base64url.decode(publicSignals.slice(reputationPublicSignalsPrefix.length))
+    const publicSignals_ = JSON.parse(decodedPublicSignals)
+    const proof_ = JSON.parse(decodedProof)
+    return { publicSignals: publicSignals_, proof: proof_ }
+}
+
+const verifyReputationProof = async(
+    reputationProof: ReputationProof, 
+    spendReputation: number, 
+    unirepSocialId: number, 
+    currentEpoch: number
+): Promise<string | undefined> => {
     let error
-    const repNullifiers = publicSignals.slice(0, maxReputationBudget)
-    const epoch = publicSignals[maxReputationBudget]
-    const GSTRoot = publicSignals[maxReputationBudget + 2]
-    const attesterId = publicSignals[maxReputationBudget + 3]
-    const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
+    const repNullifiers = reputationProof.repNullifiers.map(n => n.toString())
+    const epoch = Number(reputationProof.epoch)
+    const GSTRoot = reputationProof.globalStateTree.toString()
+    const attesterId = Number(reputationProof.attesterId)
+    const repNullifiersAmount = Number(reputationProof.proveReputationAmount)
 
     // check if epoch is correct
-    if(Number(epoch) != Number(currentEpoch)) {
+    if(epoch !== Number(currentEpoch)) {
         error = 'Error: epoch of the proof mismatches current epoch'
     }
 
     // check attester ID
-    if(Number(unirepSocialId) !== Number(attesterId)) {
+    if(Number(unirepSocialId) !== attesterId) {
         error = 'Error: proof with wrong attester ID'
       }
 
     // check reputation amount
-    if(Number(repNullifiersAmount) !== spendReputation) {
+    if(repNullifiersAmount !== spendReputation) {
         error = 'Error: proof with wrong reputation amount'
     }
 
-    const isProofValid = await verifyProof(CircuitName.proveReputation, formatProofForSnarkjsVerification(proof), publicSignals)
+    const isProofValid = await reputationProof.verify()
     if (!isProofValid) {
         error = 'Error: invalid reputation proof'
     }
 
     // check GST root
-    const validRoot = await GSTRootExists(Number(epoch), GSTRoot)
+    const validRoot = await GSTRootExists(epoch, GSTRoot)
     if(!validRoot){
-        error = `Error: global state tree root ${GSTRoot} is not in epoch ${Number(epoch)}`
+        error = `Error: global state tree root ${GSTRoot} is not in epoch ${epoch}`
     }
 
     // check nullifiers
@@ -48,16 +62,16 @@ const verifyReputationProof = async(publicSignals: string, proof: string, spendR
     return error
 }
 
-const verifyAirdropProof = async(publicSignals: string, proof: string, unirepSocialId: number, currentEpoch: number): Promise<string | undefined> => {
+const verifyAirdropProof = async(signUpProof: SignUpProof, unirepSocialId: number, currentEpoch: number): Promise<string | undefined> => {
     let error
-    const epoch = publicSignals[0]
-    const epk = BigInt(publicSignals[1]).toString(16)
-    const GSTRoot = publicSignals[2]
-    const attesterId = publicSignals[3]
-    const userHasSignedUp = publicSignals[4]
+    const epoch = Number(signUpProof.epoch)
+    const epk = signUpProof.epochKey.toString(16)
+    const GSTRoot = signUpProof.globalStateTree.toString()
+    const attesterId = signUpProof.attesterId
+    const userHasSignedUp = signUpProof.userHasSignedUp
 
     // check if epoch is correct
-    if(Number(epoch) != Number(currentEpoch)) {
+    if(epoch !== Number(currentEpoch)) {
         error = 'Error: epoch of the proof mismatches current epoch'
     }
 
@@ -71,15 +85,15 @@ const verifyAirdropProof = async(publicSignals: string, proof: string, unirepSoc
         error = 'Error: user has not signed up in Unirep Social'
     }
 
-    const isProofValid = await verifyProof(CircuitName.proveUserSignUp, formatProofForSnarkjsVerification(proof), publicSignals)
+    const isProofValid = await signUpProof.verify()
     if (!isProofValid) {
         error = 'Error: invalid user sign up proof'
     }
 
     // check GST root
-    const validRoot = await GSTRootExists(Number(epoch), GSTRoot)
+    const validRoot = await GSTRootExists(epoch, GSTRoot)
     if(!validRoot){
-        error = `Error: global state tree root ${GSTRoot} is not in epoch ${Number(epoch)}`
+        error = `Error: global state tree root ${GSTRoot} is not in epoch ${epoch}`
     }
 
     // Has been airdropped before
@@ -94,21 +108,33 @@ const verifyAirdropProof = async(publicSignals: string, proof: string, unirepSoc
 const verifyUSTProof = async(results): Promise<string | undefined> => {
     let error
     // Start user state transition proof
-    let isValid = await verifyProof(CircuitName.startTransition, results.startTransitionProof.proof, results.startTransitionProof.publicSignals)
+    let isValid = await verifyProof(
+        Circuit.startTransition, 
+        results.startTransitionProof.proof, 
+        results.startTransitionProof.publicSignals
+    )
     if (!isValid) {
         error = 'Error: start state transition proof generated is not valid!'
     }
 
     // Process attestations proofs
     for (let i = 0; i < results.processAttestationProofs.length; i++) {
-        const isValid = await verifyProof(CircuitName.processAttestations, results.processAttestationProofs[i].proof, results.processAttestationProofs[i].publicSignals)
+        const isValid = await verifyProof(
+            Circuit.processAttestations, 
+            results.processAttestationProofs[i].proof, 
+            results.processAttestationProofs[i].publicSignals
+        )
         if (!isValid) {
             error = 'Error: process attestations proof generated is not valid!'
         }
     }
 
     // User state transition proof
-    isValid = await verifyProof(CircuitName.userStateTransition, results.finalTransitionProof.proof, results.finalTransitionProof.publicSignals)
+    const USTProof = new UserTransitionProof(
+        results.finalTransitionProof.publicSignals,
+        results.finalTransitionProof.proof
+    )
+    isValid = await USTProof.verify()
     if (!isValid) {
         error = 'Error: user state transition proof generated is not valid!'
     }
@@ -120,10 +146,10 @@ const verifyUSTProof = async(results): Promise<string | undefined> => {
     const isGSTExisted = await GSTRootExists(epoch, GSTRoot)
     const isEpochTreeExisted = await epochTreeRootExists(epoch, epochTreeRoot)
     if(!isGSTExisted) {
-        error = 'Global state tree root mismatches'
+        error = `Global state tree root ${GSTRoot} is not in epoch ${epoch}`
     }
     if(!isEpochTreeExisted){
-        error = 'Epoch tree root mismatches'
+        error = `Epoch tree root ${epochTreeRoot} is not in epoch ${epoch}`
     }
 
     // check nullifiers
@@ -137,6 +163,7 @@ const verifyUSTProof = async(results): Promise<string | undefined> => {
 }
 
 export {
+    decodeReputationProof,
     GSTRootExists,
     epochTreeRootExists,
     nullifierExists,

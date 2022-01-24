@@ -8,38 +8,38 @@ import { IGSTLeaf } from '../database/models/GSTLeaf';
 
 class USTController {
     defaultMethod() {
-      throw new ErrorHandler(501, 'API: Not implemented method');
+        throw new ErrorHandler(501, 'API: Not implemented method');
     }
 
     userStateTransition = async (data: any) => {
-      const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
-      await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
-      const currentEpoch = await unirepSocialContract.currentEpoch()
-      const results = data.results;
+        const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
+        await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
+        const currentEpoch = await unirepSocialContract.currentEpoch()
+        const results = data.results;
 
-      const error = await verifyUSTProof(results)
-      if(error !== undefined) return {error, transactionHash: undefined}
+        const error = await verifyUSTProof(results)
+        if(error !== undefined) return {error, transactionHash: undefined}
 
-      // submit user state transition proofs
-      let txList
-      try {
-        txList = await unirepSocialContract.userStateTransition(results)
-      } catch(e) {
-        return {error: e, transaction: txList[txList.length - 1]?.hash}
-      } 
+        // submit user state transition proofs
+        let txList
+        try {
+            txList = await unirepSocialContract.userStateTransition(results)
+        } catch(e) {
+            return {error: e, transaction: txList[txList.length - 1]?.hash}
+        } 
 
-      if(txList[0] != undefined){
-          console.log('Transaction hash:', txList[txList.length - 1]?.hash)
-          // save GST leaf before gen airdrop proof
-          const newLeaf: IGSTLeaf = {
-            transactionHash: txList[txList.length - 1]?.hash,
-            hashedLeaf: results.finalTransitionProof.newGlobalStateTreeLeaf
-          }
-          await updateGSTLeaf(newLeaf, Number(currentEpoch))
-      }
+        if(txList[0] != undefined){
+            console.log('Transaction hash:', txList[txList.length - 1]?.hash)
+            // save GST leaf before gen airdrop proof
+            const newLeaf: IGSTLeaf = {
+                transactionHash: txList[txList.length - 1]?.hash,
+                hashedLeaf: results.finalTransitionProof.newGlobalStateTreeLeaf
+            }
+            await updateGSTLeaf(newLeaf, Number(currentEpoch))
+        }
 
-      return {transaction: txList[txList.length - 1]?.hash}
+        return {transaction: txList[txList.length - 1]?.hash}
     }
-  }
+}
 
-  export = new USTController();
+export = new USTController();

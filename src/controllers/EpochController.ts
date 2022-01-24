@@ -1,6 +1,6 @@
 import ErrorHandler from '../ErrorHandler';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER } from '../constants';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
 class EpochController {
@@ -24,6 +24,6 @@ class EpochController {
 
         return
     }
-  }
+}
 
-  export = new EpochController();
+export = new EpochController();
