@@ -19,7 +19,7 @@ class PostRouter {
    */
   private _configure() {
     this._router.get('/', async (req: Request, res: Response, next: NextFunction) => {
-        if (req.query.query === undefined && req.query.epks === undefined) {
+        if (req.query.query === undefined) {
           try {
             const result = await this._controller.listAllPosts();
             res.status(200).json(result);
@@ -28,27 +28,20 @@ class PostRouter {
             console.log(error);
             next(error);
           }
-        } else if (req.query.epks !== undefined) {
+        } else {
           try {
-            let epksSplit: string[] = req.query.epks.toString().split('_');
-            const result = await this._controller.getPostsWithEpks(epksSplit);
-            res.status(200).json(result);
-          }
-          catch (error) {
-            console.log(error);
-            next(error);
-          }
-        } else if (req.query.query !== undefined) {
-          try {
-            let query: string, lastRead: string;
+            let query: string, lastRead: string, epks: string[] = [];
             query = req.query.query.toString();
             if (req.query.lastRead === undefined) {
               lastRead = '0';
             } else {
               lastRead = req.query.lastRead.toString();
             }
+            if (req.query.epks !== undefined && req.query.epks.toString() !== '') {
+              epks = req.query.epks.toString().split('_');
+            }
             
-            const result = await this._controller.getPostWithQuery(query, lastRead);
+            const result = await this._controller.getPostWithQuery(query, lastRead, epks);
             res.status(200).json(result);
           }
           catch (error) {

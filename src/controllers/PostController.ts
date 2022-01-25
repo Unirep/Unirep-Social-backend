@@ -43,6 +43,10 @@ class PostController {
         return allPosts;
     }
 
+    getPostsWithEpks = async (epks: string[]) => {
+      return Post.find({epochKey: {$in: epks}});
+    }
+
     getPostWithId = async (postId: string) => {
         const post = Post.findOne({ transactionHash: postId }).then(async (p) => {
             if (p !== null) {
@@ -60,21 +64,28 @@ class PostController {
         return post;
     }
 
-    getPostWithQuery = async (query: string, lastRead: string) => {
+    getPostWithQuery = async (query: string, lastRead: string, epks: string[]) => {
         // get posts and sort
-        const allPosts = await this.listAllPosts();
+        let allPosts: any[] = [];
+        if (epks.length === 0) {
+          allPosts = await this.listAllPosts();
+        } else {
+          allPosts = await this.getPostsWithEpks(epks);
+        }
         allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
         if (query === QueryType.New) {
             // allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
         } else if (query === QueryType.Boost) {
-            allPosts.sort((a, b) => a.upvote > b.upvote? -1 : 1);
+          allPosts.sort((a, b) => a.posRep > b.posRep? -1 : 1);
         } else if (query === QueryType.Comments) {
-            allPosts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1); 
+          allPosts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1); 
         } else if (query === QueryType.Squash) {
-            allPosts.sort((a, b) => a.downvote > b.downvote? -1 : 1); 
+          allPosts.sort((a, b) => a.negRep > b.negRep? -1 : 1); 
         } else if (query === QueryType.Rep) {
-            allPosts.sort((a, b) => (a.upvote - a.downvote) >= (b.upvote - b.downvote)? -1 : 1); 
+          allPosts.sort((a, b) => (a.posRep - a.negRep) >= (b.posRep - b.negRep)? -1 : 1); 
         }
+
+        console.log(allPosts);
 
         // filter out posts more than loadPostCount
         if (lastRead === '0') {
@@ -93,10 +104,6 @@ class PostController {
                 return allPosts.slice(0, loadPostCount);
             }
         }
-    }
-
-    getPostsWithEpks = async (epks: string[]) => {
-      return Post.find({epochKey: {$in: epks}});
     }
 
     publishPost = async (data: any) => { // should have content, epk, proof, minRep, nullifiers, publicSignals  

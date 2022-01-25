@@ -3,13 +3,67 @@ import { formatProofForSnarkjsVerification } from '@unirep/circuits';
 import { ReputationProof } from '@unirep/contracts'
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, DEFAULT_COMMENT_KARMA, UNIREP_SOCIAL_ATTESTER_ID } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, DEFAULT_COMMENT_KARMA, UNIREP_SOCIAL_ATTESTER_ID, QueryType, loadPostCount } from '../constants';
 import Comment, { IComment } from "../database/models/comment";
 import { decodeReputationProof, verifyReputationProof } from "../controllers/utils"
 
 class CommentController {
     defaultMethod() {
       throw new ErrorHandler(501, 'API: Not implemented method');
+    }
+
+    listAllComments = () => {
+        const allComments = Comment.find({}).then(async(comments) => {
+            let ret: any[] = [];
+            for (var i = 0; i < comments.length; i ++) {
+                ret = [...ret, comments[i].toObject()];
+            }
+            return ret;
+        });
+        return allComments;
+    }
+
+    getCommentsWithEpks = async (epks: string[]) => {
+        return Comment.find({epochKey: {$in: epks}});
+    }
+
+    getCommentsWithQuery = async (query: string, lastRead: string, epks: string[]) => {
+        let allComments: any[] = [];
+        if (epks.length === 0) {
+          allComments = await this.listAllComments();
+        } else {
+          allComments = await this.getCommentsWithEpks(epks);
+        }
+        allComments.sort((a, b) => a.created_at > b.created_at? -1 : 1);
+        if (query === QueryType.New) {
+            // allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
+        } else if (query === QueryType.Boost) {
+          allComments.sort((a, b) => a.posRep > b.posRep? -1 : 1);
+        } else if (query === QueryType.Squash) {
+          allComments.sort((a, b) => a.negRep > b.negRep? -1 : 1); 
+        } else if (query === QueryType.Rep) {
+          allComments.sort((a, b) => (a.posRep - a.negRep) >= (b.posRep - b.negRep)? -1 : 1); 
+        }
+
+        console.log(allComments);
+
+        // filter out posts more than loadPostCount
+        if (lastRead === '0') {
+            return allComments.slice(0, Math.min(loadPostCount, allComments.length));
+        } else {
+            console.log('last read is : ' + lastRead);
+            let index : number = -1;
+            allComments.forEach((p, i) => {
+                if (p.transactionHash === lastRead) {
+                    index = i;
+                }
+            });
+            if (index > -1) {
+                return allComments.slice(index+1, Math.min(allComments.length, loadPostCount));
+            } else {
+                return allComments.slice(0, loadPostCount);
+            }
+        }
     }
 
     leaveComment = async (data: any) => {
