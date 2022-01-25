@@ -45,13 +45,12 @@ class CommentController {
           allComments.sort((a, b) => (a.posRep - a.negRep) >= (b.posRep - b.negRep)? -1 : 1); 
         }
 
-        console.log(allComments);
+        // console.log(allComments);
 
         // filter out posts more than loadPostCount
         if (lastRead === '0') {
             return allComments.slice(0, Math.min(loadPostCount, allComments.length));
         } else {
-            console.log('last read is : ' + lastRead);
             let index : number = -1;
             allComments.forEach((p, i) => {
                 if (p.transactionHash === lastRead) {
@@ -59,7 +58,7 @@ class CommentController {
                 }
             });
             if (index > -1) {
-                return allComments.slice(index+1, Math.min(allComments.length, loadPostCount));
+                return allComments.slice(index+1, Math.min(allComments.length, index + 1 + loadPostCount));
             } else {
                 return allComments.slice(0, loadPostCount);
             }

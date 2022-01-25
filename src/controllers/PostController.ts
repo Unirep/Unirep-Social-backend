@@ -85,7 +85,7 @@ class PostController {
           allPosts.sort((a, b) => (a.posRep - a.negRep) >= (b.posRep - b.negRep)? -1 : 1); 
         }
 
-        console.log(allPosts);
+        // console.log(allPosts);
 
         // filter out posts more than loadPostCount
         if (lastRead === '0') {

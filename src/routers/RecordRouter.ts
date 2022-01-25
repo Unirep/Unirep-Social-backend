@@ -24,7 +24,7 @@ class RecordRouter {
    */
   private _configure() {
       this._router.get('/:epks', async (req: Request, res: Response, next: NextFunction) => {
-        console.log(req.params.epks);
+        // console.log(req.params.epks);
         const epks = req.params.epks.split('_');
         if (req.query.spentonly !== undefined && req.query.spentonly.toString() === 'true') {
             EpkRecord.find({epk: {$in: epks}}, (err, records) => {

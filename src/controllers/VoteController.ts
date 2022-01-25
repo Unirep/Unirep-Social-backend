@@ -30,14 +30,15 @@ class VoteController {
         const receiver = BigInt(parseInt(data.receiver, 16))
         let error
 
+        const dataId = data.isPost? data.dataId : data.dataId.split('_')[1];
+
         let postProofIndex: number = 0
         if (data.isPost) {
-            const post = await Post.findOne({ transactionHash: data.dataId })
+            const post = await Post.findOne({ transactionHash: dataId })
             console.log('find post proof index: ' + post?.proofIndex);
             if(post !== null) postProofIndex = post.proofIndex;
         } else {
-            const tmp = data.dataId.split('_');
-            const comment = await Comment.findOne({ transactionHash: tmp[1] });
+            const comment = await Comment.findOne({ transactionHash: dataId });
             console.log('find comment proof index: ' + comment?.proofIndex);
             if(comment !== null) postProofIndex = comment.proofIndex;
         }
@@ -87,7 +88,7 @@ class VoteController {
         if (data.isPost) {
             try {
                 await Post.findOneAndUpdate(
-                    { transactionHash: data.dataId }, 
+                    { transactionHash: dataId }, 
                     { "$push": { "votes": newVote }, 
                       "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
                     { "new": true, "upsert": false }
@@ -110,13 +111,12 @@ class VoteController {
         } else {
             try {
                 const comment = await Comment.findOneAndUpdate(
-                    { transactionHash: data.dataId }, 
+                    { transactionHash: dataId }, 
                     { "$push": { "votes": newVote }, 
                     "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
                     { "new": true, "upsert": false }
                 )
                 if (comment !== undefined && comment !== null) {
-                    const dataId = `${comment.postId}_${comment.transactionHash}`;
                     await writeRecord(
                         data.receiver, 
                         epochKey, 
@@ -125,7 +125,7 @@ class VoteController {
                         currentEpoch, 
                         ActionType.Vote, 
                         tx.hash.toString(), 
-                        dataId
+                        data.dataId
                     );
                 }
             } catch (e) {
