@@ -95,6 +95,10 @@ class PostController {
         }
     }
 
+    getPostsWithEpks = async (epks: string[]) => {
+      return Post.find({epochKey: {$in: epks}});
+    }
+
     publishPost = async (data: any) => { // should have content, epk, proof, minRep, nullifiers, publicSignals  
         console.log(data);
 

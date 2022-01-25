@@ -33,8 +33,14 @@ class RecordRouter {
                 res.status(200).json(records);
             });
         } else {
+          try {
             const ret = await this._controller.getRecords(epks);
             res.status(200).json(ret);
+          } catch (error) {
+            console.log(error);
+            next(error);
+          }
+            
         }
       });
       

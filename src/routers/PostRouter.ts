@@ -19,7 +19,7 @@ class PostRouter {
    */
   private _configure() {
     this._router.get('/', async (req: Request, res: Response, next: NextFunction) => {
-        if (req.query.query === undefined) {
+        if (req.query.query === undefined && req.query.epks === undefined) {
           try {
             const result = await this._controller.listAllPosts();
             res.status(200).json(result);
@@ -28,7 +28,17 @@ class PostRouter {
             console.log(error);
             next(error);
           }
-        } else {
+        } else if (req.query.epks !== undefined) {
+          try {
+            let epksSplit: string[] = req.query.epks.toString().split('_');
+            const result = await this._controller.getPostsWithEpks(epksSplit);
+            res.status(200).json(result);
+          }
+          catch (error) {
+            console.log(error);
+            next(error);
+          }
+        } else if (req.query.query !== undefined) {
           try {
             let query: string, lastRead: string;
             query = req.query.query.toString();
