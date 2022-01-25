@@ -44,7 +44,7 @@ server.app.use((err: ErrorHandler, req: Request, res: Response, next: NextFuncti
 
 // global variables: actually should be stored in db
 global.epochPeriod = 24 * 60 * 60 * 1000;
-// global.epochPeriod = 5 * 60 * 1000;
+// global.epochPeriod = 10 * 60 * 1000;
 
 global.nextEpochTransition = Date.now() + global.epochPeriod + 10000; // delay 10 seconds
 console.log(global.nextEpochTransition);

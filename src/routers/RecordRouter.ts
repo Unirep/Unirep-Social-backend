@@ -1,10 +1,15 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import Record from '../database/models/record';
 import EpkRecord from '../database/models/epkRecord';
+import Post from '../database/models/post';
+import Comment from '../database/models/comment';
 import userSignUp from '../database/models/userSignUp';
+import { ActionType } from '../constants';
+import RecordController from '../controllers/RecordController';
 
 class RecordRouter {
   private _router = Router();
+  private _controller = RecordController;
 
   get router() {
     return this._router;
@@ -28,11 +33,8 @@ class RecordRouter {
                 res.status(200).json(records);
             });
         } else {
-            Record.find({$or: [{"to": {$in: epks}}, {"from": {$in: epks}}]}, (err, records) => {
-                console.log(records);
-                console.log('find record error: ' + err);
-                res.status(200).json(records);
-            });
+            const ret = await this._controller.getRecords(epks);
+            res.status(200).json(ret);
         }
       });
       

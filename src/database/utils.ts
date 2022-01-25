@@ -1,7 +1,7 @@
 import { Attestation, circuitEpochTreeDepth, circuitUserStateTreeDepth, circuitGlobalStateTreeDepth, computeEmptyUserStateRoot, genNewSMT, SMT_ONE_LEAF, verifyUSTEvents, verifyEpochKeyProofEvent, verifyReputationProofEvent, verifySignUpProofEvent, computeInitUserStateRoot, } from '@unirep/unirep'
 import { ethers } from 'ethers'
 import { getUnirepContract, Event } from '@unirep/contracts';
-import { hashLeftRight, IncrementalQuinTree } from '@unirep/crypto'
+import { hashLeftRight, IncrementalQuinTree, add0x } from '@unirep/crypto'
 import { DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL_ABI, ActionType, DEFAULT_AIRDROPPED_KARMA } from '../constants'
 import Attestations, { IAttestation } from './models/attestation'
 import GSTLeaves, { IGSTLeaf, IGSTLeaves } from './models/GSTLeaf'
@@ -675,7 +675,7 @@ const updateDBFromEpochEndedEvent = async (
 
     // Add to epoch key hash chain map
     for (let leaf of epochTreeLeaves) {
-        await epochTree.update(BigInt(leaf.epochKey), BigInt(leaf.hashchainResult))
+        await epochTree.update(BigInt(add0x(leaf.epochKey)), BigInt(leaf.hashchainResult))
     }
 
     const newEpochTreeLeaves = new EpochTreeLeaves({

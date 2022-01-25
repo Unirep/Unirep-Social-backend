@@ -36,7 +36,8 @@ class VoteController {
             console.log('find post proof index: ' + post?.proofIndex);
             if(post !== null) postProofIndex = post.proofIndex;
         } else {
-            const comment = await Comment.findOne({ transactionHash: data.dataId });
+            const tmp = data.dataId.split('_');
+            const comment = await Comment.findOne({ transactionHash: tmp[1] });
             console.log('find comment proof index: ' + comment?.proofIndex);
             if(comment !== null) postProofIndex = comment.proofIndex;
         }
