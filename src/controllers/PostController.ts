@@ -144,6 +144,7 @@ class PostController {
 
             const newPost: IPost = new Post({
                 content: data.content,
+                title: data.title,
                 epochKey: epochKey,
                 epoch: currentEpoch,
                 proveMinRep: minRep !== null ? true : false,

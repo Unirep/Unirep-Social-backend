@@ -4,11 +4,11 @@ import { IVote } from './vote';
 
 export interface IPost extends Document {
     transactionHash: string
+    title: string
     content: string
     hashedContent: string
     epoch: number
     epochKey: string
-    // epkProof: [ string ]
     proofIndex: number
     proveMinRep: boolean
     minRep: number
@@ -21,6 +21,7 @@ export interface IPost extends Document {
   
   const PostSchema: Schema = new Schema({
     transactionHash: { type: String },
+    title: { type: String },
     content: { type: String },
     hashedContent: {type: String },
     epoch: { type: Number, required: true },
