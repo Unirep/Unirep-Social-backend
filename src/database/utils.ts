@@ -2,7 +2,7 @@ import { Attestation, circuitEpochTreeDepth, circuitUserStateTreeDepth, circuitG
 import { ethers } from 'ethers'
 import { getUnirepContract, Event, AttestationEvent } from '@unirep/contracts';
 import { hashLeftRight, IncrementalQuinTree, add0x } from '@unirep/crypto'
-import { DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL_ABI, ActionType, DEFAULT_AIRDROPPED_KARMA } from '../constants'
+import { DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL_ABI, ActionType, DEFAULT_AIRDROPPED_KARMA, titlePrefix, titlePostfix } from '../constants'
 import Attestations, { IAttestation } from './models/attestation'
 import GSTLeaves, { IGSTLeaf, IGSTLeaves } from './models/GSTLeaf'
 import GSTRoots, { IGSTRoots } from './models/GSTRoots'
@@ -291,9 +291,27 @@ const updateDBFromPostSubmittedEvent = async (
         findPost?.set('proofIndex', Number(proofIndex), { "new": true, "upsert": false})
         await findPost?.save()
     } else {
+        let content: string = '';
+        let title: string = '';
+        if (decodedData !== null) {
+            let i: number = decodedData._postContent.indexOf(titlePrefix)
+            if (i === -1) {
+                content = decodedData._postContent;
+            } else {
+                i = i + titlePrefix.length;
+                let j: number = decodedData._postContent.indexOf(titlePostfix, i + 1)
+                if (j === -1) {
+                    content = decodedData._postContent;
+                } else {
+                    title = decodedData._postContent.substring(i, j);
+                    content = decodedData._postContent.substring(j + titlePostfix.length);
+                }
+            }
+        }
         const newpost: IPost = new Post({
             transactionHash: _transactionHash,
-            content: decodedData?._postContent,
+            title,
+            content,
             epochKey: _epochKey,
             epoch: _epoch,
             proofIndex: Number(proofIndex),

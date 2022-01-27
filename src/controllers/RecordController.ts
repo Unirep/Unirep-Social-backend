@@ -2,6 +2,7 @@ import ErrorHandler from '../ErrorHandler';
 import Record, { IRecord } from '../database/models/record';
 import Post, { IPost } from '../database/models/post';
 import Comment, { IComment } from '../database/models/comment';
+import {titlePrefix, titlePostfix} from '../constants';
 
 class RecordController {
     defaultMethod() {
@@ -20,7 +21,7 @@ class RecordController {
                         if (tmp.length === 1) {
                             const p = await Post.findOne({'transactionHash': tmp[0]});
                             if (p !== null) {
-                                ret = [...ret, {...records[i].toObject(), content: `${p.title.length > 0? '<title>' + p.title + '<title>' : ''}${p.content}`}];
+                                ret = [...ret, {...records[i].toObject(), content: `${p.title !== undefined && p.title.length > 0? titlePrefix + p.title + titlePostfix : ''}${p.content}`}];
                             }
                         } else {
                             const c = await Comment.findOne({'transactionHash': tmp[1]});
