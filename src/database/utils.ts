@@ -40,14 +40,14 @@ const nullifierExists = async (nullifier: string, txHash?: string, epoch?: numbe
     // post and attestation submitted both emit nullifiers, but we cannot make sure which one comes first
     // use txHash to differenciate if the nullifier submitted is the same
     // If the same nullifier appears in different txHash, then the nullifier is invalid
-    if (txHash != undefined) {
+    if (txHash !== undefined) {
         const sameNullifier = await Nullifier.findOne({
             $or: [
                 {epoch: epoch, transactionHash: txHash, nullifier: nullifier},
                 {transactionHash: txHash, nullifier: nullifier},
             ]
         })
-        if (sameNullifier != undefined) return false
+        if (sameNullifier !== null) return true
     }
 
     const n = await Nullifier.findOne({
@@ -56,7 +56,7 @@ const nullifierExists = async (nullifier: string, txHash?: string, epoch?: numbe
             {nullifier: nullifier},
         ]
     })
-    if (n != undefined) return true
+    if (n !== null) return true
     return false
 }
 
@@ -180,14 +180,15 @@ const updateGSTLeaf = async (
         2,
     )
 
-    if(!treeLeaves){
+    if(treeLeaves === null){
         treeLeaves = new GSTLeaves({
             epoch: _epoch,
             GSTLeaves: [_newLeaf],
         })
         globalStateTree.insert(BigInt(_newLeaf.hashedLeaf))
     } else {
-        if(JSON.stringify(treeLeaves.get('GSTLeaves')).includes(JSON.stringify(_newLeaf)) == true) return
+        const findTxHash = await GSTLeaves.findOne({transactionHash: _newLeaf.transactionHash})
+        if(findTxHash !== null) return
         treeLeaves.get('GSTLeaves').push(_newLeaf)
 
         for(let leaf of treeLeaves.get('GSTLeaves.hashedLeaf')){
@@ -198,7 +199,7 @@ const updateGSTLeaf = async (
 
     // save the root
     let treeRoots: IGSTRoots | null = await GSTRoots.findOne({epoch: _epoch})
-    if(!treeRoots){
+    if(treeRoots === null){
         treeRoots = new GSTRoots({
             epoch: _epoch,
             GSTRoots: [globalStateTree.root.toString()],
@@ -244,6 +245,7 @@ const updateDBFromUserSignUpEvent = async (
 * When a PostSubmitted event comes
 * update the database
 * @param event PostSubmitted event
+* @param startBlock The event should be processed if the block number is greater than the start block
 */
 const updateDBFromPostSubmittedEvent = async (
     event: ethers.Event,
@@ -270,7 +272,6 @@ const updateDBFromPostSubmittedEvent = async (
     const _epochKey = BigInt(event.topics[2]).toString(16)
     const _minRep = Number(decodedData?.proofRelated.minRep._hex)
 
-    // TODO: verify proof before storing
     const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
     if (isProofValid === false) return
     const repNullifiers = decodedData?.proofRelated?.repNullifiers.map(n => BigInt(n).toString())
@@ -282,7 +283,6 @@ const updateDBFromPostSubmittedEvent = async (
         findPost?.set('transactionHash', _transactionHash, { "new": true, "upsert": false})
         findPost?.set('proofIndex', Number(proofIndex), { "new": true, "upsert": false})
         await findPost?.save()
-        console.log(`Database: updated ${postId} post`)
     } else {
         const newpost: IPost = new Post({
             transactionHash: _transactionHash,
@@ -299,7 +299,6 @@ const updateDBFromPostSubmittedEvent = async (
         });
         newpost.set({ "new": true, "upsert": false})
         await newpost.save()
-        console.log(`Database: updated ${postId} post`)
     }
 
     await writeRecord(_epochKey, _epochKey, 0, DEFAULT_POST_KARMA, _epoch, ActionType.Post, _transactionHash, _transactionHash);
@@ -309,6 +308,7 @@ const updateDBFromPostSubmittedEvent = async (
 * When a CommentSubmitted event comes
 * update the database
 * @param event CommentSubmitted event
+* @param startBlock The event should be processed if the block number is greater than the start block
 */
 const updateDBFromCommentSubmittedEvent = async (
     event: ethers.Event,
@@ -335,7 +335,6 @@ const updateDBFromCommentSubmittedEvent = async (
     const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
     const proofIndex = await unirepContract.getProofIndex(proofNullifier)
 
-    // TODO: verify proof before storing
     const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
     if (isProofValid === false) return
     const repNullifiers = decodedData?.proofRelated?.repNullifiers.map(n => BigInt(n).toString())
@@ -385,6 +384,7 @@ const updateDBFromCommentSubmittedEvent = async (
 * When a VoteSubmitted event comes
 * update the database
 * @param event VoteSubmitted event
+* @param startBlock The event should be processed if the block number is greater than the start block
 */
 const updateDBFromVoteSubmittedEvent = async (
     event: ethers.Event,
@@ -411,7 +411,6 @@ const updateDBFromVoteSubmittedEvent = async (
     const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
     const proofIndex = await unirepContract.getProofIndex(proofNullifier)
 
-    // TODO: verify proof before storing
     const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
     if (isProofValid === false) return
     const repNullifiers = decodedData?.proofRelated?.repNullifiers.map(n => BigInt(n).toString())
@@ -425,6 +424,7 @@ const updateDBFromVoteSubmittedEvent = async (
 * When a AirdropSubmitted event comes
 * update the database
 * @param event AirdropSubmitted event
+* @param startBlock The event should be processed if the block number is greater than the start block
 */
 const updateDBFromAirdropSubmittedEvent = async (
     event: ethers.Event,
@@ -471,6 +471,7 @@ const updateDBFromAirdropSubmittedEvent = async (
 * When a UserSignedUp event comes
 * update the database
 * @param event UserSignedUp event
+* @param startBlock The event should be processed if the block number is greater than the start block
 */
 
 const updateDBFromUnirepUserSignUpEvent = async (
@@ -509,6 +510,7 @@ const updateDBFromUnirepUserSignUpEvent = async (
 * When a UserStateTransitioned event comes
 * update the database
 * @param event UserStateTransitioned event
+* @param startBlock The event should be processed if the block number is greater than the start block
 */
 
 const updateDBFromUSTEvent = async (
@@ -524,7 +526,7 @@ const updateDBFromUSTEvent = async (
 
     const _transactionHash = event.transactionHash
     const _epoch = Number(event?.topics[1])
-    const _hashedLeaf = event?.topics[2]
+    const _hashedLeaf = BigInt(event?.topics[2]).toString()
 
     const proofIndex = decodedData?._proofIndex
     const results = await verifyUSTProofByIndex(proofIndex)
@@ -569,6 +571,7 @@ const updateDBFromUSTEvent = async (
 * When an AttestationSubmitted event comes
 * update the database
 * @param event AttestationSubmitted event
+* @param startBlock The event should be processed if the block number is greater than the start block
 */
 const updateDBFromAttestationEvent = async (
     event: ethers.Event,
@@ -640,8 +643,7 @@ const updateDBFromAttestationEvent = async (
 * When an EpochEnded event comes
 * update the database
 * @param event EpochEnded event
-* @param address The address of the Unirep contract
-* @param provider An Ethereum provider
+* @param startBlock The event should be processed if the block number is greater than the start block
 */
 const updateDBFromEpochEndedEvent = async (
     event: ethers.Event,
@@ -653,6 +655,8 @@ const updateDBFromEpochEndedEvent = async (
 
     // update Unirep state
     const epoch = Number(event?.topics[1])
+    const findEpoch = await EpochTreeLeaves.findOne({epoch: epoch})
+    if(findEpoch !== null) return
 
     // Get epoch tree leaves of the ending epoch
     let attestations = await Attestations.find({epoch: epoch})
