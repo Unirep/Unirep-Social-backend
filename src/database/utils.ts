@@ -179,7 +179,7 @@ const updateGSTLeaf = async (
         defaultGSTLeaf,
         2,
     )
-
+    
     if(treeLeaves === null){
         treeLeaves = new GSTLeaves({
             epoch: _epoch,
@@ -187,7 +187,11 @@ const updateGSTLeaf = async (
         })
         globalStateTree.insert(BigInt(_newLeaf.hashedLeaf))
     } else {
-        const findTxHash = await GSTLeaves.findOne({transactionHash: _newLeaf.transactionHash})
+        const findTxHash = await GSTLeaves.findOne({
+            $and: [
+                {"GSTLeaves.transactionHash": _newLeaf.transactionHash},
+                {"GSTLeaves.hashedLeaf": _newLeaf.hashedLeaf},
+            ]})
         if(findTxHash !== null) return
         treeLeaves.get('GSTLeaves').push(_newLeaf)
 
