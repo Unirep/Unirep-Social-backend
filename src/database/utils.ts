@@ -1,11 +1,12 @@
 import { Attestation, circuitEpochTreeDepth, circuitUserStateTreeDepth, circuitGlobalStateTreeDepth, computeEmptyUserStateRoot, genNewSMT, SMT_ONE_LEAF, verifyUSTEvents, verifyEpochKeyProofEvent, verifyReputationProofEvent, verifySignUpProofEvent, computeInitUserStateRoot, } from '@unirep/unirep'
 import { ethers } from 'ethers'
-import { getUnirepContract, Event } from '@unirep/contracts';
+import { getUnirepContract, Event, AttestationEvent } from '@unirep/contracts';
 import { hashLeftRight, IncrementalQuinTree, add0x } from '@unirep/crypto'
 import { DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL_ABI, ActionType, DEFAULT_AIRDROPPED_KARMA } from '../constants'
 import Attestations, { IAttestation } from './models/attestation'
 import GSTLeaves, { IGSTLeaf, IGSTLeaves } from './models/GSTLeaf'
 import GSTRoots, { IGSTRoots } from './models/GSTRoots'
+import Epoch from './models/epoch'
 import EpochTreeLeaves, { IEpochTreeLeaf } from './models/epochTreeLeaf'
 import Nullifier, { INullifier } from './models/nullifiers'
 import Record, { IRecord } from './models/record';
@@ -48,30 +49,32 @@ const nullifierExists = async (nullifier: string, txHash?: string, epoch?: numbe
             ]
         })
         if (sameNullifier !== null) return true
+    } else {
+        const n = await Nullifier.findOne({
+            $or: [
+                {epoch: epoch, nullifier: nullifier},
+                {nullifier: nullifier},
+            ]
+        })
+        if (n !== null) return true
     }
-
-    const n = await Nullifier.findOne({
-        $or: [
-            {epoch: epoch, nullifier: nullifier},
-            {nullifier: nullifier},
-        ]
-    })
-    if (n !== null) return true
     return false
 }
 
 const checkAndSaveNullifiers = async (
     _epoch: number, 
-    _nullifiers: string[], 
+    _nullifiers: string[],
     _txHash: string
 ): Promise<boolean> => {
     // check nullifiers
     for (let nullifier of _nullifiers) {
+        if (BigInt(nullifier) === BigInt(0)) continue
+        // nullifier with the same transaction hash means it has been recorded before
         const seenNullifier = await nullifierExists(nullifier, _txHash)
-        if(seenNullifier) {
-            console.error(`Error: seen nullifier ${nullifier}`)
-            return false
-        }
+        if(seenNullifier) return true
+        // nullifier with different transaction hash means it is used twice
+        const doubleNullifier = await nullifierExists(nullifier)
+        if(doubleNullifier) return false
     }
     // save nullifiers
     for(let _nullifier of _nullifiers){
@@ -404,6 +407,10 @@ const updateDBFromVoteSubmittedEvent = async (
     const _epoch = Number(event.topics[1])
     const _fromEpochKey = BigInt(event.topics[2]).toString(16)
     const _toEpochKey = BigInt(event.topics[3]).toString(16)
+    const _toEpochKeyProofIndex = Number(decodedData?.toEpochKeyProofIndex._hex)
+    const results = await verifyAttestationProofsByIndex(_toEpochKeyProofIndex)
+    if (results?.isValid === false) return
+    if (Number(results?.args?.epoch) !== _epoch) return
     const _posRep = Number(decodedData?.upvoteValue._hex)
     const _negRep = Number(decodedData?.downvoteValue._hex)
     
@@ -593,11 +600,21 @@ const updateDBFromAttestationEvent = async (
     const proofIndex = decodedData?._proofIndex
 
     const { isProofValid, args } = await verifyAttestationProofsByIndex(proofIndex)
-    if (isProofValid === false) return
-    if (BigInt(_epochKey) !== BigInt(args?._proof?.epochKey)) return
-    if (decodedData?._event === "spendReputation") {
+    if (isProofValid === false) {
+        console.log(`receiver epoch key ${_epochKey} of proof index ${proofIndex} is invalid`)
+        return
+    }
+    if (Number(args?._proof?.epoch) !== Number(_epoch)) {
+        console.log(`receiver epoch key is not in the current epoch`)
+        return
+    }
+    if (BigInt(_epochKey) !== BigInt(args?._proof?.epochKey)) { 
+        console.log(`epoch key mismath in the proof index ${proofIndex}`)
+        return
+    }
+    if (decodedData?._event === AttestationEvent.SpendReputation) {
         // check nullifiers
-        const repNullifiers = args?.repNullifiers.map(n => BigInt(n).toString())
+        const repNullifiers = args?._proof?.repNullifiers.map(n => BigInt(n).toString())
         const success = await checkAndSaveNullifiers(Number(_epoch), repNullifiers, event.transactionHash)
         if (!success) return
     }
@@ -612,7 +629,6 @@ const updateDBFromAttestationEvent = async (
         graffiti: decodedData?._attestation?.graffiti?._hex,
         signUp: Boolean(Number(decodedData?._attestation?.signUp)),
     }
-
     let attestations = await Attestations.findOne({epochKey: _epochKey.toString(16)})
     const attestation = new Attestation(
         BigInt(decodedData?._attestation?.attesterId),
@@ -622,7 +638,7 @@ const updateDBFromAttestationEvent = async (
         BigInt(decodedData?._attestation?.signUp)
     )
 
-    if(!attestations){
+    if(attestations === null){
         attestations = new Attestations({
             epoch: _epoch,
             epochKey: _epochKey.toString(16),
@@ -630,7 +646,6 @@ const updateDBFromAttestationEvent = async (
             attestations: [newAttestation]
         })
     } else {
-        if(JSON.stringify(attestations.get('attestations')).includes(JSON.stringify(newAttestation)) == true) return
         const hashChainResult = attestations.get('epochKeyToHashchainMap')
         const newHashChainResult = hashLeftRight(attestation.hash(), hashChainResult)
         attestations.get('attestations').push(newAttestation)
@@ -659,8 +674,9 @@ const updateDBFromEpochEndedEvent = async (
 
     // update Unirep state
     const epoch = Number(event?.topics[1])
-    const findEpoch = await EpochTreeLeaves.findOne({epoch: epoch})
-    if(findEpoch !== null) return
+    const findEpochTree = await EpochTreeLeaves.findOne({epoch: epoch})
+    if (findEpochTree !== null) return
+    const findEpoch = await Epoch.findOneAndUpdate({}, {currentEpoch: epoch + 1})
 
     // Get epoch tree leaves of the ending epoch
     let attestations = await Attestations.find({epoch: epoch})
@@ -770,6 +786,12 @@ const initDB = async (
     epochEndedEvents.reverse()
 
     let latestBlock = 0
+
+    const findEpoch = await Epoch.findOne()
+    if (findEpoch === null) {
+        const initEpoch = new Epoch({currentEpoch: 1})
+        await initEpoch.save()
+    }
 
     for (let i = 0; i < sequencerEvents.length; i++) {
         const sequencerEvent = sequencerEvents[i]

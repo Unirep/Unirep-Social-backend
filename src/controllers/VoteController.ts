@@ -36,11 +36,19 @@ class VoteController {
         if (data.isPost) {
             const post = await Post.findOne({ transactionHash: dataId })
             console.log('find post proof index: ' + post?.proofIndex);
-            if(post !== null) postProofIndex = post.proofIndex;
+            if(post !== null) {
+                if (post.epoch !== currentEpoch)
+                    return {error: "the epoch key is expired", transaction: undefined, currentEpoch: currentEpoch}
+                postProofIndex = post.proofIndex;
+            }
         } else {
             const comment = await Comment.findOne({ transactionHash: dataId });
             console.log('find comment proof index: ' + comment?.proofIndex);
-            if(comment !== null) postProofIndex = comment.proofIndex;
+            if(comment !== null) {
+                if (comment.epoch !== currentEpoch)
+                    return {error: "the epoch key is expired", transaction: undefined, currentEpoch: currentEpoch}
+                postProofIndex = comment.proofIndex;
+            }
         }
 
         if(Number(postProofIndex) === 0) {
