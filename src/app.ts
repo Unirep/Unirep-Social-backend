@@ -8,7 +8,7 @@ import ErrorHandler from './ErrorHandler';
 import MasterRouter from './routers/MasterRouter';
 
 import EpochController from './controllers/EpochController';
-import { DEFAULT_ETH_PROVIDER, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI } from './constants';
+import { DEFAULT_ETH_PROVIDER, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, MONGODB } from './constants';
 import { initDB, updateDBFromAirdropSubmittedEvent, updateDBFromAttestationEvent, updateDBFromCommentSubmittedEvent, updateDBFromEpochEndedEvent, updateDBFromPostSubmittedEvent, updateDBFromUnirepUserSignUpEvent, updateDBFromUserSignUpEvent, updateDBFromUSTEvent, updateDBFromVoteSubmittedEvent } from './database/utils';
 
 // load the environment variables from the .env file
@@ -67,7 +67,7 @@ setTimeout(doEpochTransition, global.epochPeriod);
   server.app.listen(port, () => console.log(`> Listening on port ${port}`));
 })();
 
-var mongoDB = 'mongodb://127.0.0.1:27017/unirep_social';
+var mongoDB = MONGODB + '/unirep_social';
 mongoose.connect(mongoDB);
 // Get Mongoose to use the global promise library
 mongoose.Promise = global.Promise;
