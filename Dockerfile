@@ -9,4 +9,5 @@ RUN npm install -g link-module-alias
 RUN yarn install
 
 COPY . .
+EXPOSE 3001
 CMD ["yarn", "start"]
