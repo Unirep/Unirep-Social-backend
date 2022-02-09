@@ -10,6 +10,7 @@ import EpochRouter from './EpochRouter';
 import USTRouter from './USTRouter';
 import RecordRouter from './RecordRouter';
 import ReportRouter from './ReportRouter';
+import AdminRouter from './AdminRouter';
 
 class MasterRouter {
   private _router = Router();
@@ -24,6 +25,7 @@ class MasterRouter {
   private _USTRouter = USTRouter;
   private _recordRouter = RecordRouter;
   private _reportRouter = ReportRouter;
+  private _adminRouter = AdminRouter;
 
   get router() {
     return this._router;
@@ -48,6 +50,7 @@ class MasterRouter {
     this._router.use('/userStateTransition', this._USTRouter);
     this._router.use('/records', this._recordRouter);
     this._router.use('/report', this._reportRouter);
+    this._router.use('/admin', this._adminRouter);
   }
 }
 
