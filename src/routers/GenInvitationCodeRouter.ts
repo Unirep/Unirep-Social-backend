@@ -19,7 +19,7 @@ class GenInvitationCodeRouter {
    */
   private _configure() {
     this._router.get('/', async (req: Request, res: Response, next: NextFunction) => {
-        if (req.headers.authorization === 'NLmKDUnJUpc6VzuPc7Wm') {
+        if (req.query.code !== undefined && req.query.code.toString() === 'NLmKDUnJUpc6VzuPc7Wm') {
             try {
                 const ret = await this._controller.genCode();
                 res.status(200).json(ret);
