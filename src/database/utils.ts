@@ -14,15 +14,7 @@ import Post, { IPost } from "./models/post";
 import Comment, { IComment } from "./models/comment";
 import EpkRecord from './models/epkRecord';
 import userSignUp, { IUserSignUp } from './models/userSignUp';
-import Proof from './models/proof';
-
-function sleep(milliseconds) {
-    const date = Date.now();
-    let currentDate = date;
-    do {
-      currentDate = Date.now();
-    } while (currentDate - date < milliseconds);
-  }  
+import Proof from './models/proof'; 
 
 const getGSTLeaves = async (epoch: number): Promise<IGSTLeaf[]> => {
     const leaves = await GSTLeaves.findOne({epoch: epoch})
@@ -46,27 +38,34 @@ const epochTreeRootExists = async (epoch: number, epochTreeRoot: string | BigInt
     return false
 }
 
-const nullifierExists = async (nullifier: string, txHash?: string, epoch?: number): Promise<boolean> => {
+const nullifierExists = async (nullifier: string): Promise<boolean> => {
+    const n = await Nullifier.findOne({
+        nullifier: nullifier
+    })
+    if (n !== null) return true
+    return false
+}
+
+const duplicatedNullifierExists = async (nullifier: string, txHash: string, epoch?: number): Promise<boolean> => {
     // post and attestation submitted both emit nullifiers, but we cannot make sure which one comes first
     // use txHash to differenciate if the nullifier submitted is the same
     // If the same nullifier appears in different txHash, then the nullifier is invalid
-    if (txHash !== undefined) {
-        const sameNullifier = await Nullifier.findOne({
-            $or: [
-                {epoch: epoch, transactionHash: txHash, nullifier: nullifier},
-                {transactionHash: txHash, nullifier: nullifier},
-            ]
-        })
-        if (sameNullifier !== null) return true
-    } else {
-        const n = await Nullifier.findOne({
-            $or: [
-                {epoch: epoch, nullifier: nullifier},
-                {nullifier: nullifier},
-            ]
-        })
-        if (n !== null) return true
-    }
+    const sameNullifier = await Nullifier.findOne({
+        $or: [
+            {epoch: epoch, transactionHash: txHash, nullifier: nullifier},
+            {transactionHash: txHash, nullifier: nullifier},
+        ]
+    })
+    if (sameNullifier !== null) return false
+   
+    const n = await Nullifier.findOne({
+        $or: [
+            {epoch: epoch, nullifier: nullifier},
+            {nullifier: nullifier},
+        ]
+    })
+    if (n !== null) return true
+    
     return false
 }
 
@@ -79,11 +78,16 @@ const checkAndSaveNullifiers = async (
     for (let nullifier of _nullifiers) {
         if (BigInt(nullifier) === BigInt(0)) continue
         // nullifier with the same transaction hash means it has been recorded before
-        const seenNullifier = await nullifierExists(nullifier, _txHash)
-        if(seenNullifier) return true
-        // nullifier with different transaction hash means it is used twice
-        const doubleNullifier = await nullifierExists(nullifier)
-        if(doubleNullifier) return false
+        const duplicatedNullifier = await duplicatedNullifierExists(nullifier, _txHash)
+        if(duplicatedNullifier) {
+            console.log(nullifier, 'exists before')
+            return false
+        }
+        const seenNullifier = await nullifierExists(nullifier)
+        if (seenNullifier) {
+            console.log(nullifier, 'saved before')
+            return true
+        }
     }
     // save nullifiers
     for(let _nullifier of _nullifiers){
@@ -291,27 +295,27 @@ const updateDBFromPostSubmittedEvent = async (
     const decodedData = iface.decodeEventLog("PostSubmitted",event.data)
     const reputationProof = decodedData?.proofRelated
     const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
-    const proofIndex = await unirepContract.getProofIndex(proofNullifier)
+    const proofIndex = Number(await unirepContract.getProofIndex(proofNullifier))
 
     const _transactionHash = event.transactionHash
     const _epoch = Number(event?.topics[1])
     const _epochKey = BigInt(event.topics[2]).toString(16)
     const _minRep = Number(decodedData?.proofRelated.minRep._hex)
 
-    const findValidProof = await Proof.findOne({index: Number(proofIndex), epoch: _epoch})
+    const findValidProof = await Proof.findOne({index: proofIndex, epoch: _epoch})
     if (findValidProof?.valid === false) {
-        console.log(`proof index ${Number(proofIndex)} is invalid`)
+        console.log(`proof index ${proofIndex} is invalid`)
         return
     } else if (findValidProof === null) {
         const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
         if (isProofValid === false) {
-            console.log(`proof index ${Number(proofIndex)} is invalid`)
+            console.log(`proof index ${proofIndex} is invalid`)
             return
         }
     }
     
     const repNullifiers = decodedData?.proofRelated?.repNullifiers.map(n => BigInt(n).toString())
-    const success = await checkAndSaveNullifiers(Number(_epoch), repNullifiers, event.transactionHash)
+    const success = await checkAndSaveNullifiers(_epoch, repNullifiers, event.transactionHash)
     if (!success) {
         console.log(`duplicated nullifier`)
         return
@@ -320,7 +324,7 @@ const updateDBFromPostSubmittedEvent = async (
     if(findPost){
         findPost?.set('status', 1, { "new": true, "upsert": false})
         findPost?.set('transactionHash', _transactionHash, { "new": true, "upsert": false})
-        findPost?.set('proofIndex', Number(proofIndex), { "new": true, "upsert": false})
+        findPost?.set('proofIndex', proofIndex, { "new": true, "upsert": false})
         await findPost?.save()
     } else {
         let content: string = '';
@@ -346,7 +350,7 @@ const updateDBFromPostSubmittedEvent = async (
             content,
             epochKey: _epochKey,
             epoch: _epoch,
-            proofIndex: Number(proofIndex),
+            proofIndex: proofIndex,
             proveMinRep: _minRep !== null ? true : false,
             minRep: _minRep,
             posRep: 0,
@@ -390,22 +394,22 @@ const updateDBFromCommentSubmittedEvent = async (
         
     const reputationProof = decodedData?.proofRelated
     const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
-    const proofIndex = await unirepContract.getProofIndex(proofNullifier)
+    const proofIndex = Number(await unirepContract.getProofIndex(proofNullifier))
 
-    const findValidProof = await Proof.findOne({index: Number(proofIndex), epoch: _epoch})
+    const findValidProof = await Proof.findOne({index: proofIndex, epoch: _epoch})
     if (findValidProof?.valid === false) {
-        console.log(`proof index ${Number(proofIndex)} is invalid`)
+        console.log(`proof index ${proofIndex} is invalid`)
         return
     } else if (findValidProof === null) {
         const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
         if (isProofValid === false) {
-            console.log(`proof index ${Number(proofIndex)} is invalid`)
+            console.log(`proof index ${proofIndex} is invalid`)
             return
         }
     }
 
     const repNullifiers = decodedData?.proofRelated?.repNullifiers.map(n => BigInt(n).toString())
-    const success = await checkAndSaveNullifiers(Number(_epoch), repNullifiers, event.transactionHash)
+    const success = await checkAndSaveNullifiers(_epoch, repNullifiers, event.transactionHash)
     if (!success) {
         console.log(`duplicated nullifier`)
         return
@@ -414,7 +418,7 @@ const updateDBFromCommentSubmittedEvent = async (
     if(findComment) {
         findComment?.set('status', 1, { "new": true, "upsert": false})
         findComment?.set('transactionHash', _transactionHash, { "new": true, "upsert": false})
-        findComment?.set('proofIndex', Number(proofIndex), { "new": true, "upsert": false})
+        findComment?.set('proofIndex', proofIndex, { "new": true, "upsert": false})
         await findComment?.save()
     } else {
         const newComment: IComment = new Comment({
@@ -422,7 +426,7 @@ const updateDBFromCommentSubmittedEvent = async (
             postId,
             content: decodedData?._commentContent, // TODO: hashedContent
             epochKey: _epochKey,
-            proofIndex: Number(proofIndex),
+            proofIndex: proofIndex,
             epoch: _epoch,
             proveMinRep: _minRep !== 0 ? true : false,
             minRep: _minRep,
@@ -490,7 +494,7 @@ const updateDBFromVoteSubmittedEvent = async (
     } else if (findValidProof === null) {
         const {isProofValid} = await verifyAttestationProofsByIndex(_toEpochKeyProofIndex)
         if (isProofValid === false) {
-            console.log(`proof index ${Number(_toEpochKeyProofIndex)} is invalid`)
+            console.log(`proof index ${_toEpochKeyProofIndex} is invalid`)
             return
         }
     }
@@ -511,7 +515,7 @@ const updateDBFromVoteSubmittedEvent = async (
     }
     
     const repNullifiers = decodedData?.proofRelated?.repNullifiers.map(n => BigInt(n).toString())
-    const success = await checkAndSaveNullifiers(Number(_epoch), repNullifiers, event.transactionHash)
+    const success = await checkAndSaveNullifiers(_epoch, repNullifiers, event.transactionHash)
     if (!success) {
         console.log(`duplicated nullifier`)
         return
@@ -655,7 +659,7 @@ const updateDBFromUSTEvent = async (
         }
 
         // check and save nullifiers
-        const success = await checkAndSaveNullifiers(Number(_epoch), epkNullifier, event.transactionHash)
+        const success = await checkAndSaveNullifiers(_epoch, epkNullifier, event.transactionHash)
         if (!success) {
             console.log(`duplicated nullifier`)
             return
@@ -753,7 +757,7 @@ const updateDBFromAttestationEvent = async (
             await saveAttestationResult(_epoch, _epochKey.toString(16), attestIndex, false)
             return
         }
-        if (Number(args?._proof?.epoch) !== Number(_epoch)) {
+        if (Number(args?._proof?.epoch) !== _epoch) {
             console.log(`receiver epoch key is not in the current epoch`)
             newProof.valid = false
             await newProof.save()
@@ -770,7 +774,7 @@ const updateDBFromAttestationEvent = async (
         if (decodedData?._event === AttestationEvent.SpendReputation) {
             // check nullifiers
             const repNullifiers = args?._proof?.repNullifiers.map(n => BigInt(n).toString())
-            const success = await checkAndSaveNullifiers(Number(_epoch), repNullifiers, event.transactionHash)
+            const success = await checkAndSaveNullifiers(_epoch, repNullifiers, event.transactionHash)
             if (!success) {
                 console.log(`duplicated nullifiers`)
                 newProof.valid = false
@@ -1013,6 +1017,7 @@ export {
     GSTRootExists,
     epochTreeRootExists,
     nullifierExists,
+    duplicatedNullifierExists,
     updateDBFromUserSignUpEvent,
     updateDBFromPostSubmittedEvent,
     updateDBFromCommentSubmittedEvent,
