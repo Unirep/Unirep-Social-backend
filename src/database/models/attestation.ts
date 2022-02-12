@@ -2,6 +2,7 @@ import * as mongoose from 'mongoose';
 import { Schema, Document } from 'mongoose';
 
 export interface IAttestation {
+    index: number
     transactionHash: string
     attester: string
     proofIndex: number
@@ -10,6 +11,7 @@ export interface IAttestation {
     negRep: number
     graffiti: string
     signUp: boolean
+    hash: string
 }
 
 export interface IAttestations extends Document {
