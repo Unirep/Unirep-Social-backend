@@ -97,10 +97,68 @@ const checkAndSaveNullifiers = async (
                 nullifier: _nullifier,
                 transactionHash: _txHash,
             })
-            await nullifier.save()
+            try {
+                await nullifier.save()
+            } catch (error) {
+                return true
+            }
         }    
     }
     return true
+}
+
+const insertAttestation = async (epoch: number, epochKey: string, attestIndex: number, newAttestation: IAttestation) => {
+    try {
+        await Attestations.findOneAndUpdate(
+            {
+                $and: [
+                    {
+                        epoch: epoch
+                    },
+                    {
+                        epochKey: epochKey
+                    },
+                    {
+                        "attestations.index": {
+                            $nin: [ attestIndex ]
+                        }
+                    }
+                ]
+            },
+            {
+                $push: {
+                    attestations: newAttestation
+                }
+            },
+            {
+                upsert: true
+            }
+        )
+    } catch (error) {
+        await Attestations.findOneAndUpdate(
+            {
+                $and: [
+                    {
+                        epoch: epoch
+                    },
+                    {
+                        epochKey: epochKey
+                    },
+                    {
+                        "attestations.index": {
+                            $nin: [ attestIndex ]
+                        }
+                    }
+                ]
+            },
+            {
+                $push: {
+                    attestations: newAttestation
+                }
+            }
+        )
+    }
+    
 }
 
 const verifyUSTProofByIndex = async(proofIndex: number | ethers.BigNumber): Promise<ethers.Event | void> => {
@@ -696,6 +754,12 @@ const updateDBFromAttestationEvent = async (
     const toProofIndex = Number(decodedData?.toProofIndex)
     const fromProofIndex = Number(decodedData?.fromProofIndex)
     const attestIndex = Number(decodedData?.attestIndex)
+    const findAttestation = await Attestations.findOne({
+        "attestations.index": {
+            $in: [ attestIndex ]
+        }
+    })
+    if (findAttestation !== null) return
 
     const attestation = new Attestation(
         BigInt(decodedData?._attestation?.attesterId),
@@ -716,23 +780,7 @@ const updateDBFromAttestationEvent = async (
         signUp: Boolean(Number(decodedData?._attestation?.signUp)),
         hash: attestation.hash().toString(),
     }
-    let attestations = await Attestations.findOne({epochKey: _epochKey.toString(16)})
-
-    if(attestations === null){
-        attestations = new Attestations({
-            epoch: _epoch,
-            epochKey: _epochKey.toString(16),
-            attestations: [newAttestation]
-        })
-    } else {
-        attestations.get('attestations').push(newAttestation)
-    }
-    const res = await attestations?.save()
-    if(res){
-        console.log('Database: saved submitted attestation')
-    } else {
-        console.log('Database: save attestation failed')
-    }
+    await insertAttestation(_epoch, _epochKey.toString(16), attestIndex, newAttestation)
 
     const validProof = await Proof.findOne({
         epoch: _epoch, 

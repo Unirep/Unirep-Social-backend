@@ -9,7 +9,7 @@ export interface INullifier extends Document {
 
 const NullifierSchema: Schema = new Schema({
     epoch: { type: Number },
-    nullifier: { type: String },
+    nullifier: { type: String, unique: true },
     transactionHash: { type: String },
 }, { collection: 'Nullifiers' })
 

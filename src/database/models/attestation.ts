@@ -23,7 +23,7 @@ export interface IAttestations extends Document {
   
 const AttestationsSchema: Schema = new Schema({
     epoch: { type: Number },
-    epochKey: { type: String },
+    epochKey: { type: String, unique: true },
     epochKeyToHashchainMap: { type: String },
     attestations: { type: Array },
 }, { collection: 'Attestations' });

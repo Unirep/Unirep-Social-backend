@@ -13,7 +13,7 @@ export interface IEpochTreeLeaves extends Document {
 }
 
 const EpochGSTLeavesSchema: Schema = new Schema({
-    epoch: { type: Number },
+    epoch: { type: Number, unique: true },
     epochTreeLeaves: { type: Array },
     epochTreeRoot: { type: String },
 }, { collection: 'EpochTreeLeaves' })

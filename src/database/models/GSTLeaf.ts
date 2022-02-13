@@ -12,7 +12,7 @@ export interface IGSTLeaves extends Document {
 }
 
 const GSTLeavesSchema: Schema = new Schema({
-    epoch: { type: Number },
+    epoch: { type: Number, unique: true },
     GSTLeaves: { type: Array },
 }, { collection: 'GSTLeaves' })
 

@@ -11,7 +11,7 @@ export interface IProof extends Document {
 }
   
 const ProofSchema: Schema = new Schema({
-    index: { type: Number, required: true },
+    index: { type: Number, required: true, unique: true },
     epoch: { type: Number, required: true },
     args: {type: String },
     valid: { type: Boolean, required: true },
