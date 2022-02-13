@@ -50,18 +50,20 @@ const duplicatedNullifierExists = async (nullifier: string, txHash: string, epoc
     // post and attestation submitted both emit nullifiers, but we cannot make sure which one comes first
     // use txHash to differenciate if the nullifier submitted is the same
     // If the same nullifier appears in different txHash, then the nullifier is invalid
-    const sameNullifier = await Nullifier.findOne({
-        $or: [
-            {epoch: epoch, transactionHash: txHash, nullifier: nullifier},
-            {transactionHash: txHash, nullifier: nullifier},
-        ]
-    })
-    if (sameNullifier !== null) return false
    
     const n = await Nullifier.findOne({
-        $or: [
-            {epoch: epoch, nullifier: nullifier},
-            {nullifier: nullifier},
+        $and: [
+            {
+                $or: [
+                    {epoch: epoch, nullifier: nullifier},
+                    {nullifier: nullifier},
+                ]
+            },
+            {
+                transactionHash: {
+                    $nin: [ txHash ]
+                }
+            }
         ]
     })
     if (n !== null) return true
@@ -82,11 +84,6 @@ const checkAndSaveNullifiers = async (
         if(duplicatedNullifier) {
             console.log(nullifier, 'exists before')
             return false
-        }
-        const seenNullifier = await nullifierExists(nullifier)
-        if (seenNullifier) {
-            console.log(nullifier, 'saved before')
-            return true
         }
     }
     // save nullifiers
@@ -158,7 +155,108 @@ const insertAttestation = async (epoch: number, epochKey: string, attestIndex: n
             }
         )
     }
-    
+}
+
+const insertGSTLeaf = async (epoch: number, newLeaf: IGSTLeaf) => {
+    try {
+        await GSTLeaves.findOneAndUpdate({
+            $and: [
+                {
+                    epoch: epoch
+                },
+                {
+                    "GSTLeaves.transactionHash": {
+                        $nin: [
+                            newLeaf.transactionHash
+                        ]
+                    }
+                },
+                {
+                    "GSTLeaves.hashedLeaf": {
+                        $nin: [
+                            newLeaf.hashedLeaf
+                        ]
+                    }
+                }
+            ]
+        },{
+            $push: {
+                GSTLeaves: newLeaf
+            }
+        },{
+            upsert: true
+        })
+    } catch (error) {
+        await GSTLeaves.findOneAndUpdate({
+            $and: [
+                {
+                    epoch: epoch
+                },
+                {
+                    "GSTLeaves.transactionHash": {
+                        $nin: [
+                            newLeaf.transactionHash
+                        ]
+                    }
+                },
+                {
+                    "GSTLeaves.hashedLeaf": {
+                        $nin: [
+                            newLeaf.hashedLeaf
+                        ]
+                    }
+                }
+            ]
+        },{
+            $push: {
+                GSTLeaves: newLeaf
+            }
+        })
+    }
+}
+
+const insertGSTRoot = async (epoch: number, GSTRoot: string) => {
+    try {
+        await GSTRoots.findOneAndUpdate({
+            $and: [
+                {
+                    epoch: epoch
+                },
+                {
+                    GSTRoots: {
+                        $nin: [
+                            GSTRoot
+                        ]
+                    }
+                }
+            ]
+        },{
+            $push: {
+                GSTRoots: GSTRoot
+            }
+        }, {
+            upsert: true
+        })
+    } catch (error) {
+        await GSTRoots.findOneAndUpdate({
+            $and: [
+                {
+                    epoch: epoch
+                },
+                {
+                    GSTRoots: {
+                        $nin: [
+                            GSTRoot
+                        ]
+                    }
+                }
+            ]
+        },{
+            $push: {
+                GSTRoots: GSTRoot
+            }
+        })
+    }
 }
 
 const verifyUSTProofByIndex = async(proofIndex: number | ethers.BigNumber): Promise<ethers.Event | void> => {
@@ -244,7 +342,6 @@ const updateGSTLeaf = async (
     _newLeaf: IGSTLeaf,
     _epoch: number,
 ) => {
-    let treeLeaves: IGSTLeaves | null = await GSTLeaves.findOne({epoch: _epoch})
     // compute GST root and save GST root
     const emptyUserStateRoot = computeEmptyUserStateRoot(circuitUserStateTreeDepth)
     const defaultGSTLeaf = hashLeftRight(BigInt(0), emptyUserStateRoot)
@@ -254,40 +351,16 @@ const updateGSTLeaf = async (
         2,
     )
     
-    if(treeLeaves === null){
-        treeLeaves = new GSTLeaves({
-            epoch: _epoch,
-            GSTLeaves: [_newLeaf],
-        })
-        globalStateTree.insert(BigInt(_newLeaf.hashedLeaf))
-    } else {
-        const findTxHash = await GSTLeaves.findOne({
-            $and: [
-                {"GSTLeaves.transactionHash": _newLeaf.transactionHash},
-                {"GSTLeaves.hashedLeaf": _newLeaf.hashedLeaf},
-            ]})
-        if(findTxHash !== null) return
-        treeLeaves.get('GSTLeaves').push(_newLeaf)
+    // update GST leaf document
+    await insertGSTLeaf(_epoch, _newLeaf)
 
-        for(let leaf of treeLeaves.get('GSTLeaves.hashedLeaf')){
-            globalStateTree.insert(leaf)
-        }
-    }
-    const savedTreeLeavesRes = await treeLeaves?.save()
-
-    // save the root
-    let treeRoots: IGSTRoots | null = await GSTRoots.findOne({epoch: _epoch})
-    if(treeRoots === null){
-        treeRoots = new GSTRoots({
-            epoch: _epoch,
-            GSTRoots: [globalStateTree.root.toString()],
-        })
-    } else {
-        treeRoots.get('GSTRoots').push(globalStateTree.root.toString())
-    }
-    const savedTreeRootsRes = await treeRoots.save()
-    if( savedTreeRootsRes && savedTreeLeavesRes) {
-        console.log('Database: saved new GST event')
+    const treeLeaves = await GSTLeaves.findOne({
+        epoch: _epoch
+    })
+    for (let leaf of treeLeaves?.get('GSTLeaves.hashedLeaf')) {
+        globalStateTree.insert(leaf)
+        // update GST root document
+        await insertGSTRoot(_epoch, globalStateTree.root.toString())
     }
 }
 
