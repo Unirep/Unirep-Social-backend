@@ -7,7 +7,7 @@ export interface IGSTRoots extends Document {
 }
 
 const GSTRootsSchema: Schema = new Schema({
-    epoch: { type: Number },
+    epoch: { type: Number, unique: true },
     GSTRoots: { type: Array },
 }, { collection: 'GSTRoots' })
 

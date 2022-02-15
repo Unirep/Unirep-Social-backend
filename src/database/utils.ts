@@ -14,6 +14,7 @@ import Post, { IPost } from "./models/post";
 import Comment, { IComment } from "./models/comment";
 import EpkRecord from './models/epkRecord';
 import userSignUp, { IUserSignUp } from './models/userSignUp';
+import Proof from './models/proof'; 
 
 const getGSTLeaves = async (epoch: number): Promise<IGSTLeaf[]> => {
     const leaves = await GSTLeaves.findOne({epoch: epoch})
@@ -37,27 +38,36 @@ const epochTreeRootExists = async (epoch: number, epochTreeRoot: string | BigInt
     return false
 }
 
-const nullifierExists = async (nullifier: string, txHash?: string, epoch?: number): Promise<boolean> => {
+const nullifierExists = async (nullifier: string): Promise<boolean> => {
+    const n = await Nullifier.findOne({
+        nullifier: nullifier
+    })
+    if (n !== null) return true
+    return false
+}
+
+const duplicatedNullifierExists = async (nullifier: string, txHash: string, epoch?: number): Promise<boolean> => {
     // post and attestation submitted both emit nullifiers, but we cannot make sure which one comes first
     // use txHash to differenciate if the nullifier submitted is the same
     // If the same nullifier appears in different txHash, then the nullifier is invalid
-    if (txHash !== undefined) {
-        const sameNullifier = await Nullifier.findOne({
-            $or: [
-                {epoch: epoch, transactionHash: txHash, nullifier: nullifier},
-                {transactionHash: txHash, nullifier: nullifier},
-            ]
-        })
-        if (sameNullifier !== null) return true
-    } else {
-        const n = await Nullifier.findOne({
-            $or: [
-                {epoch: epoch, nullifier: nullifier},
-                {nullifier: nullifier},
-            ]
-        })
-        if (n !== null) return true
-    }
+   
+    const n = await Nullifier.findOne({
+        $and: [
+            {
+                $or: [
+                    {epoch: epoch, nullifier: nullifier},
+                    {nullifier: nullifier},
+                ]
+            },
+            {
+                transactionHash: {
+                    $nin: [ txHash ]
+                }
+            }
+        ]
+    })
+    if (n !== null) return true
+    
     return false
 }
 
@@ -70,11 +80,11 @@ const checkAndSaveNullifiers = async (
     for (let nullifier of _nullifiers) {
         if (BigInt(nullifier) === BigInt(0)) continue
         // nullifier with the same transaction hash means it has been recorded before
-        const seenNullifier = await nullifierExists(nullifier, _txHash)
-        if(seenNullifier) return true
-        // nullifier with different transaction hash means it is used twice
-        const doubleNullifier = await nullifierExists(nullifier)
-        if(doubleNullifier) return false
+        const duplicatedNullifier = await duplicatedNullifierExists(nullifier, _txHash)
+        if(duplicatedNullifier) {
+            console.log(nullifier, 'exists before')
+            return false
+        }
     }
     // save nullifiers
     for(let _nullifier of _nullifiers){
@@ -84,10 +94,169 @@ const checkAndSaveNullifiers = async (
                 nullifier: _nullifier,
                 transactionHash: _txHash,
             })
-            await nullifier.save()
+            try {
+                await nullifier.save()
+            } catch (error) {
+                return true
+            }
         }    
     }
     return true
+}
+
+const insertAttestation = async (epoch: number, epochKey: string, attestIndex: number, newAttestation: IAttestation) => {
+    try {
+        await Attestations.findOneAndUpdate(
+            {
+                $and: [
+                    {
+                        epoch: epoch
+                    },
+                    {
+                        epochKey: epochKey
+                    },
+                    {
+                        "attestations.index": {
+                            $nin: [ attestIndex ]
+                        }
+                    }
+                ]
+            },
+            {
+                $push: {
+                    attestations: newAttestation
+                }
+            },
+            {
+                upsert: true
+            }
+        )
+    } catch (error) {
+        await Attestations.findOneAndUpdate(
+            {
+                $and: [
+                    {
+                        epoch: epoch
+                    },
+                    {
+                        epochKey: epochKey
+                    },
+                    {
+                        "attestations.index": {
+                            $nin: [ attestIndex ]
+                        }
+                    }
+                ]
+            },
+            {
+                $push: {
+                    attestations: newAttestation
+                }
+            }
+        )
+    }
+}
+
+const insertGSTLeaf = async (epoch: number, newLeaf: IGSTLeaf) => {
+    try {
+        await GSTLeaves.findOneAndUpdate({
+            $and: [
+                {
+                    epoch: epoch
+                },
+                {
+                    "GSTLeaves.transactionHash": {
+                        $nin: [
+                            newLeaf.transactionHash
+                        ]
+                    }
+                },
+                {
+                    "GSTLeaves.hashedLeaf": {
+                        $nin: [
+                            newLeaf.hashedLeaf
+                        ]
+                    }
+                }
+            ]
+        },{
+            $push: {
+                GSTLeaves: newLeaf
+            }
+        },{
+            upsert: true
+        })
+    } catch (error) {
+        await GSTLeaves.findOneAndUpdate({
+            $and: [
+                {
+                    epoch: epoch
+                },
+                {
+                    "GSTLeaves.transactionHash": {
+                        $nin: [
+                            newLeaf.transactionHash
+                        ]
+                    }
+                },
+                {
+                    "GSTLeaves.hashedLeaf": {
+                        $nin: [
+                            newLeaf.hashedLeaf
+                        ]
+                    }
+                }
+            ]
+        },{
+            $push: {
+                GSTLeaves: newLeaf
+            }
+        })
+    }
+}
+
+const insertGSTRoot = async (epoch: number, GSTRoot: string) => {
+    try {
+        await GSTRoots.findOneAndUpdate({
+            $and: [
+                {
+                    epoch: epoch
+                },
+                {
+                    GSTRoots: {
+                        $nin: [
+                            GSTRoot
+                        ]
+                    }
+                }
+            ]
+        },{
+            $push: {
+                GSTRoots: GSTRoot
+            }
+        }, {
+            upsert: true
+        })
+    } catch (error) {
+        await GSTRoots.findOneAndUpdate({
+            $and: [
+                {
+                    epoch: epoch
+                },
+                {
+                    GSTRoots: {
+                        $nin: [
+                            GSTRoot
+                        ]
+                    }
+                }
+            ]
+        },{
+            $push: {
+                GSTRoots: GSTRoot
+            }
+        })
+    }
 }
 
 const verifyUSTProofByIndex = async(proofIndex: number | ethers.BigNumber): Promise<ethers.Event | void> => {
@@ -173,7 +342,6 @@ const updateGSTLeaf = async (
     _newLeaf: IGSTLeaf,
     _epoch: number,
 ) => {
-    let treeLeaves: IGSTLeaves | null = await GSTLeaves.findOne({epoch: _epoch})
     // compute GST root and save GST root
     const emptyUserStateRoot = computeEmptyUserStateRoot(circuitUserStateTreeDepth)
     const defaultGSTLeaf = hashLeftRight(BigInt(0), emptyUserStateRoot)
@@ -183,41 +351,27 @@ const updateGSTLeaf = async (
         2,
     )
     
-    if(treeLeaves === null){
-        treeLeaves = new GSTLeaves({
-            epoch: _epoch,
-            GSTLeaves: [_newLeaf],
-        })
-        globalStateTree.insert(BigInt(_newLeaf.hashedLeaf))
-    } else {
-        const findTxHash = await GSTLeaves.findOne({
-            $and: [
-                {"GSTLeaves.transactionHash": _newLeaf.transactionHash},
-                {"GSTLeaves.hashedLeaf": _newLeaf.hashedLeaf},
-            ]})
-        if(findTxHash !== null) return
-        treeLeaves.get('GSTLeaves').push(_newLeaf)
+    // update GST leaf document
+    await insertGSTLeaf(_epoch, _newLeaf)
 
-        for(let leaf of treeLeaves.get('GSTLeaves.hashedLeaf')){
-            globalStateTree.insert(leaf)
-        }
+    const treeLeaves = await GSTLeaves.findOne({
+        epoch: _epoch
+    })
+    for (let leaf of treeLeaves?.get('GSTLeaves.hashedLeaf')) {
+        globalStateTree.insert(leaf)
+        // update GST root document
+        await insertGSTRoot(_epoch, globalStateTree.root.toString())
     }
-    const savedTreeLeavesRes = await treeLeaves?.save()
+}
 
-    // save the root
-    let treeRoots: IGSTRoots | null = await GSTRoots.findOne({epoch: _epoch})
-    if(treeRoots === null){
-        treeRoots = new GSTRoots({
-            epoch: _epoch,
-            GSTRoots: [globalStateTree.root.toString()],
-        })
-    } else {
-        treeRoots.get('GSTRoots').push(globalStateTree.root.toString())
-    }
-    const savedTreeRootsRes = await treeRoots.save()
-    if( savedTreeRootsRes && savedTreeLeavesRes) {
-        console.log('Database: saved new GST event')
-    }
+const saveAttestationResult = async (epoch: number, epochKey: string, attestIndex: number, valid: boolean,) => {
+    await Attestations.findOneAndUpdate({
+        epoch: epoch,
+        epochKey: epochKey,
+        attestations: { $elemMatch: {index: attestIndex} }
+    }, {
+        "attestations.$.valid": valid
+    })
 }
 
 /*
@@ -272,23 +426,36 @@ const updateDBFromPostSubmittedEvent = async (
     const decodedData = iface.decodeEventLog("PostSubmitted",event.data)
     const reputationProof = decodedData?.proofRelated
     const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
-    const proofIndex = await unirepContract.getProofIndex(proofNullifier)
+    const proofIndex = Number(await unirepContract.getProofIndex(proofNullifier))
 
     const _transactionHash = event.transactionHash
     const _epoch = Number(event?.topics[1])
     const _epochKey = BigInt(event.topics[2]).toString(16)
     const _minRep = Number(decodedData?.proofRelated.minRep._hex)
 
-    const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
-    if (isProofValid === false) return
+    const findValidProof = await Proof.findOne({index: proofIndex, epoch: _epoch})
+    if (findValidProof?.valid === false) {
+        console.log(`proof index ${proofIndex} is invalid`)
+        return
+    } else if (findValidProof === null) {
+        const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
+        if (isProofValid === false) {
+            console.log(`proof index ${proofIndex} is invalid`)
+            return
+        }
+    }
+    
     const repNullifiers = decodedData?.proofRelated?.repNullifiers.map(n => BigInt(n).toString())
-    const success = await checkAndSaveNullifiers(Number(_epoch), repNullifiers, event.transactionHash)
-    if (!success) return
+    const success = await checkAndSaveNullifiers(_epoch, repNullifiers, event.transactionHash)
+    if (!success) {
+        console.log(`duplicated nullifier`)
+        return
+    }
     
     if(findPost){
         findPost?.set('status', 1, { "new": true, "upsert": false})
         findPost?.set('transactionHash', _transactionHash, { "new": true, "upsert": false})
-        findPost?.set('proofIndex', Number(proofIndex), { "new": true, "upsert": false})
+        findPost?.set('proofIndex', proofIndex, { "new": true, "upsert": false})
         await findPost?.save()
     } else {
         let content: string = '';
@@ -314,7 +481,7 @@ const updateDBFromPostSubmittedEvent = async (
             content,
             epochKey: _epochKey,
             epoch: _epoch,
-            proofIndex: Number(proofIndex),
+            proofIndex: proofIndex,
             proveMinRep: _minRep !== null ? true : false,
             minRep: _minRep,
             posRep: 0,
@@ -358,18 +525,31 @@ const updateDBFromCommentSubmittedEvent = async (
         
     const reputationProof = decodedData?.proofRelated
     const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
-    const proofIndex = await unirepContract.getProofIndex(proofNullifier)
+    const proofIndex = Number(await unirepContract.getProofIndex(proofNullifier))
 
-    const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
-    if (isProofValid === false) return
+    const findValidProof = await Proof.findOne({index: proofIndex, epoch: _epoch})
+    if (findValidProof?.valid === false) {
+        console.log(`proof index ${proofIndex} is invalid`)
+        return
+    } else if (findValidProof === null) {
+        const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
+        if (isProofValid === false) {
+            console.log(`proof index ${proofIndex} is invalid`)
+            return
+        }
+    }
+
     const repNullifiers = decodedData?.proofRelated?.repNullifiers.map(n => BigInt(n).toString())
-    const success = await checkAndSaveNullifiers(Number(_epoch), repNullifiers, event.transactionHash)
-    if (!success) return
+    const success = await checkAndSaveNullifiers(_epoch, repNullifiers, event.transactionHash)
+    if (!success) {
+        console.log(`duplicated nullifier`)
+        return
+    }
     
     if(findComment) {
         findComment?.set('status', 1, { "new": true, "upsert": false})
         findComment?.set('transactionHash', _transactionHash, { "new": true, "upsert": false})
-        findComment?.set('proofIndex', Number(proofIndex), { "new": true, "upsert": false})
+        findComment?.set('proofIndex', proofIndex, { "new": true, "upsert": false})
         await findComment?.save()
     } else {
         const newComment: IComment = new Comment({
@@ -377,7 +557,7 @@ const updateDBFromCommentSubmittedEvent = async (
             postId,
             content: decodedData?._commentContent, // TODO: hashedContent
             epochKey: _epochKey,
-            proofIndex: Number(proofIndex),
+            proofIndex: proofIndex,
             epoch: _epoch,
             proveMinRep: _minRep !== 0 ? true : false,
             minRep: _minRep,
@@ -426,9 +606,7 @@ const updateDBFromVoteSubmittedEvent = async (
     const _fromEpochKey = BigInt(event.topics[2]).toString(16)
     const _toEpochKey = BigInt(event.topics[3]).toString(16)
     const _toEpochKeyProofIndex = Number(decodedData?.toEpochKeyProofIndex._hex)
-    const results = await verifyAttestationProofsByIndex(_toEpochKeyProofIndex)
-    if (results?.isValid === false) return
-    if (Number(results?.args?.epoch) !== _epoch) return
+    
     const _posRep = Number(decodedData?.upvoteValue._hex)
     const _negRep = Number(decodedData?.downvoteValue._hex)
     
@@ -438,13 +616,41 @@ const updateDBFromVoteSubmittedEvent = async (
         
     const reputationProof = decodedData?.proofRelated
     const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
-    const proofIndex = await unirepContract.getProofIndex(proofNullifier)
+    const fromProofIndex = Number(await unirepContract.getProofIndex(proofNullifier))
 
-    const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
-    if (isProofValid === false) return
+    const findValidProof = await Proof.findOne({index: _toEpochKeyProofIndex, epoch: _epoch})
+    if (findValidProof?.valid === false) {
+        console.log(`proof index ${_toEpochKeyProofIndex} is invalid`)
+        return
+    } else if (findValidProof === null) {
+        const {isProofValid} = await verifyAttestationProofsByIndex(_toEpochKeyProofIndex)
+        if (isProofValid === false) {
+            console.log(`proof index ${_toEpochKeyProofIndex} is invalid`)
+            return
+        }
+    }
+
+    const fromValidProof = await Proof.findOne({
+        epoch: _epoch, 
+        index: fromProofIndex,
+    })
+    if (fromValidProof?.valid === false) {
+        console.log(`proof index ${fromProofIndex} is invalid`)
+        return
+    } else if (fromProofIndex === null) {
+        const {isProofValid} = await verifyAttestationProofsByIndex(fromProofIndex)
+        if (isProofValid === false) {
+            console.log(`proof index ${fromProofIndex} is invalid`)
+            return
+        }
+    }
+    
     const repNullifiers = decodedData?.proofRelated?.repNullifiers.map(n => BigInt(n).toString())
-    const success = await checkAndSaveNullifiers(Number(_epoch), repNullifiers, event.transactionHash)
-    if (!success) return
+    const success = await checkAndSaveNullifiers(_epoch, repNullifiers, event.transactionHash)
+    if (!success) {
+        console.log(`duplicated nullifier`)
+        return
+    }
 
     await writeRecord(_toEpochKey, _fromEpochKey, _posRep, _negRep, _epoch, ActionType.Vote, _transactionHash, '');
 }
@@ -584,8 +790,11 @@ const updateDBFromUSTEvent = async (
         }
 
         // check and save nullifiers
-        const success = await checkAndSaveNullifiers(Number(_epoch), epkNullifier, event.transactionHash)
-        if (!success) return
+        const success = await checkAndSaveNullifiers(_epoch, epkNullifier, event.transactionHash)
+        if (!success) {
+            console.log(`duplicated nullifier`)
+            return
+        }
     }
 
     // save the new leaf
@@ -615,39 +824,16 @@ const updateDBFromAttestationEvent = async (
     const _epochKey = BigInt(event.topics[2])
     const _attester = event.topics[3]
     const decodedData = iface.decodeEventLog("AttestationSubmitted",event.data)
-    const proofIndex = decodedData?._proofIndex
+    const toProofIndex = Number(decodedData?.toProofIndex)
+    const fromProofIndex = Number(decodedData?.fromProofIndex)
+    const attestIndex = Number(decodedData?.attestIndex)
+    const findAttestation = await Attestations.findOne({
+        "attestations.index": {
+            $in: [ attestIndex ]
+        }
+    })
+    if (findAttestation !== null) return
 
-    const { isProofValid, args } = await verifyAttestationProofsByIndex(proofIndex)
-    if (isProofValid === false) {
-        console.log(`receiver epoch key ${_epochKey} of proof index ${proofIndex} is invalid`)
-        return
-    }
-    if (Number(args?._proof?.epoch) !== Number(_epoch)) {
-        console.log(`receiver epoch key is not in the current epoch`)
-        return
-    }
-    if (BigInt(_epochKey) !== BigInt(args?._proof?.epochKey)) { 
-        console.log(`epoch key mismath in the proof index ${proofIndex}`)
-        return
-    }
-    if (decodedData?._event === AttestationEvent.SpendReputation) {
-        // check nullifiers
-        const repNullifiers = args?._proof?.repNullifiers.map(n => BigInt(n).toString())
-        const success = await checkAndSaveNullifiers(Number(_epoch), repNullifiers, event.transactionHash)
-        if (!success) return
-    }
-
-    const newAttestation: IAttestation = {
-        transactionHash: event.transactionHash,
-        attester: _attester,
-        proofIndex: Number(decodedData?._proofIndex),
-        attesterId: Number(decodedData?._attestation?.attesterId),
-        posRep: Number(decodedData?._attestation?.posRep),
-        negRep: Number(decodedData?._attestation?.negRep),
-        graffiti: decodedData?._attestation?.graffiti?._hex,
-        signUp: Boolean(Number(decodedData?._attestation?.signUp)),
-    }
-    let attestations = await Attestations.findOne({epochKey: _epochKey.toString(16)})
     const attestation = new Attestation(
         BigInt(decodedData?._attestation?.attesterId),
         BigInt(decodedData?._attestation?.posRep),
@@ -655,25 +841,90 @@ const updateDBFromAttestationEvent = async (
         BigInt(decodedData?._attestation?.graffiti?._hex),
         BigInt(decodedData?._attestation?.signUp)
     )
+    const newAttestation: IAttestation = {
+        index: attestIndex,
+        transactionHash: event.transactionHash,
+        attester: _attester,
+        proofIndex: toProofIndex,
+        attesterId: Number(decodedData?._attestation?.attesterId),
+        posRep: Number(decodedData?._attestation?.posRep),
+        negRep: Number(decodedData?._attestation?.negRep),
+        graffiti: decodedData?._attestation?.graffiti?._hex,
+        signUp: Boolean(Number(decodedData?._attestation?.signUp)),
+        hash: attestation.hash().toString(),
+    }
+    await insertAttestation(_epoch, _epochKey.toString(16), attestIndex, newAttestation)
 
-    if(attestations === null){
-        attestations = new Attestations({
+    const validProof = await Proof.findOne({
+        epoch: _epoch, 
+        index: toProofIndex,
+    })
+    if (validProof?.valid === false) {
+        await saveAttestationResult(_epoch, _epochKey.toString(16), attestIndex, false)
+        return
+    }
+    else if (validProof === null) {
+        const { isProofValid, args } = await verifyAttestationProofsByIndex(toProofIndex)
+        const newProof = new Proof({
+            index: toProofIndex,
             epoch: _epoch,
-            epochKey: _epochKey.toString(16),
-            epochKeyToHashchainMap: hashLeftRight(attestation.hash(), BigInt(0)),
-            attestations: [newAttestation]
+            args: JSON.stringify(args.map(n => n.toString())),
+            transactionHash: event.transactionHash
         })
-    } else {
-        const hashChainResult = attestations.get('epochKeyToHashchainMap')
-        const newHashChainResult = hashLeftRight(attestation.hash(), hashChainResult)
-        attestations.get('attestations').push(newAttestation)
-        attestations.set('epochKeyToHashchainMap', newHashChainResult)
+        if (isProofValid === false) {
+            console.log(`receiver epoch key ${_epochKey} of proof index ${toProofIndex} is invalid`)
+            newProof.valid = false
+            await newProof.save()
+            await saveAttestationResult(_epoch, _epochKey.toString(16), attestIndex, false)
+            return
+        }
+        if (Number(args?._proof?.epoch) !== _epoch) {
+            console.log(`receiver epoch key is not in the current epoch`)
+            newProof.valid = false
+            await newProof.save()
+            await saveAttestationResult(_epoch, _epochKey.toString(16), attestIndex, false)
+            return
+        }
+        if (BigInt(_epochKey) !== BigInt(args?._proof?.epochKey)) { 
+            console.log(`epoch key mismath in the proof index ${toProofIndex}`)
+            newProof.valid = false
+            await newProof.save()
+            await saveAttestationResult(_epoch, _epochKey.toString(16), attestIndex, false)
+            return
+        }
+        if (decodedData?._event === AttestationEvent.SpendReputation) {
+            // check nullifiers
+            const repNullifiers = args?._proof?.repNullifiers.map(n => BigInt(n).toString())
+            const success = await checkAndSaveNullifiers(_epoch, repNullifiers, event.transactionHash)
+            if (!success) {
+                console.log(`duplicated nullifiers`)
+                newProof.valid = false
+                await newProof.save()
+                await saveAttestationResult(_epoch, _epochKey.toString(16), attestIndex, false)
+                return
+            }
+        } 
+        newProof.valid = true
+        await newProof.save()
     }
     
-    const res = await attestations?.save()
-    if(res){
-        console.log('Database: saved submitted attestation')
+    if (fromProofIndex) {
+        const fromValidProof = await Proof.findOne({
+            epoch: _epoch, 
+            index: fromProofIndex,
+        })
+        if (fromValidProof?.valid === false) {
+            await saveAttestationResult(_epoch, _epochKey.toString(16), attestIndex, false)
+            return
+        }
+        else if (fromValidProof?.spent) {
+            await saveAttestationResult(_epoch, _epochKey.toString(16), attestIndex, false)
+            return
+        }
+        fromValidProof?.set('spent', true)
+        await fromValidProof?.save()
     }
+    await saveAttestationResult(_epoch, _epochKey.toString(16), attestIndex, true)
 }
 
 /*
@@ -703,10 +954,19 @@ const updateDBFromEpochEndedEvent = async (
 
     // seal all epoch keys in current epoch
     for (let attestation of attestations) {
-        const hashchainResult = attestation?.get('epochKeyToHashchainMap')
+        let currentHashChain: BigInt = BigInt(0)
+        const attestationList = attestation.get('attestations')
+        for (let i = 0; i < attestationList.length; i++) {
+            if (attestationList[i].valid) {
+                currentHashChain = hashLeftRight(
+                    BigInt(attestationList[i].hash),
+                    currentHashChain
+                )
+            }
+        }
         const sealedHashchain = hashLeftRight(
             BigInt(1),
-            BigInt(hashchainResult)
+            currentHashChain
         )
         const epochTreeLeaf: IEpochTreeLeaf = {
             epochKey: attestation?.get('epochKey'),
@@ -727,6 +987,7 @@ const updateDBFromEpochEndedEvent = async (
     })
 
     await newEpochTreeLeaves.save()
+    global.nextEpochTransition = Date.now() + global.epochPeriod + 10000; // delay 10 seconds
 }
 
 const writeRecord = async (to: string, from: string, posRep: number, negRep: number, epoch: number, action: string, txHash: string, data: string) => {
@@ -751,7 +1012,7 @@ const writeRecord = async (to: string, from: string, posRep: number, negRep: num
             { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep: 0, negRep: 0, spent: posRep + negRep} },
             { "new": true, "upsert": true }, 
             (err, record) => {
-                console.log('update voter record is: ' + record);
+                // console.log('update voter record is: ' + record);
                 if (err !== null) {
                     console.log('update voter epk record error: ' + err);
                 }
@@ -762,7 +1023,7 @@ const writeRecord = async (to: string, from: string, posRep: number, negRep: num
             { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep, negRep} },
             { "new": true, "upsert": true }, 
             (err, record) => {
-                console.log('update receiver record is: ' + record);
+                // console.log('update receiver record is: ' + record);
                 if (err !== null) {
                     console.log('update receiver epk record error: ' + err);
                 }
@@ -773,7 +1034,7 @@ const writeRecord = async (to: string, from: string, posRep: number, negRep: num
             { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep: 0, negRep: 0, spent: negRep} },
             { "new": true, "upsert": true }, 
             (err, record) => {
-                console.log('update action record is: ' + record);
+                // console.log('update action record is: ' + record);
                 if (err !== null) {
                     console.log('update action epk record error: ' + err);
                 }
@@ -877,6 +1138,7 @@ export {
     GSTRootExists,
     epochTreeRootExists,
     nullifierExists,
+    duplicatedNullifierExists,
     updateDBFromUserSignUpEvent,
     updateDBFromPostSubmittedEvent,
     updateDBFromCommentSubmittedEvent,

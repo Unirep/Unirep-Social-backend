@@ -33,7 +33,7 @@ class PostController {
     }
 
     listAllPosts = () => {
-        const allPosts = Post.find({}).then(async(posts) => {
+        const allPosts = Post.find({status: 1}).then(async(posts) => {
             let ret: any[] = [];
             for (var i = 0; i < posts.length; i ++) {
                 ret = [...ret, posts[i].toObject()];

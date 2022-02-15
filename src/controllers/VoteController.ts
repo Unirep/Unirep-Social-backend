@@ -5,6 +5,7 @@ import { UnirepSocialContract } from '@unirep/unirep-social';
 
 import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, ActionType, UNIREP_SOCIAL_ATTESTER_ID } from '../constants';
 import { IVote } from '../database/models/vote';
+import Proof from '../database/models/proof';
 import Post from '../database/models/post';
 import Comment from '../database/models/comment';
 import { decodeReputationProof, verifyReputationProof } from "../controllers/utils"
@@ -36,6 +37,9 @@ class VoteController {
         if (data.isPost) {
             const post = await Post.findOne({ transactionHash: dataId })
             console.log('find post proof index: ' + post?.proofIndex);
+            const validProof = await Proof.findOne({ index: post?.proofIndex, epoch: currentEpoch, valid: true })
+            if (validProof === null) 
+                return { error: "vote to an invalid post", transaction: undefined, currentEpoch: currentEpoch}
             if(post !== null) {
                 if (post.epoch !== currentEpoch)
                     return {error: "the epoch key is expired", transaction: undefined, currentEpoch: currentEpoch}
@@ -44,6 +48,9 @@ class VoteController {
         } else {
             const comment = await Comment.findOne({ transactionHash: dataId });
             console.log('find comment proof index: ' + comment?.proofIndex);
+            const validProof = await Proof.findOne({ index: comment?.proofIndex, epoch: currentEpoch, valid: true })
+            if (validProof === null) 
+                return { error: "vote to an invalid comment", transaction: undefined, currentEpoch: currentEpoch}
             if(comment !== null) {
                 if (comment.epoch !== currentEpoch)
                     return {error: "the epoch key is expired", transaction: undefined, currentEpoch: currentEpoch}
