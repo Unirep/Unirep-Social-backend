@@ -324,7 +324,7 @@ const verifyAttestationProofsByIndex = async (proofIndex: number | ethers.BigNum
     }
     if(!isProofValid) {
         console.log('Reputation proof index ', Number(proofIndex), ' is invalid')
-        return {isProofValid, event}
+        return {isProofValid: isProofValid, args: event?.args}
     }
     
     const args = event?.args
@@ -880,16 +880,10 @@ const updateDBFromAttestationEvent = async (
         }
         if (Number(args?._proof?.epoch) !== _epoch) {
             console.log(`receiver epoch key is not in the current epoch`)
-            newProof.valid = false
-            await newProof.save()
-            await saveAttestationResult(_epoch, _epochKey.toString(16), attestIndex, false)
             return
         }
         if (BigInt(_epochKey) !== BigInt(args?._proof?.epochKey)) { 
             console.log(`epoch key mismath in the proof index ${toProofIndex}`)
-            newProof.valid = false
-            await newProof.save()
-            await saveAttestationResult(_epoch, _epochKey.toString(16), attestIndex, false)
             return
         }
         if (decodedData?._event === AttestationEvent.SpendReputation) {
