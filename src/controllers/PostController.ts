@@ -99,7 +99,7 @@ class PostController {
                 }
             });
             if (index > -1) {
-                return allPosts.slice(index+1, Math.min(allPosts.length, loadPostCount));
+                return allPosts.slice(index+1, Math.min(allPosts.length, index + 1 + loadPostCount));
             } else {
                 return allPosts.slice(0, loadPostCount);
             }
