@@ -2,7 +2,8 @@ import dotenv from 'dotenv';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import { ethers } from 'ethers'
+import { ethers } from 'ethers';
+import randomstring from 'randomstring';
 
 import ErrorHandler from './ErrorHandler';
 import MasterRouter from './routers/MasterRouter';
@@ -49,10 +50,13 @@ global.epochPeriod = 24 * 60 * 60 * 1000;
 global.nextEpochTransition = Date.now() + global.epochPeriod + 10000; // delay 10 seconds
 console.log(global.nextEpochTransition);
 
+global.adminSessionCode = randomstring.generate(20);
+
 const doEpochTransition = async () => {
     console.log('do epoch transition');
     const _controller = EpochController;
     try {
+        global.adminSessionCode = randomstring.generate(20);
         await _controller.epochTransition();
         setTimeout(doEpochTransition, global.epochPeriod);
     } catch (e) {
