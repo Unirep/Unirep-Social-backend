@@ -24,7 +24,7 @@ class AdminRouter {
                 res.status(403).json('wrong code');
             }
         } else if (req.query.id !== undefined && req.query.password !== undefined) {
-            if (req.query.id.toString() === 'admin' && req.query.password.toString() === 'admin') {
+            if (req.query.id.toString() === process.env.ADMIN_ID && req.query.password.toString() === process.env.ADMIN_PASSWORD) {
                 res.status(200).json('NLmKDUnJUpc6VzuPc7Wm');
             } else {
                 res.status(403).json('wrong admin id or password');

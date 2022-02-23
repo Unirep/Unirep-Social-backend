@@ -1,7 +1,13 @@
+import dotenv from 'dotenv';
 import UnirepSocial from "../node_modules/@unirep/unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json"
 import Unirep from "../node_modules/@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json"
 
-export const DEPLOYER_PRIV_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+// load the environment variables from the .env file
+dotenv.config({
+    path: '.env'
+});
+
+export const DEPLOYER_PRIV_KEY = process.env.BACKEND_PRIVATE_KEY!;
 export const UNIREP = '0x0165878A594ca255338adfa4d48449f69242Eb8F';
 export const UNIREP_SOCIAL = '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853';
 export const DEFAULT_ETH_PROVIDER = 'http://localhost:8545';
