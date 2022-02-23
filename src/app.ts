@@ -46,7 +46,7 @@ server.app.use((err: ErrorHandler, req: Request, res: Response, next: NextFuncti
 global.epochPeriod = 24 * 60 * 60 * 1000;
 // global.epochPeriod = 10 * 60 * 1000;
 
-global.nextEpochTransition = Date.now() + global.epochPeriod + 10000; // delay 10 seconds
+global.nextEpochTransition = 1645595337821 + global.epochPeriod + 10000; // delay 10 seconds
 console.log(global.nextEpochTransition);
 
 const doEpochTransition = async () => {
