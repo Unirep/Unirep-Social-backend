@@ -2,7 +2,8 @@ import dotenv from 'dotenv';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import { ethers } from 'ethers'
+import { ethers } from 'ethers';
+import randomstring from 'randomstring';
 
 import ErrorHandler from './ErrorHandler';
 import MasterRouter from './routers/MasterRouter';
@@ -13,7 +14,7 @@ import { initDB, updateDBFromAirdropSubmittedEvent, updateDBFromAttestationEvent
 
 // load the environment variables from the .env file
 dotenv.config({
-  path: '.env'
+    path: '.env'
 });
 
 /**
@@ -21,8 +22,8 @@ dotenv.config({
  * @description Will later contain the routing system.
  */
 class Server {
-  public app = express();
-  public router = MasterRouter;
+    public app = express();
+    public router = MasterRouter;
 }
 
 // initialize server app
@@ -36,9 +37,9 @@ server.app.use('/api', server.router);
 // make server app handle any error
 server.app.use((err: ErrorHandler, req: Request, res: Response, next: NextFunction) => {
     res.status(err.statusCode || 500).json({
-      status: 'error',
-      statusCode: err.statusCode,
-      message: err.message
+        status: 'error',
+        statusCode: err.statusCode,
+        message: err.message
     });
   });
 
@@ -49,22 +50,28 @@ global.epochPeriod = 24 * 60 * 60 * 1000;
 global.nextEpochTransition = 1645595337821 + global.epochPeriod + 10000; // delay 10 seconds
 console.log(global.nextEpochTransition);
 
+global.adminSessionCode = randomstring.generate(20);
+
 const doEpochTransition = async () => {
-  console.log('do epoch transition');
-  const _controller = EpochController;
-  try {
-    await _controller.epochTransition();
-  } catch (e) {
-    console.error(e);
-  }
-  setTimeout(doEpochTransition, global.epochPeriod);
+    console.log('do epoch transition');
+    const _controller = EpochController;
+    try {
+        global.adminSessionCode = randomstring.generate(20);
+        await _controller.epochTransition();
+        setTimeout(doEpochTransition, global.epochPeriod);
+    } catch (e) {
+        console.error(e);
+        const delayedPeriod = 3 * 60 * 1000;
+        setTimeout(doEpochTransition, delayedPeriod);
+        global.nextEpochTransition = Date.now() + delayedPeriod;
+    }
 }
 
 setTimeout(doEpochTransition, global.epochPeriod);
 
 // make server listen on some port
 ((port = process.env.APP_PORT || 5000) => {
-  server.app.listen(port, () => console.log(`> Listening on port ${port}`));
+    server.app.listen(port, () => console.log(`> Listening on port ${port}`));
 })();
 
 var mongoDB = MONGODB + '/unirep_social';
@@ -81,15 +88,15 @@ db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 const ethProvider = DEFAULT_ETH_PROVIDER
 const provider = new ethers.providers.JsonRpcProvider(ethProvider)
 const unirepSocialContract = new ethers.Contract(
-  UNIREP_SOCIAL,
-  UNIREP_SOCIAL_ABI,
-  provider,
+    UNIREP_SOCIAL,
+    UNIREP_SOCIAL_ABI,
+    provider,
 )
 const unirepContract = new ethers.Contract(
     UNIREP,
     UNIREP_ABI,
     provider,
-  )
+)
 const UserSignedUpFilter = unirepContract.filters.UserSignedUp()
 const UserStateTransitionedFilter = unirepContract.filters.UserStateTransitioned()
 const AttestationSubmittedFilter = unirepContract.filters.AttestationSubmitted()
@@ -103,33 +110,33 @@ const airdropFilter = unirepSocialContract.filters.AirdropSubmitted()
 
 var startBlock = 0
 initDB(unirepContract, unirepSocialContract).then((res) => {
-  startBlock = res 
-  console.log('start block', startBlock)
-  provider.on(
-    UserSignedUpFilter, (event) => updateDBFromUnirepUserSignUpEvent(event, startBlock)
-  )
-  provider.on(
-    UserStateTransitionedFilter, (event) => updateDBFromUSTEvent(event, startBlock)
-  )
-  provider.on(
-    AttestationSubmittedFilter, (event) => updateDBFromAttestationEvent(event, startBlock)
-  )
-  provider.on(
-    EpochEndedFilter, (event) => updateDBFromEpochEndedEvent(event, startBlock)
-  )
-  provider.on(
-    userSignUpFilter, (event) => updateDBFromUserSignUpEvent(event, startBlock)
-  )
-  provider.on(
-    postFilter, (event) => updateDBFromPostSubmittedEvent(event, startBlock)
-  )
-  provider.on(
-    commentFilter, (event) => updateDBFromCommentSubmittedEvent(event, startBlock)
-  )
-  provider.on(
-    voteFilter, (event) => updateDBFromVoteSubmittedEvent(event, startBlock)
-  )
-  provider.on(
-    airdropFilter, (event) => updateDBFromAirdropSubmittedEvent(event, startBlock)
-  )
+    startBlock = res 
+    console.log('start block', startBlock)
+    provider.on(
+        UserSignedUpFilter, (event) => updateDBFromUnirepUserSignUpEvent(event, startBlock)
+    )
+    provider.on(
+        UserStateTransitionedFilter, (event) => updateDBFromUSTEvent(event, startBlock)
+    )
+    provider.on(
+        AttestationSubmittedFilter, (event) => updateDBFromAttestationEvent(event, startBlock)
+    )
+    provider.on(
+        EpochEndedFilter, (event) => updateDBFromEpochEndedEvent(event, startBlock)
+    )
+    provider.on(
+        userSignUpFilter, (event) => updateDBFromUserSignUpEvent(event, startBlock)
+    )
+    provider.on(
+        postFilter, (event) => updateDBFromPostSubmittedEvent(event, startBlock)
+    )
+    provider.on(
+        commentFilter, (event) => updateDBFromCommentSubmittedEvent(event, startBlock)
+    )
+    provider.on(
+        voteFilter, (event) => updateDBFromVoteSubmittedEvent(event, startBlock)
+    )
+    provider.on(
+        airdropFilter, (event) => updateDBFromAirdropSubmittedEvent(event, startBlock)
+    )
 })

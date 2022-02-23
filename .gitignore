@@ -115,3 +115,6 @@ dist
 
 # Private key
 privateKey.ts
+
+# dotenv environment variable files
+.env

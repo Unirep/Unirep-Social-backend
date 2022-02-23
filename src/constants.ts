@@ -1,12 +1,17 @@
+import dotenv from 'dotenv';
 import UnirepSocial from "../node_modules/@unirep/unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json"
 import Unirep from "../node_modules/@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json"
 
-export const DEPLOYER_PRIV_KEY = '0x7450f3b0505bd6ee818f9594dac22f25084e00d20c03d07f1783c8535e75caf0';
+export const DEPLOYER_PRIV_KEY = process.env.BACKEND_PRIVATE_KEY!;
 export const UNIREP = '0x6F559A43190f11F8A4F66BC38525A128D9Dc3F79';
 export const UNIREP_SOCIAL = '0xe9D09cF3CEDCC7b9aAbeaDA8A11998E7c47C332D';
 export const DEFAULT_ETH_PROVIDER = 'https://eth-goerli.alchemyapi.io/v2/tYp-IJU_idg28iohx9gsLqhq6KRZxk7f';
 // export const MONGODB = 'mongodb://mongo:27017'
 export const MONGODB = 'mongodb://localhost:27017'
+// load the environment variables from the .env file
+dotenv.config({
+    path: '.env'
+});
 
 export const DEFAULT_START_BLOCK = 0;
 export const UNIREP_SOCIAL_ATTESTER_ID = 1
