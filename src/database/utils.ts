@@ -4,8 +4,8 @@ import { getUnirepContract, Event, AttestationEvent } from '@unirep/contracts';
 import { hashLeftRight, IncrementalQuinTree, add0x } from '@unirep/crypto'
 import { DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL_ABI, ActionType, DEFAULT_AIRDROPPED_KARMA, titlePrefix, titlePostfix } from '../constants'
 import Attestations, { IAttestation } from './models/attestation'
-import GSTLeaves, { IGSTLeaf, IGSTLeaves } from './models/GSTLeaf'
-import GSTRoots, { IGSTRoots } from './models/GSTRoots'
+import GSTLeaves, { IGSTLeaf } from './models/GSTLeaf'
+import GSTRoots from './models/GSTRoots'
 import Epoch from './models/epoch'
 import EpochTreeLeaves, { IEpochTreeLeaf } from './models/epochTreeLeaf'
 import Nullifier, { INullifier } from './models/nullifiers'
@@ -321,9 +321,12 @@ const verifyAttestationProofsByIndex = async (proofIndex: number | ethers.BigNum
     } else if (signUpProofEvent.length == 1){
         event = signUpProofEvent[0]
         isProofValid = await verifySignUpProofEvent(event)
+    } else {
+        console.log(`Proof index ${Number(proofIndex)} is not found`)
+        return { isProofValid, args: [] }
     }
     if(!isProofValid) {
-        console.log('Reputation proof index ', Number(proofIndex), ' is invalid')
+        console.log('Proof index ', Number(proofIndex), ' is invalid')
         return {isProofValid: isProofValid, args: event?.args}
     }
     
@@ -868,7 +871,7 @@ const updateDBFromAttestationEvent = async (
         const newProof = new Proof({
             index: toProofIndex,
             epoch: _epoch,
-            args: JSON.stringify(args.map(n => n.toString())),
+            args: JSON.stringify(args?.map(n => n.toString())),
             transactionHash: event.transactionHash
         })
         if (isProofValid === false) {
