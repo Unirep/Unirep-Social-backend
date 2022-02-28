@@ -11,7 +11,6 @@ export const DEPLOYER_PRIV_KEY = process.env.BACKEND_PRIVATE_KEY!;
 export const UNIREP = '0x0165878A594ca255338adfa4d48449f69242Eb8F';
 export const UNIREP_SOCIAL = '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853';
 export const DEFAULT_ETH_PROVIDER = 'http://localhost:8545';
-// export const DEFAULT_ETH_PROVIDER = 'http://18.188.136.227';
 export const DEFAULT_START_BLOCK = 0;
 export const UNIREP_SOCIAL_ATTESTER_ID = 1
 
@@ -19,6 +18,7 @@ export const DEFAULT_POST_KARMA = 5
 export const DEFAULT_COMMENT_KARMA = 3
 export const MAX_KARMA_BUDGET = 10
 export const DEFAULT_AIRDROPPED_KARMA = 30
+export const DEFAULT_RECURSIVE_DEPTH = 5
 
 export const identityPrefix = 'Unirep.identity.'
 export const identityCommitmentPrefix = 'Unirep.identityCommitment.'
@@ -28,6 +28,12 @@ export const reputationProofPrefix = 'Unirep.reputation.proof.'
 export const reputationPublicSignalsPrefix = 'Unirep.reputation.publicSignals.'
 export const signUpProofPrefix = 'Unirep.signUp.proof.'
 export const signUpPublicSignalsPrefix = 'Unirep.signUp.publicSignals.'
+export const startUSTProofPrefix = 'Unirep.startUST.proof.'
+export const startUSTPublicSignalsPrefix = 'Unirep.startUST.publicSignals.'
+export const processUSTProofPrefix = 'Unirep.processUST.proof.'
+export const processUSTPublicSignalsPrefix = 'Unirep.processUST.publicSignals.'
+export const USTProofPrefix = 'Unirep.UST.proof.'
+export const USTPublicSignalsPrefix = 'Unirep.UST.publicSignals.'
 export const maxReputationBudget = 10
 
 export const loadPostCount = 10

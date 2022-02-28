@@ -15,6 +15,7 @@ class EpochController {
         
         const currentEpoch = await unirepContract.currentEpoch()
         const tx = await unirepSocialContract.epochTransition()
+        const receipt = await tx.wait()
 
         console.log('Transaction hash:', tx.hash)
         console.log('End of epoch:', currentEpoch.toString())
@@ -22,7 +23,7 @@ class EpochController {
         global.nextEpochTransition = Date.now() + global.epochPeriod
         console.log(global.nextEpochTransition)
 
-        return
+        return receipt.status
     }
 }
 

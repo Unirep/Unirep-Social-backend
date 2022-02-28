@@ -3,7 +3,15 @@ import { Circuit, verifyProof } from '@unirep/circuits';
 import { ReputationProof, SignUpProof, UserTransitionProof } from '@unirep/contracts';
 import Record from '../database/models/record';
 import { epochTreeRootExists, GSTRootExists, nullifierExists } from '../database/utils';
-import { reputationProofPrefix, reputationPublicSignalsPrefix } from '../constants';
+import { reputationProofPrefix, reputationPublicSignalsPrefix, signUpProofPrefix, signUpPublicSignalsPrefix } from '../constants';
+
+const decodeSignUpProof = (proof: string, publicSignals: string) => {
+    const decodedProof = base64url.decode(proof.slice(signUpProofPrefix.length))
+    const decodedPublicSignals = base64url.decode(publicSignals.slice(signUpPublicSignalsPrefix.length))
+    const publicSignals_ = JSON.parse(decodedPublicSignals)
+    const proof_ = JSON.parse(decodedProof)
+    return { publicSignals: publicSignals_, proof: proof_ }
+}
 
 const decodeReputationProof = (proof: string, publicSignals: string) => {
     const decodedProof = base64url.decode(proof.slice(reputationProofPrefix.length))
@@ -163,6 +171,7 @@ const verifyUSTProof = async(results): Promise<string | undefined> => {
 }
 
 export {
+    decodeSignUpProof,
     decodeReputationProof,
     GSTRootExists,
     epochTreeRootExists,

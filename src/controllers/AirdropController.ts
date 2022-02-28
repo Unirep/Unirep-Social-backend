@@ -1,17 +1,14 @@
-import base64url from 'base64url';
 import { formatProofForSnarkjsVerification } from '@unirep/circuits';
 import { SignUpProof } from '@unirep/contracts'
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
 import ErrorHandler from '../ErrorHandler';
 import { 
-    signUpProofPrefix,
-    signUpPublicSignalsPrefix,
     DEPLOYER_PRIV_KEY, 
     UNIREP_SOCIAL, 
     DEFAULT_ETH_PROVIDER,  
     UNIREP_SOCIAL_ATTESTER_ID} from '../constants';
-import { verifyAirdropProof } from './utils';
+import { decodeSignUpProof, verifyAirdropProof } from './utils';
 
 
 class AirdropController {
@@ -27,10 +24,7 @@ class AirdropController {
         const currentEpoch = Number(await unirepContract.currentEpoch())
 
         // Parse Inputs
-        const decodedProof = base64url.decode(data.proof.slice(signUpProofPrefix.length))
-        const decodedPublicSignals = base64url.decode(data.publicSignals.slice(signUpPublicSignalsPrefix.length))
-        const publicSignals = JSON.parse(decodedPublicSignals)
-        const proof = JSON.parse(decodedProof)
+        const { publicSignals, proof } = decodeSignUpProof(data.proof, data.publicSignals)
         const signUpProof = new SignUpProof(publicSignals, formatProofForSnarkjsVerification(proof))
 
         console.log('in airdrop controller:')

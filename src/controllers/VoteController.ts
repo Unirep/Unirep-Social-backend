@@ -88,6 +88,11 @@ class VoteController {
         } catch(e) {
             return {error: e, transaction: tx?.hash, postId: undefined, currentEpoch: currentEpoch};
         }
+        const receipt = await tx.wait()
+        if (receipt.status === 0) {
+            error = 'Error: transaction failed'
+            return {error: error, transaction: tx?.hash, postId: undefined, currentEpoch: currentEpoch};
+        }
       
         // save to db data
         const newVote: IVote = {

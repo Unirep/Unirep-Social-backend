@@ -21,24 +21,25 @@ class USTController {
         if(error !== undefined) return {error, transactionHash: undefined}
 
         // submit user state transition proofs
-        let txList
+        let txHash
         try {
-            txList = await unirepSocialContract.userStateTransition(results)
+            const txList = await unirepSocialContract.userStateTransition(results)
+            txHash = txList[txList?.length - 1]?.hash
         } catch(e) {
-            return {error: e, transaction: txList[txList.length - 1]?.hash}
-        } 
+            return {error: e, transaction: txHash}
+        }
 
-        if(txList[0] != undefined){
-            console.log('Transaction hash:', txList[txList.length - 1]?.hash)
+        if(txHash !== undefined){
+            console.log('Transaction hash:', txHash)
             // save GST leaf before gen airdrop proof
             const newLeaf: IGSTLeaf = {
-                transactionHash: txList[txList.length - 1]?.hash,
+                transactionHash: txHash,
                 hashedLeaf: results.finalTransitionProof.newGlobalStateTreeLeaf
             }
             await updateGSTLeaf(newLeaf, Number(currentEpoch))
         }
 
-        return {transaction: txList[txList.length - 1]?.hash}
+        return {transaction: txHash}
     }
 }
 
