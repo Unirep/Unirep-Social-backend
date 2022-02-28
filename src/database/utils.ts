@@ -1380,6 +1380,8 @@ const updateDBFromEpochEndedEvent = async (
     event: ethers.Event,
     startBlock: number  = DEFAULT_START_BLOCK,
 ) => {
+    console.log('update db from epoch ended event: ');
+    console.log(event);
 
     // The event has been processed
     if(event.blockNumber <= startBlock) return
