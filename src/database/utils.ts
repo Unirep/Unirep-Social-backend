@@ -1,8 +1,9 @@
-import { Attestation, circuitEpochTreeDepth, circuitUserStateTreeDepth, circuitGlobalStateTreeDepth, computeEmptyUserStateRoot, genNewSMT, SMT_ONE_LEAF, verifyUSTEvents, verifyEpochKeyProofEvent, verifyReputationProofEvent, verifySignUpProofEvent, computeInitUserStateRoot, } from '@unirep/unirep'
+import { Attestation, circuitUserStateTreeDepth, circuitGlobalStateTreeDepth, computeEmptyUserStateRoot, computeInitUserStateRoot, genUnirepStateFromContract, } from '@unirep/unirep'
+import base64url from 'base64url';
 import { ethers } from 'ethers'
-import { getUnirepContract, Event, AttestationEvent } from '@unirep/contracts';
-import { hashLeftRight, IncrementalQuinTree, add0x } from '@unirep/crypto'
-import { DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL_ABI, ActionType, DEFAULT_AIRDROPPED_KARMA, titlePrefix, titlePostfix } from '../constants'
+import { getUnirepContract, Event, AttestationEvent, EpochKeyProof, ReputationProof, SignUpProof, UserTransitionProof } from '@unirep/contracts';
+import { hashLeftRight, IncrementalQuinTree, stringifyBigInts } from '@unirep/crypto'
+import { DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL_ABI, ActionType, DEFAULT_AIRDROPPED_KARMA, titlePrefix, titlePostfix, reputationProofPrefix, reputationPublicSignalsPrefix, signUpProofPrefix, signUpPublicSignalsPrefix, epkProofPrefix, epkPublicSignalsPrefix, USTPublicSignalsPrefix, USTProofPrefix, DEFAULT_RECURSIVE_DEPTH, } from '../constants'
 import Attestations, { IAttestation } from './models/attestation'
 import GSTLeaves, { IGSTLeaf } from './models/GSTLeaf'
 import GSTRoots from './models/GSTRoots'
@@ -15,6 +16,28 @@ import Comment, { IComment } from "./models/comment";
 import EpkRecord from './models/epkRecord';
 import userSignUp, { IUserSignUp } from './models/userSignUp';
 import Proof from './models/proof'; 
+import { Circuit, formatProofForSnarkjsVerification, verifyProof } from '@unirep/circuits';
+import { decodeReputationProof, decodeSignUpProof } from '../controllers/utils';
+
+const decodeEpochKeyProof = (proof: string, publicSignals: string) => {
+    const decodedProof = base64url.decode(proof.slice(epkProofPrefix.length))
+    const decodedPublicSignals = base64url.decode(publicSignals.slice(epkPublicSignalsPrefix.length))
+    const publicSignals_ = JSON.parse(decodedPublicSignals)
+    const proof_ = JSON.parse(decodedProof)
+    return { publicSignals: publicSignals_, proof: proof_ }
+}
+
+const decodeUSTProof = (proof: string, publicSignals: string) => {
+    const decodedProof = base64url.decode(proof.slice(USTProofPrefix.length))
+    const decodedPublicSignals = base64url.decode(publicSignals.slice(USTPublicSignalsPrefix.length))
+    const publicSignals_ = JSON.parse(decodedPublicSignals)
+    const proof_ = JSON.parse(decodedProof)
+    return { publicSignals: publicSignals_, proof: proof_ }
+}
+
+const encodeBigIntArray = (arr: BigInt[]): string => {
+    return base64url.encode(JSON.stringify(stringifyBigInts(arr)))
+}
 
 const getGSTLeaves = async (epoch: number): Promise<IGSTLeaf[]> => {
     const leaves = await GSTLeaves.findOne({epoch: epoch})
@@ -259,86 +282,194 @@ const insertGSTRoot = async (epoch: number, GSTRoot: string) => {
     }
 }
 
-const verifyUSTProofByIndex = async(proofIndex: number | ethers.BigNumber): Promise<ethers.Event | void> => {
+const _fallBack = () => {
+    return
+}
+
+const verifyUSTProofByIndex = async(
+    proofIndex: number, 
+    epoch: number, 
+    transactionHash: string,
+    stackDepth: number = DEFAULT_RECURSIVE_DEPTH
+): Promise<Boolean> => {
+    if (stackDepth === 0) {
+        console.log('Found no valid UST result');
+        return false;
+    }
+
     const provider = new ethers.providers.JsonRpcProvider(DEFAULT_ETH_PROVIDER)
     const unirepContract = getUnirepContract(UNIREP, provider)
 
-    // 2. verify user state transition proof
-    const transitionFilter = unirepContract.filters.IndexedUserStateTransitionProof(proofIndex)
-    const transitionEvents = await unirepContract.queryFilter(transitionFilter)
-    if(transitionEvents.length == 0) return
-    // proof index is supposed to be unique, therefore it should be only one event found
-    const transitionArgs = transitionEvents[0]?.args?._proof
-    
-    const _proofIndexes = transitionEvents[0]?.args?._proofIndexRecords.map(n => Number(n))
-    // Proof index 0 should be the start transition proof
-    const startTransitionFilter = unirepContract.filters.IndexedStartedTransitionProof(
-        _proofIndexes[0], 
-        transitionArgs.blindedUserStates[0], 
-        transitionArgs.fromGlobalStateTree
-    )
-    const startTransitionEvents = await unirepContract.queryFilter(startTransitionFilter)
-    if(startTransitionEvents.length == 0) return
+    // verify user state transition proof
+    const transitionProof = await Proof.findOne({index: proofIndex})
+    if (transitionProof === null) {
+        console.log('UST proof index', proofIndex, 'not found, try again')
+        const transitionFilter = unirepContract.filters.IndexedUserStateTransitionProof(proofIndex)
+        const transitionEvents = await unirepContract.queryFilter(transitionFilter)
+        if (transitionEvents.length === 1) {
+            await updateDBFromUSTProofEvent(transitionEvents[0])
+        } else {
+            setTimeout(_fallBack, 10);
+        }
+        return await verifyUSTProofByIndex(proofIndex, epoch, transactionHash, stackDepth - 1);
+    }
+    if (transitionProof?.valid === false ||
+        transitionProof?.event !== "IndexedUserStateTransitionProof") {
+        console.log('User State Transition Proof index: ', proofIndex, ' is invalid');
+        return false
+    }
+    const proofIndexRecords = transitionProof?.proofIndexRecords
 
-    // process attestations proofs
-    const processAttestationsEvents: ethers.Event[] = []
-    for (let i = 1; i < _proofIndexes.length; i++) {
-        const processAttestationsFilter = unirepContract.filters.IndexedProcessedAttestationsProof(_proofIndexes[i])
-        const events = await unirepContract.queryFilter(processAttestationsFilter)
-        processAttestationsEvents.push(events[0])
+    // find start user state transition proof
+    const startTransitionProof = await Proof.findOne({index: proofIndexRecords[0]})
+    if (startTransitionProof === null) {
+        console.log('Start UST proof index', proofIndexRecords[0], 'not found, try again')
+        const startTransitionFilter = unirepContract.filters.IndexedStartedTransitionProof(
+            proofIndexRecords[0],
+        )
+        const startTransitionEvents = await unirepContract.queryFilter(startTransitionFilter)
+        if (startTransitionEvents.length === 1) {
+            await updateDBFromStartUSTProofEvent(startTransitionEvents[0])
+        } else {
+            setTimeout(_fallBack, 10);
+        }
+        return await verifyUSTProofByIndex(proofIndex, epoch, transactionHash, stackDepth - 1);
+    } else if (startTransitionProof?.valid === false ||
+        startTransitionProof?.event !== "IndexedStartedTransitionProof") {
+        console.log('Start Transition Proof index: ', proofIndexRecords[0], ' is invalid');
+        return false
+    } else {
+        if (startTransitionProof?.blindedUserState !== transitionProof?.blindedUserState ||
+            startTransitionProof?.globalStateTree !== transitionProof?.globalStateTree) {
+            console.log('Start Transition Proof index: ', proofIndexRecords[0], ' mismatch UST proof')
+            return false
+        }
     }
 
-    const isValid = await verifyUSTEvents(
-        transitionEvents[0], 
-        startTransitionEvents[0], 
-        processAttestationsEvents
-    )
-    if (!isValid) return
+    // find process attestations proof
+    let currentBlindedUserState = startTransitionProof?.blindedUserState
+    for (let i = 1; i < proofIndexRecords.length; i++) {
+        const processAttestationsProof = await Proof.findOne({
+            index: proofIndexRecords[i],
+        })
+        if (processAttestationsProof === null) {
+            console.log('Process attestations proof index', proofIndexRecords[i], 'not found, try again')
+            const processAttestationsFilter = unirepContract.filters.IndexedProcessedAttestationsProof(
+                proofIndexRecords[i]
+            )
+            const events = await unirepContract.queryFilter(processAttestationsFilter)
+            if (events.length === 1) {
+                await updateDBFromProcessAttestationProofEvent(events[0])
+            } else {
+                setTimeout(_fallBack, 10);
+            }
+            return await verifyUSTProofByIndex(proofIndex, epoch, transactionHash, stackDepth - 1);
+        } else if (processAttestationsProof?.valid === false ||
+            processAttestationsProof?.event !== "IndexedProcessedAttestationsProof") {
+            console.log('Process Attestations Proof index: ', proofIndexRecords[i], ' is invalid');
+            return false
+        } else {
+            if (currentBlindedUserState !== processAttestationsProof?.inputBlindedUserState) {
+                console.log('Process Attestations Proof index: ', proofIndexRecords[i], ' mismatch UST proof');
+                return false
+            }
+        }
+        currentBlindedUserState = processAttestationsProof?.outputBlindedUserState
+    }
 
-    return transitionEvents[0]
+    // verify blinded hash chain result
+    const { publicSignals, proof } = decodeUSTProof(transitionProof.proof, transitionProof.publicSignals)
+    const formatProof = new UserTransitionProof(publicSignals, formatProofForSnarkjsVerification(proof))
+    for (const blindedHC of formatProof.blindedHashChains) {
+        let allProofIndexQuery: any[] = []
+        for (let idx of proofIndexRecords) {
+            allProofIndexQuery.push({index: idx})
+        }
+        const query = {
+            $and: [
+                {
+                    outputBlindedHashChain: `${blindedHC.toString()}`
+                },
+                { $or: allProofIndexQuery }
+            ]
+        }
+        const findBlindHC = await Proof.findOne(query)
+        const inList = proofIndexRecords.indexOf(findBlindHC?.index)
+        if (inList === -1) {
+            console.log('Proof in UST mismatches proof in process attestations')
+            return false
+        }
+    }
+
+    // save epoch key nullifiers
+    // check if GST root, epoch tree root exists
+    const fromEpoch = Number(formatProof?.transitionFromEpoch)
+    const GSTRoot = formatProof?.fromGlobalStateTree.toString()
+    const epochTreeRoot = formatProof?.fromEpochTree.toString()
+    const epkNullifier = formatProof?.epkNullifiers.map(n => n.toString())
+    const isGSTExisted = await GSTRootExists(fromEpoch, GSTRoot)
+    const isEpochTreeExisted = await epochTreeRootExists(fromEpoch, epochTreeRoot)
+    if(!isGSTExisted) {
+        console.log('Global state tree root mismatches')
+        return false
+    }
+    if(!isEpochTreeExisted) {
+        console.log('Epoch tree root mismatches')
+        return false
+    }
+
+    // check and save nullifiers
+    const success = await checkAndSaveNullifiers(epoch, epkNullifier, transactionHash)
+    if (!success) {
+        console.log(`duplicated nullifier`)
+        return false
+    }
+
+    return true
 }
 
-const verifyAttestationProofsByIndex = async (proofIndex: number | ethers.BigNumber): Promise<any> => {
-    const ethProvider = DEFAULT_ETH_PROVIDER
-    const provider = new ethers.providers.JsonRpcProvider(ethProvider)
-    const unirepContract = getUnirepContract(UNIREP, provider)
-
-    const epochKeyProofFilter = unirepContract.filters.IndexedEpochKeyProof(proofIndex)
-    const epochKeyProofEvent = await unirepContract.queryFilter(epochKeyProofFilter)
-    const repProofFilter = unirepContract.filters.IndexedReputationProof(proofIndex)
-    const repProofEvent = await unirepContract.queryFilter(repProofFilter)
-    const signUpProofFilter = unirepContract.filters.IndexedUserSignedUpProof(proofIndex)
-    const signUpProofEvent = await unirepContract.queryFilter(signUpProofFilter)
-    let isProofValid = false
-    let event
-
-    if (epochKeyProofEvent.length == 1){
-        event = epochKeyProofEvent[0]
-        isProofValid = await verifyEpochKeyProofEvent(event)
-    } else if (repProofEvent.length == 1){
-        event = repProofEvent[0]
-        isProofValid = await verifyReputationProofEvent(event)
-    } else if (signUpProofEvent.length == 1){
-        event = signUpProofEvent[0]
-        isProofValid = await verifySignUpProofEvent(event)
+const verifyAttestationProofsByIndex = async (proofIndex: number): Promise<any> => {
+    const proof_ = await Proof.findOne({index: proofIndex})
+    let formatProof
+    if (proof_ !== null) {
+        if (proof_.event === "IndexedEpochKeyProof") {
+            const { publicSignals, proof } = decodeEpochKeyProof(proof_.proof, proof_.publicSignals)
+            formatProof = new EpochKeyProof(publicSignals, formatProofForSnarkjsVerification(proof))
+        } else if (proof_.event === "IndexedReputationProof") {
+            const { publicSignals, proof } = decodeReputationProof(proof_.proof, proof_.publicSignals)
+            formatProof = new ReputationProof(publicSignals, formatProofForSnarkjsVerification(proof))
+        } else if (proof_.event === "IndexedUserSignedUpProof") {
+            const { publicSignals, proof } = decodeSignUpProof(proof_.proof, proof_.publicSignals)
+            formatProof = new SignUpProof(publicSignals, formatProofForSnarkjsVerification(proof))
+        } else {
+            console.log(`proof index ${proofIndex} matches wrong event ${proof_?.event}`);
+            return {isProofValid: false, proof: formatProof}
+        }
     } else {
-        console.log(`Proof index ${Number(proofIndex)} is not found`)
-        return { isProofValid, args: [] }
+        setTimeout(_fallBack, 10);
+        return await verifyAttestationProofsByIndex(proofIndex);
     }
+
+    let isProofValid = await formatProof.verify()
     if(!isProofValid) {
-        console.log('Proof index ', Number(proofIndex), ' is invalid')
-        return {isProofValid: isProofValid, args: event?.args}
+        console.log('Proof index ', proofIndex, ' is invalid')
+        return {isProofValid, proof: formatProof}
     }
     
-    const args = event?.args
-    const epoch = Number(args?._epoch)
-    const GSTRoot = BigInt(args?._proof?.globalStateTree).toString()
+    // const args = event?.args
+    const epoch = Number(formatProof?.epoch)
+    const GSTRoot = BigInt(formatProof?.globalStateTree).toString()
     const isGSTExisted = await GSTRootExists(epoch, GSTRoot)
     if(!isGSTExisted) {
         isProofValid = false
         console.log('Global state tree root mismatches')
+        await Proof.findOneAndUpdate({
+            index: proofIndex,
+        }, {
+            valid: false
+        })
     }
-    return {isProofValid, args}
+    return {isProofValid, proof: formatProof}
 }
 
 const updateGSTLeaf = async (
@@ -375,6 +506,341 @@ const saveAttestationResult = async (epoch: number, epochKey: string, attestInde
     }, {
         "attestations.$.valid": valid
     })
+}
+
+const findAttestationEventFromFilter = async (proofIndex: number) => {
+    const ethProvider = DEFAULT_ETH_PROVIDER
+    const provider = new ethers.providers.JsonRpcProvider(ethProvider)
+    const unirepContract = getUnirepContract(UNIREP, provider)
+    let isProofValid = false
+    let event
+
+    const epochKeyProofFilter = unirepContract.filters.IndexedEpochKeyProof(proofIndex)
+    const epochKeyProofEvent = await unirepContract.queryFilter(epochKeyProofFilter, DEFAULT_START_BLOCK)
+    if (epochKeyProofEvent.length == 1){
+        await updateDBFromEpochKeyProofEvent(epochKeyProofEvent[0])
+    }
+    const repProofFilter = unirepContract.filters.IndexedReputationProof(proofIndex)
+    const repProofEvent = await unirepContract.queryFilter(repProofFilter, DEFAULT_START_BLOCK)
+    if (repProofEvent.length == 1){
+        await updateDBFromReputationProofEvent(repProofEvent[0])
+    }
+    const signUpProofFilter = unirepContract.filters.IndexedUserSignedUpProof(proofIndex)
+    const signUpProofEvent = await unirepContract.queryFilter(signUpProofFilter, DEFAULT_START_BLOCK)
+    if (signUpProofEvent.length == 1){
+        await updateDBFromUserSignedUpProofEvent(signUpProofEvent[0])
+    }
+
+    return await verifyAttestationProofsByIndex(proofIndex)
+}
+
+/*
+* When a EpochKeyProof event comes
+* update the database
+* @param event IndexedEpochKeyProof event
+*/
+const updateDBFromEpochKeyProofEvent = async (
+    event: ethers.Event,
+    startBlock: number = DEFAULT_START_BLOCK,
+) => {
+    // The event has been processed
+    if(event.blockNumber <= startBlock) return
+
+    const iface = new ethers.utils.Interface(UNIREP_ABI)
+    const _proofIndex = Number(event.topics[1])
+    const _epoch = Number(event.topics[2])
+    const decodedData = iface.decodeEventLog("IndexedEpochKeyProof", event.data)
+    const args = decodedData?._proof
+
+    const emptyArray = []
+    const formatPublicSignals = emptyArray.concat(
+        args?.globalStateTree,
+        args?.epoch,
+        args?.epochKey,
+    ).map(n => BigInt(n))
+    const formattedProof = args?.proof.map(n => BigInt(n))
+    const encodedProof = encodeBigIntArray(formattedProof)
+    const encodedPublicSignals = encodeBigIntArray(formatPublicSignals)
+    const proof = epkProofPrefix + encodedProof
+    const publicSignals = epkPublicSignalsPrefix + encodedPublicSignals
+    const isValid = await verifyProof(
+        Circuit.verifyEpochKey, 
+        formatProofForSnarkjsVerification(formattedProof), 
+        formatPublicSignals
+    )
+
+    const newProof = new Proof({
+        index: _proofIndex,
+        epoch: _epoch,
+        proof: proof,
+        publicSignals: publicSignals,
+        transactionHash: event.transactionHash,
+        event: "IndexedEpochKeyProof",
+        valid: isValid,
+    })
+    try {
+        await newProof.save()
+    } catch (error) {
+        return
+    }
+}
+
+/*
+* When a ReputationProof event comes
+* update the database
+* @param event IndexedReputationProof event
+*/
+const updateDBFromReputationProofEvent = async (
+    event: ethers.Event,
+    startBlock: number = DEFAULT_START_BLOCK,
+) => {
+    // The event has been processed
+    if(event.blockNumber <= startBlock) return
+    
+    const iface = new ethers.utils.Interface(UNIREP_ABI)
+    const _proofIndex = Number(event.topics[1])
+    const _epoch = Number(event.topics[2])
+    const decodedData = iface.decodeEventLog("IndexedReputationProof", event.data)
+    const args = decodedData?._proof
+    const emptyArray = []
+    const formatPublicSignals = emptyArray.concat(
+        args?.repNullifiers,
+        args?.epoch,
+        args?.epochKey,
+        args?.globalStateTree,
+        args?.attesterId,
+        args?.proveReputationAmount,
+        args?.minRep,
+        args?.proveGraffiti,
+        args?.graffitiPreImage,
+    ).map(n => BigInt(n))
+    const formattedProof = args?.proof.map(n => BigInt(n))
+    const encodedProof = encodeBigIntArray(formattedProof)
+    const encodedPublicSignals = encodeBigIntArray(formatPublicSignals)
+    const proof = reputationProofPrefix + encodedProof
+    const publicSignals = reputationPublicSignalsPrefix + encodedPublicSignals
+    const isValid = await verifyProof(
+        Circuit.proveReputation, 
+        formatProofForSnarkjsVerification(formattedProof), 
+        formatPublicSignals
+    )
+
+    const newProof = new Proof({
+        index: _proofIndex,
+        epoch: _epoch,
+        proof: proof,
+        publicSignals: publicSignals,
+        transactionHash: event.transactionHash,
+        event: "IndexedReputationProof",
+        valid: isValid
+    })
+    try {
+        await newProof.save()
+    } catch (error) {
+        return
+    }
+}
+
+/*
+* When a UserSignedUpProof event comes
+* update the database
+* @param event IndexedUserSignedUpProof event
+*/
+const updateDBFromUserSignedUpProofEvent = async (
+    event: ethers.Event,
+    startBlock: number = DEFAULT_START_BLOCK,
+) => {
+    // The event has been processed
+    if(event.blockNumber <= startBlock) return
+    
+    const iface = new ethers.utils.Interface(UNIREP_ABI)
+    const _proofIndex = Number(event.topics[1])
+    const _epoch = Number(event.topics[2])
+    const decodedData = iface.decodeEventLog("IndexedUserSignedUpProof", event.data)
+    const args = decodedData?._proof
+
+    const emptyArray = []
+    const formatPublicSignals = emptyArray.concat(
+        args?.epoch,
+        args?.epochKey,
+        args?.globalStateTree,
+        args?.attesterId,
+        args?.userHasSignedUp,
+    ).map(n => BigInt(n))
+    const formattedProof = args?.proof.map(n => BigInt(n))
+    const encodedProof = encodeBigIntArray(formattedProof)
+    const encodedPublicSignals = encodeBigIntArray(formatPublicSignals)
+    const proof = signUpProofPrefix + encodedProof
+    const publicSignals = signUpPublicSignalsPrefix + encodedPublicSignals
+    const isValid = await verifyProof(
+        Circuit.proveUserSignUp, 
+        formatProofForSnarkjsVerification(formattedProof), 
+        formatPublicSignals
+    )
+    
+    const newProof = new Proof({
+        index: _proofIndex,
+        epoch: _epoch,
+        proof: proof,
+        publicSignals: publicSignals,
+        transactionHash: event.transactionHash,
+        event: "IndexedUserSignedUpProof",
+        valid: isValid
+    })
+    try {
+        await newProof.save()
+    } catch (error) {
+        return
+    }
+}
+
+/*
+* When a StartTransition event comes
+* update the database
+* @param event IndexedStartedTransitionProof event
+*/
+const updateDBFromStartUSTProofEvent = async (
+    event: ethers.Event,
+    startBlock: number = DEFAULT_START_BLOCK,
+) => {
+    // The event has been processed
+    if(event.blockNumber <= startBlock) return
+    
+    const iface = new ethers.utils.Interface(UNIREP_ABI)
+    const _proofIndex = Number(event.topics[1])
+    const _blindedUserState = BigInt(event.topics[2])
+    const _globalStateTree = BigInt(event.topics[3])
+    const decodedData = iface.decodeEventLog("IndexedStartedTransitionProof", event.data)
+    const _blindedHashChain = BigInt(decodedData?._blindedHashChain)
+    const formatProof = formatProofForSnarkjsVerification(decodedData?._proof)
+    const encodedProof = base64url.encode(JSON.stringify(stringifyBigInts(formatProof)))
+    const formatPublicSignals = [
+        _blindedUserState,
+        _blindedHashChain,
+        _globalStateTree,
+    ]
+    const isValid = await verifyProof(
+        Circuit.startTransition, 
+        formatProof, 
+        formatPublicSignals
+    )
+    
+    const newProof = new Proof({
+        index: _proofIndex,
+        blindedUserState: _blindedUserState,
+        blindedHashChain: _blindedHashChain,
+        globalStateTree: _globalStateTree,
+        proof: encodedProof,
+        transactionHash: event.transactionHash,
+        event: "IndexedStartedTransitionProof",
+        valid: isValid
+    })
+    try {
+        await newProof.save()
+    } catch (error) {
+        return
+    }
+}
+
+/*
+* When a ProcessAttestation event comes
+* update the database
+* @param event IndexedProcessedAttestationsProof event
+*/
+const updateDBFromProcessAttestationProofEvent = async (
+    event: ethers.Event,
+    startBlock: number = DEFAULT_START_BLOCK,
+) => {
+    // The event has been processed
+    if(event.blockNumber <= startBlock) return
+    
+    const iface = new ethers.utils.Interface(UNIREP_ABI)
+    const _proofIndex = Number(event.topics[1])
+    const _inputBlindedUserState = BigInt(event.topics[2])
+    const decodedData = iface.decodeEventLog("IndexedProcessedAttestationsProof", event.data)
+    const _outputBlindedUserState = BigInt(decodedData?._outputBlindedUserState)
+    const _outputBlindedHashChain = BigInt(decodedData?._outputBlindedHashChain)
+    const formatProof = formatProofForSnarkjsVerification(decodedData?._proof)
+    const encodedProof = base64url.encode(JSON.stringify(stringifyBigInts(formatProof)))
+    const formatPublicSignals = [
+        _outputBlindedUserState,
+        _outputBlindedHashChain,
+        _inputBlindedUserState,
+    ]
+    const isValid = await verifyProof(
+        Circuit.processAttestations, 
+        formatProof, 
+        formatPublicSignals
+    )
+
+    const newProof = new Proof({
+        index: _proofIndex,
+        outputBlindedUserState: _outputBlindedUserState,
+        outputBlindedHashChain: _outputBlindedHashChain,
+        inputBlindedUserState: _inputBlindedUserState,
+        proof: encodedProof,
+        transactionHash: event.transactionHash,
+        event: "IndexedProcessedAttestationsProof",
+        valid: isValid
+    })
+    
+    try {
+        await newProof.save()
+    } catch (error) {
+        return
+    }
+}
+
+/*
+* When a UserStateTransition event comes
+* update the database
+* @param event IndexedUserStateTransitionProof event
+*/
+const updateDBFromUSTProofEvent = async (
+    event: ethers.Event,
+    startBlock: number = DEFAULT_START_BLOCK,
+) => {
+    // The event has been processed
+    if(event.blockNumber <= startBlock) return
+    
+    const iface = new ethers.utils.Interface(UNIREP_ABI)
+    const _proofIndex = Number(event.topics[1])
+    const decodedData = iface.decodeEventLog("IndexedUserStateTransitionProof", event.data)
+    const args = decodedData?._proof
+    const proofIndexRecords = decodedData?._proofIndexRecords.map(n => Number(n))
+
+    const emptyArray = []
+    let formatPublicSignals = emptyArray.concat(
+        args.newGlobalStateTreeLeaf,
+        args.epkNullifiers,
+        args.transitionFromEpoch,
+        args.blindedUserStates,
+        args.fromGlobalStateTree,
+        args.blindedHashChains,
+        args.fromEpochTree,
+    ).map(n => BigInt(n))
+    const formattedProof = args?.proof.map(n => BigInt(n))
+    const encodedProof = encodeBigIntArray(formattedProof)
+    const encodedPublicSignals = encodeBigIntArray(formatPublicSignals)
+    const proof = USTProofPrefix + encodedProof
+    const publicSignals = USTPublicSignalsPrefix + encodedPublicSignals
+
+    const newProof = new Proof({
+        index: _proofIndex,
+        proof: proof,
+        publicSignals: publicSignals,
+        blindedUserState: args.blindedUserStates[0],
+        globalStateTree: args.fromGlobalStateTree,
+        proofIndexRecords: proofIndexRecords,
+        transactionHash: event.transactionHash,
+        event: "IndexedUserStateTransitionProof",
+    })
+    
+    try {
+        await newProof.save()
+    } catch (error) {
+        return
+    }
 }
 
 /*
@@ -440,7 +906,7 @@ const updateDBFromPostSubmittedEvent = async (
     if (findValidProof?.valid === false) {
         console.log(`proof index ${proofIndex} is invalid`)
         return
-    } else if (findValidProof === null) {
+    } else if (findValidProof?.valid === undefined) {
         const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
         if (isProofValid === false) {
             console.log(`proof index ${proofIndex} is invalid`)
@@ -534,7 +1000,7 @@ const updateDBFromCommentSubmittedEvent = async (
     if (findValidProof?.valid === false) {
         console.log(`proof index ${proofIndex} is invalid`)
         return
-    } else if (findValidProof === null) {
+    } else if (findValidProof?.valid === undefined) {
         const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
         if (isProofValid === false) {
             console.log(`proof index ${proofIndex} is invalid`)
@@ -625,7 +1091,7 @@ const updateDBFromVoteSubmittedEvent = async (
     if (findValidProof?.valid === false) {
         console.log(`proof index ${_toEpochKeyProofIndex} is invalid`)
         return
-    } else if (findValidProof === null) {
+    } else if (findValidProof?.valid === undefined) {
         const {isProofValid} = await verifyAttestationProofsByIndex(_toEpochKeyProofIndex)
         if (isProofValid === false) {
             console.log(`proof index ${_toEpochKeyProofIndex} is invalid`)
@@ -684,7 +1150,7 @@ const updateDBFromAirdropSubmittedEvent = async (
     const unirepContract = getUnirepContract(UNIREP, provider)
     
     const proofNullifier = await unirepContract.hashSignUpProof(signUpProof)
-    const proofIndex = await unirepContract.getProofIndex(proofNullifier)
+    const proofIndex = Number(await unirepContract.getProofIndex(proofNullifier))
 
     const {isProofValid} = await verifyAttestationProofsByIndex(proofIndex)
     if (isProofValid === false) return
@@ -765,39 +1231,16 @@ const updateDBFromUSTEvent = async (
     const _transactionHash = event.transactionHash
     const _epoch = Number(event?.topics[1])
     const _hashedLeaf = BigInt(event?.topics[2]).toString()
+    const proofIndex = Number(decodedData?._proofIndex)
 
-    const proofIndex = decodedData?._proofIndex
-    const results = await verifyUSTProofByIndex(proofIndex)
-    if (results == undefined) {
+    const isValid = await verifyUSTProofByIndex(
+        proofIndex,
+        _epoch, 
+        event.transactionHash
+    )
+    if (isValid === false) {
         console.log('Proof is invalid, transaction hash', _transactionHash)
         return
-    }
-
-    // save epoch key nullifiers
-    if (results?.event == "UserStateTransitionProof") {
-        // check if GST root, epoch tree root exists
-        const proofArgs = results?.args?._proof
-        const fromEpoch = Number(proofArgs?.transitionFromEpoch)
-        const GSTRoot = proofArgs?.fromGlobalStateTree
-        const epochTreeRoot = proofArgs?.fromEpochTree
-        const epkNullifier = proofArgs?.epkNullifiers.map(n => BigInt(n).toString())
-        const isGSTExisted = await GSTRootExists(fromEpoch, GSTRoot)
-        const isEpochTreeExisted = await epochTreeRootExists(fromEpoch, epochTreeRoot)
-        if(!isGSTExisted) {
-            console.log('Global state tree root mismatches')
-            return
-        }
-        if(!isEpochTreeExisted) {
-            console.log('Epoch tree root mismatches')
-            return
-        }
-
-        // check and save nullifiers
-        const success = await checkAndSaveNullifiers(_epoch, epkNullifier, event.transactionHash)
-        if (!success) {
-            console.log(`duplicated nullifier`)
-            return
-        }
     }
 
     // save the new leaf
@@ -866,43 +1309,49 @@ const updateDBFromAttestationEvent = async (
         await saveAttestationResult(_epoch, _epochKey.toString(16), attestIndex, false)
         return
     }
-    else if (validProof === null) {
-        const { isProofValid, args } = await verifyAttestationProofsByIndex(toProofIndex)
-        const newProof = new Proof({
-            index: toProofIndex,
-            epoch: _epoch,
-            args: JSON.stringify(args?.map(n => n.toString())),
-            transactionHash: event.transactionHash
-        })
-        if (isProofValid === false) {
+    else if (validProof?.valid === undefined) {
+        const { isProofValid, proof } = await verifyAttestationProofsByIndex(toProofIndex)
+        if (isProofValid === false || proof === undefined) {
             console.log(`receiver epoch key ${_epochKey} of proof index ${toProofIndex} is invalid`)
-            newProof.valid = false
-            await newProof.save()
+            await Proof.findOneAndUpdate({
+                epoch: _epoch, 
+                index: toProofIndex
+            }, {
+                valid: false
+            })
             await saveAttestationResult(_epoch, _epochKey.toString(16), attestIndex, false)
             return
         }
-        if (Number(args?._proof?.epoch) !== _epoch) {
+        if (Number(proof?.epoch) !== _epoch) {
             console.log(`receiver epoch key is not in the current epoch`)
             return
         }
-        if (BigInt(_epochKey) !== BigInt(args?._proof?.epochKey)) { 
+        if (BigInt(_epochKey) !== BigInt(proof?.epochKey)) { 
             console.log(`epoch key mismath in the proof index ${toProofIndex}`)
             return
         }
         if (decodedData?._event === AttestationEvent.SpendReputation) {
             // check nullifiers
-            const repNullifiers = args?._proof?.repNullifiers.map(n => BigInt(n).toString())
+            const repNullifiers = proof?.repNullifiers.map(n => BigInt(n).toString())
             const success = await checkAndSaveNullifiers(_epoch, repNullifiers, event.transactionHash)
             if (!success) {
                 console.log(`duplicated nullifiers`)
-                newProof.valid = false
-                await newProof.save()
+                await Proof.findOneAndUpdate({
+                    epoch: _epoch, 
+                    index: toProofIndex
+                }, {
+                    valid: false
+                })
                 await saveAttestationResult(_epoch, _epochKey.toString(16), attestIndex, false)
                 return
             }
         } 
-        newProof.valid = true
-        await newProof.save()
+        await Proof.findOneAndUpdate({
+            epoch: _epoch, 
+            index: toProofIndex
+        }, {
+            valid: true
+        })
     }
     
     if (fromProofIndex) {
@@ -944,49 +1393,20 @@ const updateDBFromEpochEndedEvent = async (
     const epoch = Number(event?.topics[1])
     const findEpochTree = await EpochTreeLeaves.findOne({epoch: epoch})
     if (findEpochTree !== null) return
-    const findEpoch = await Epoch.findOneAndUpdate({}, {currentEpoch: epoch + 1})
+    await Epoch.findOneAndUpdate({currentEpoch: epoch}, {currentEpoch: epoch + 1})
 
-    // Get epoch tree leaves of the ending epoch
-    let attestations = await Attestations.find({epoch: epoch})
-    const epochTree = await genNewSMT(circuitEpochTreeDepth, SMT_ONE_LEAF)
-    const epochTreeLeaves: IEpochTreeLeaf[] = []
-
-    // seal all epoch keys in current epoch
-    for (let attestation of attestations) {
-        let currentHashChain: BigInt = BigInt(0)
-        const attestationList = attestation.get('attestations')
-        for (let i = 0; i < attestationList.length; i++) {
-            if (attestationList[i].valid) {
-                currentHashChain = hashLeftRight(
-                    BigInt(attestationList[i].hash),
-                    currentHashChain
-                )
-            }
-        }
-        const sealedHashchain = hashLeftRight(
-            BigInt(1),
-            currentHashChain
-        )
-        const epochTreeLeaf: IEpochTreeLeaf = {
-            epochKey: attestation?.get('epochKey'),
-            hashchainResult: sealedHashchain.toString()
-        }
-        epochTreeLeaves.push(epochTreeLeaf)
-    }
-
-    // Add to epoch key hash chain map
-    for (let leaf of epochTreeLeaves) {
-        await epochTree.update(BigInt(add0x(leaf.epochKey)), BigInt(leaf.hashchainResult))
-    }
+    // get epoch tree from @unirep/unirep core function
+    const provider = new ethers.providers.JsonRpcProvider(DEFAULT_ETH_PROVIDER)
+    const unirepState = await genUnirepStateFromContract(provider, UNIREP)
+    const epochTree = await unirepState.genEpochTree(epoch)
 
     const newEpochTreeLeaves = new EpochTreeLeaves({
         epoch: epoch,
-        epochTreeLeaves: epochTreeLeaves,
         epochTreeRoot: epochTree.getRootHash(),
     })
 
     await newEpochTreeLeaves.save()
-    global.nextEpochTransition = Date.now() + global.epochPeriod + 10000; // delay 10 seconds
+    global.nextEpochTransition = Date.now() + global.epochPeriod + 30000; // delay 30 seconds
 }
 
 const writeRecord = async (to: string, from: string, posRep: number, negRep: number, epoch: number, action: string, txHash: string, data: string) => {
@@ -1048,15 +1468,52 @@ const initDB = async (
     unirepSocialContract: ethers.Contract
 ) => {
     const userSignedUpFilter = unirepContract.filters.UserSignedUp()
-    const userSignedUpEvents =  await unirepContract.queryFilter(userSignedUpFilter)
+    const userSignedUpEvents =  await unirepContract.queryFilter(userSignedUpFilter, DEFAULT_START_BLOCK)
     const userStateTransitionedFilter = unirepContract.filters.UserStateTransitioned()
-    const userStateTransitionedEvents = await unirepContract.queryFilter(userStateTransitionedFilter)
+    const userStateTransitionedEvents = await unirepContract.queryFilter(userStateTransitionedFilter, DEFAULT_START_BLOCK)
     const attestationSubmittedFilter = unirepContract.filters.AttestationSubmitted()
-    const attestationSubmittedEvents =  await unirepContract.queryFilter(attestationSubmittedFilter)
+    const attestationSubmittedEvents =  await unirepContract.queryFilter(attestationSubmittedFilter, DEFAULT_START_BLOCK)
     const epochEndedFilter = unirepContract.filters.EpochEnded()
-    const epochEndedEvents =  await unirepContract.queryFilter(epochEndedFilter)
+    const epochEndedEvents =  await unirepContract.queryFilter(epochEndedFilter, DEFAULT_START_BLOCK)
     const sequencerFilter = unirepContract.filters.Sequencer()
-    const sequencerEvents =  await unirepContract.queryFilter(sequencerFilter)
+    const sequencerEvents =  await unirepContract.queryFilter(sequencerFilter, DEFAULT_START_BLOCK)
+
+    const epochKeyProofFilter = unirepContract.filters.IndexedEpochKeyProof()
+    const epochKeyProofEvents = await unirepContract.queryFilter(epochKeyProofFilter, DEFAULT_START_BLOCK)
+    const reputationProofFilter = unirepContract.filters.IndexedReputationProof()
+    const reputationProofEvents = await unirepContract.queryFilter(reputationProofFilter, DEFAULT_START_BLOCK)
+    const signUpProofFilter = unirepContract.filters.IndexedUserSignedUpProof()
+    const signUpProofEvents = await unirepContract.queryFilter(signUpProofFilter, DEFAULT_START_BLOCK)
+    const startTransitionFilter = unirepContract.filters.IndexedStartedTransitionProof()
+    const startTransitionfEvents = await unirepContract.queryFilter(startTransitionFilter, DEFAULT_START_BLOCK)
+    const processAttestationsFilter = unirepContract.filters.IndexedProcessedAttestationsProof()
+    const processAttestationsEvents = await unirepContract.queryFilter(processAttestationsFilter, DEFAULT_START_BLOCK)
+    const userStateTransitionFilter = unirepContract.filters.IndexedUserStateTransitionProof()
+    const userStateTransitionEvents = await unirepContract.queryFilter(userStateTransitionFilter, DEFAULT_START_BLOCK)
+
+    for (const event of epochKeyProofEvents) {
+        await updateDBFromEpochKeyProofEvent(event)
+    }
+
+    for (const event of reputationProofEvents) {
+        await updateDBFromReputationProofEvent(event)
+    }
+
+    for (const event of signUpProofEvents) {
+        await updateDBFromUserSignedUpProofEvent(event)
+    }
+
+    for (const event of startTransitionfEvents) {
+        await updateDBFromStartUSTProofEvent(event)
+    }
+
+    for (const event of processAttestationsEvents) {
+        await updateDBFromProcessAttestationProofEvent(event)
+    }
+
+    for (const event of userStateTransitionEvents) {
+        await updateDBFromUSTProofEvent(event)
+    }
 
     userSignedUpEvents.reverse()
     userStateTransitionedEvents.reverse()
@@ -1093,19 +1550,19 @@ const initDB = async (
 
     // Unirep Social events
     const signUpFilter = unirepSocialContract.filters.UserSignedUp()
-    const signUpEvents =  await unirepSocialContract.queryFilter(signUpFilter)
+    const signUpEvents =  await unirepSocialContract.queryFilter(signUpFilter, DEFAULT_START_BLOCK)
 
     const postFilter = unirepSocialContract.filters.PostSubmitted()
-    const postEvents =  await unirepSocialContract.queryFilter(postFilter)
+    const postEvents =  await unirepSocialContract.queryFilter(postFilter, DEFAULT_START_BLOCK)
 
     const commentFilter = unirepSocialContract.filters.CommentSubmitted()
-    const commentEvents =  await unirepSocialContract.queryFilter(commentFilter)
+    const commentEvents =  await unirepSocialContract.queryFilter(commentFilter, DEFAULT_START_BLOCK)
 
     const voteFilter = unirepSocialContract.filters.VoteSubmitted()
-    const voteEvents =  await unirepSocialContract.queryFilter(voteFilter)
+    const voteEvents =  await unirepSocialContract.queryFilter(voteFilter, DEFAULT_START_BLOCK)
 
     const airdropFilter = unirepSocialContract.filters.AirdropSubmitted()
-    const airdropEvents =  await unirepSocialContract.queryFilter(airdropFilter)
+    const airdropEvents =  await unirepSocialContract.queryFilter(airdropFilter, DEFAULT_START_BLOCK)
 
     for (const event of signUpEvents) {
         await updateDBFromUserSignUpEvent(event)
@@ -1138,6 +1595,12 @@ export {
     epochTreeRootExists,
     nullifierExists,
     duplicatedNullifierExists,
+    updateDBFromEpochKeyProofEvent,
+    updateDBFromReputationProofEvent,
+    updateDBFromUserSignedUpProofEvent,
+    updateDBFromStartUSTProofEvent,
+    updateDBFromProcessAttestationProofEvent,
+    updateDBFromUSTProofEvent,
     updateDBFromUserSignUpEvent,
     updateDBFromPostSubmittedEvent,
     updateDBFromCommentSubmittedEvent,

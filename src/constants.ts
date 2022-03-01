@@ -7,8 +7,8 @@ dotenv.config({
 });
 
 export const DEPLOYER_PRIV_KEY = process.env.BACKEND_PRIVATE_KEY!;
-export const UNIREP = '0x6F559A43190f11F8A4F66BC38525A128D9Dc3F79';
-export const UNIREP_SOCIAL = '0xe9D09cF3CEDCC7b9aAbeaDA8A11998E7c47C332D';
+export const UNIREP = '0x3DdC8069e7d740C86AFfB8bc10Fa66ad10181bd2';
+export const UNIREP_SOCIAL = '0x22251B1135379dA965614D83c9FC3D8F012B68CE';
 export const DEFAULT_ETH_PROVIDER = 'https://eth-goerli.alchemyapi.io/v2/tYp-IJU_idg28iohx9gsLqhq6KRZxk7f';
 export const MONGODB = 'mongodb://mongo:27017'
 
@@ -19,6 +19,7 @@ export const DEFAULT_POST_KARMA = 5
 export const DEFAULT_COMMENT_KARMA = 3
 export const MAX_KARMA_BUDGET = 10
 export const DEFAULT_AIRDROPPED_KARMA = 30
+export const DEFAULT_RECURSIVE_DEPTH = 5
 
 export const identityPrefix = 'Unirep.identity.'
 export const identityCommitmentPrefix = 'Unirep.identityCommitment.'
@@ -28,6 +29,12 @@ export const reputationProofPrefix = 'Unirep.reputation.proof.'
 export const reputationPublicSignalsPrefix = 'Unirep.reputation.publicSignals.'
 export const signUpProofPrefix = 'Unirep.signUp.proof.'
 export const signUpPublicSignalsPrefix = 'Unirep.signUp.publicSignals.'
+export const startUSTProofPrefix = 'Unirep.startUST.proof.'
+export const startUSTPublicSignalsPrefix = 'Unirep.startUST.publicSignals.'
+export const processUSTProofPrefix = 'Unirep.processUST.proof.'
+export const processUSTPublicSignalsPrefix = 'Unirep.processUST.publicSignals.'
+export const USTProofPrefix = 'Unirep.UST.proof.'
+export const USTPublicSignalsPrefix = 'Unirep.UST.publicSignals.'
 export const maxReputationBudget = 10
 
 export const loadPostCount = 10
