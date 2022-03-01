@@ -441,6 +441,9 @@ const verifyAttestationProofsByIndex = async (proofIndex: number): Promise<any> 
         } else if (proof_.event === "IndexedUserSignedUpProof") {
             const { publicSignals, proof } = decodeSignUpProof(proof_.proof, proof_.publicSignals)
             formatProof = new SignUpProof(publicSignals, formatProofForSnarkjsVerification(proof))
+        } else {
+            console.log(`proof index ${proofIndex} matches wrong event ${proof_?.event}`);
+            return {isProofValid: false, proof: formatProof}
         }
     } else {
         setTimeout(_fallBack, 10);
@@ -1308,7 +1311,7 @@ const updateDBFromAttestationEvent = async (
     }
     else if (validProof?.valid === undefined) {
         const { isProofValid, proof } = await verifyAttestationProofsByIndex(toProofIndex)
-        if (isProofValid === false) {
+        if (isProofValid === false || proof === undefined) {
             console.log(`receiver epoch key ${_epochKey} of proof index ${toProofIndex} is invalid`)
             await Proof.findOneAndUpdate({
                 epoch: _epoch, 
