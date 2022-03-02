@@ -3,7 +3,7 @@ import base64url from 'base64url';
 import { ethers } from 'ethers'
 import { getUnirepContract, Event, AttestationEvent, EpochKeyProof, ReputationProof, SignUpProof, UserTransitionProof } from '@unirep/contracts';
 import { hashLeftRight, IncrementalQuinTree, stringifyBigInts } from '@unirep/crypto'
-import { DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL_ABI, ActionType, DEFAULT_AIRDROPPED_KARMA, titlePrefix, titlePostfix, reputationProofPrefix, reputationPublicSignalsPrefix, signUpProofPrefix, signUpPublicSignalsPrefix, epkProofPrefix, epkPublicSignalsPrefix, USTPublicSignalsPrefix, USTProofPrefix, DEFAULT_RECURSIVE_DEPTH, } from '../constants'
+import { DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL_ABI, ActionType, DEFAULT_AIRDROPPED_KARMA, titlePrefix, titlePostfix, reputationProofPrefix, reputationPublicSignalsPrefix, signUpProofPrefix, signUpPublicSignalsPrefix, epkProofPrefix, epkPublicSignalsPrefix, USTPublicSignalsPrefix, USTProofPrefix, DEFAULT_QUERY_DEPTH, QUERY_DELAY_TIME, } from '../constants'
 import Attestations, { IAttestation } from './models/attestation'
 import GSTLeaves, { IGSTLeaf } from './models/GSTLeaf'
 import GSTRoots from './models/GSTRoots'
@@ -290,28 +290,25 @@ const verifyUSTProofByIndex = async(
     proofIndex: number, 
     epoch: number, 
     transactionHash: string,
-    stackDepth: number = DEFAULT_RECURSIVE_DEPTH
 ): Promise<Boolean> => {
-    if (stackDepth === 0) {
-        console.log('Found no valid UST result');
-        return false;
-    }
-
     const provider = new ethers.providers.JsonRpcProvider(DEFAULT_ETH_PROVIDER)
     const unirepContract = getUnirepContract(UNIREP, provider)
 
     // verify user state transition proof
-    const transitionProof = await Proof.findOne({index: proofIndex})
+    let transitionProof = await Proof.findOne({index: proofIndex})
     if (transitionProof === null) {
-        console.log('UST proof index', proofIndex, 'not found, try again')
-        const transitionFilter = unirepContract.filters.IndexedUserStateTransitionProof(proofIndex)
-        const transitionEvents = await unirepContract.queryFilter(transitionFilter)
-        if (transitionEvents.length === 1) {
-            await updateDBFromUSTProofEvent(transitionEvents[0])
-        } else {
-            setTimeout(_fallBack, 10);
+        for (let l = 0; l < DEFAULT_QUERY_DEPTH; l++) {
+            console.log('UST proof index', proofIndex, 'not found, try again')
+            const transitionFilter = unirepContract.filters.IndexedUserStateTransitionProof(proofIndex)
+            const transitionEvents = await unirepContract.queryFilter(transitionFilter)
+            if (transitionEvents.length === 1) {
+                await updateDBFromUSTProofEvent(transitionEvents[0])
+                transitionProof = await Proof.findOne({index: proofIndex})
+                break
+            } else {
+                setTimeout(_fallBack, QUERY_DELAY_TIME);
+            }        
         }
-        return await verifyUSTProofByIndex(proofIndex, epoch, transactionHash, stackDepth - 1);
     }
     if (transitionProof?.valid === false ||
         transitionProof?.event !== "IndexedUserStateTransitionProof") {
@@ -321,19 +318,22 @@ const verifyUSTProofByIndex = async(
     const proofIndexRecords = transitionProof?.proofIndexRecords
 
     // find start user state transition proof
-    const startTransitionProof = await Proof.findOne({index: proofIndexRecords[0]})
+    let startTransitionProof = await Proof.findOne({index: proofIndexRecords[0]})
     if (startTransitionProof === null) {
-        console.log('Start UST proof index', proofIndexRecords[0], 'not found, try again')
-        const startTransitionFilter = unirepContract.filters.IndexedStartedTransitionProof(
-            proofIndexRecords[0],
-        )
-        const startTransitionEvents = await unirepContract.queryFilter(startTransitionFilter)
-        if (startTransitionEvents.length === 1) {
-            await updateDBFromStartUSTProofEvent(startTransitionEvents[0])
-        } else {
-            setTimeout(_fallBack, 10);
+        for (let l = 0; l < DEFAULT_QUERY_DEPTH; l++) {
+            console.log('Start UST proof index', proofIndexRecords[0], 'not found, try again')
+            const startTransitionFilter = unirepContract.filters.IndexedStartedTransitionProof(
+                proofIndexRecords[0],
+            )
+            const startTransitionEvents = await unirepContract.queryFilter(startTransitionFilter)
+            if (startTransitionEvents.length === 1) {
+                await updateDBFromStartUSTProofEvent(startTransitionEvents[0])
+                startTransitionProof = await Proof.findOne({index: proofIndexRecords[0]})
+                break
+            } else {
+                setTimeout(_fallBack, QUERY_DELAY_TIME);
+            }
         }
-        return await verifyUSTProofByIndex(proofIndex, epoch, transactionHash, stackDepth - 1);
     } else if (startTransitionProof?.valid === false ||
         startTransitionProof?.event !== "IndexedStartedTransitionProof") {
         console.log('Start Transition Proof index: ', proofIndexRecords[0], ' is invalid');
@@ -349,21 +349,26 @@ const verifyUSTProofByIndex = async(
     // find process attestations proof
     let currentBlindedUserState = startTransitionProof?.blindedUserState
     for (let i = 1; i < proofIndexRecords.length; i++) {
-        const processAttestationsProof = await Proof.findOne({
+        let processAttestationsProof = await Proof.findOne({
             index: proofIndexRecords[i],
         })
         if (processAttestationsProof === null) {
-            console.log('Process attestations proof index', proofIndexRecords[i], 'not found, try again')
-            const processAttestationsFilter = unirepContract.filters.IndexedProcessedAttestationsProof(
-                proofIndexRecords[i]
-            )
-            const events = await unirepContract.queryFilter(processAttestationsFilter)
-            if (events.length === 1) {
-                await updateDBFromProcessAttestationProofEvent(events[0])
-            } else {
-                setTimeout(_fallBack, 10);
+            for (let l = 0; l < DEFAULT_QUERY_DEPTH; l++) {
+                console.log('Process attestations proof index', proofIndexRecords[i], 'not found, try again')
+                const processAttestationsFilter = unirepContract.filters.IndexedProcessedAttestationsProof(
+                    proofIndexRecords[i]
+                )
+                const events = await unirepContract.queryFilter(processAttestationsFilter)
+                if (events.length === 1) {
+                    await updateDBFromProcessAttestationProofEvent(events[0])
+                    processAttestationsProof = await Proof.findOne({
+                        index: proofIndexRecords[i],
+                    })
+                    break
+                } else {
+                    setTimeout(_fallBack, QUERY_DELAY_TIME);
+                }
             }
-            return await verifyUSTProofByIndex(proofIndex, epoch, transactionHash, stackDepth - 1);
         } else if (processAttestationsProof?.valid === false ||
             processAttestationsProof?.event !== "IndexedProcessedAttestationsProof") {
             console.log('Process Attestations Proof index: ', proofIndexRecords[i], ' is invalid');
@@ -429,7 +434,7 @@ const verifyUSTProofByIndex = async(
 }
 
 const verifyAttestationProofsByIndex = async (proofIndex: number): Promise<any> => {
-    const proof_ = await Proof.findOne({index: proofIndex})
+    let proof_ = await Proof.findOne({index: proofIndex})
     let formatProof
     if (proof_ !== null) {
         if (proof_.event === "IndexedEpochKeyProof") {
@@ -446,8 +451,45 @@ const verifyAttestationProofsByIndex = async (proofIndex: number): Promise<any> 
             return {isProofValid: false, proof: formatProof}
         }
     } else {
-        setTimeout(_fallBack, 10);
-        return await verifyAttestationProofsByIndex(proofIndex);
+        for (let l = 0; l < DEFAULT_QUERY_DEPTH; l++) {
+            console.log('Attestation proof index', proofIndex, 'not found, try again')
+            const provider = new ethers.providers.JsonRpcProvider(DEFAULT_ETH_PROVIDER)
+            const unirepContract = getUnirepContract(UNIREP, provider)
+            const epochKeyProofFilter = unirepContract.filters.IndexedEpochKeyProof(proofIndex)
+            const epochKeyProofEvents = await unirepContract.queryFilter(epochKeyProofFilter)
+            if (epochKeyProofEvents.length === 1) {
+                await updateDBFromEpochKeyProofEvent(epochKeyProofEvents[0])
+                proof_ = await Proof.findOne({index: proofIndex})
+                if (proof_?.event === "IndexedEpochKeyProof") {
+                    const { publicSignals, proof } = decodeEpochKeyProof(proof_?.proof, proof_?.publicSignals)
+                    formatProof = new EpochKeyProof(publicSignals, formatProofForSnarkjsVerification(proof))
+                }
+                break
+            }
+            const reputationProofFilter = unirepContract.filters.IndexedReputationProof(proofIndex)
+            const reputationProofEvents = await unirepContract.queryFilter(reputationProofFilter)
+            if (reputationProofEvents.length === 1) {
+                await updateDBFromReputationProofEvent(reputationProofEvents[0])
+                proof_ = await Proof.findOne({index: proofIndex})
+                if (proof_?.event === "IndexedReputationProof") {
+                    const { publicSignals, proof } = decodeReputationProof(proof_?.proof, proof_?.publicSignals)
+                    formatProof = new ReputationProof(publicSignals, formatProofForSnarkjsVerification(proof))
+                }
+                break
+            }
+            const signUpProofFilter = unirepContract.filters.IndexedUserSignedUpProof(proofIndex)
+            const signUpProofEvents = await unirepContract.queryFilter(signUpProofFilter)
+            if (signUpProofEvents.length === 1) {
+                await updateDBFromUserSignedUpProofEvent(signUpProofEvents[0])
+                proof_ = await Proof.findOne({index: proofIndex})
+                if (proof_?.event === "IndexedUserSignedUpProof") {
+                    const { publicSignals, proof } = decodeSignUpProof(proof_?.proof, proof_?.publicSignals)
+                    formatProof = new SignUpProof(publicSignals, formatProofForSnarkjsVerification(proof))
+                }
+                break
+            }
+            setTimeout(_fallBack, QUERY_DELAY_TIME);
+        }
     }
 
     let isProofValid = await formatProof.verify()

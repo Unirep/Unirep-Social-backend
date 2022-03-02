@@ -14,10 +14,10 @@ class USTController {
     userStateTransition = async (data: any) => {
         const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
         await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
-        const currentEpoch = await unirepSocialContract.currentEpoch()
+        const currentEpoch = Number(await unirepSocialContract.currentEpoch())
         const results = data.results;
 
-        const error = await verifyUSTProof(results)
+        const error = await verifyUSTProof(results, currentEpoch)
         if(error !== undefined) return {error, transactionHash: undefined}
 
         // submit user state transition proofs
@@ -36,7 +36,7 @@ class USTController {
                 transactionHash: txHash,
                 hashedLeaf: results.finalTransitionProof.newGlobalStateTreeLeaf
             }
-            await updateGSTLeaf(newLeaf, Number(currentEpoch))
+            await updateGSTLeaf(newLeaf, currentEpoch)
         }
 
         return {transaction: txHash}

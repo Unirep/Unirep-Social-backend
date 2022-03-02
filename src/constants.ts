@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import UnirepSocial from "../node_modules/@unirep/unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json"
 import Unirep from "../node_modules/@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json"
+import { ethers } from 'ethers';
 
 // load the environment variables from the .env file
 dotenv.config({
@@ -18,7 +19,8 @@ export const DEFAULT_POST_KARMA = 5
 export const DEFAULT_COMMENT_KARMA = 3
 export const MAX_KARMA_BUDGET = 10
 export const DEFAULT_AIRDROPPED_KARMA = 30
-export const DEFAULT_RECURSIVE_DEPTH = 5
+export const DEFAULT_QUERY_DEPTH = 5
+export const QUERY_DELAY_TIME = 300
 
 export const identityPrefix = 'Unirep.identity.'
 export const identityCommitmentPrefix = 'Unirep.identityCommitment.'
