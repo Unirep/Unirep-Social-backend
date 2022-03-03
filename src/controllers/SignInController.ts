@@ -12,7 +12,7 @@ class SignInController {
 
     signIn = async (uploadedCommitment: string) => {
       // user sign up
-      // const provider = new ethers.providers.JsonRpcProvider(DEFAULT_ETH_PROVIDER)
+      // const provider = new ethers.providers.WebSocketProvider(DEFAULT_ETH_PROVIDER)
       // const wallet = new ethers.Wallet(DEPLOYER_PRIV_KEY, provider)
 
       // const unirepSocialContract = new ethers.Contract(

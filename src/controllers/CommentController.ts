@@ -99,6 +99,10 @@ class CommentController {
                 data.postId,
                 data.content,
             );
+            const receipt = await tx.wait()
+            if (receipt.state === 0) {
+                return { error: "Transaction reverted", transaction: tx.hash, currentEpoch: currentEpoch }
+            }
 
             const newComment: IComment = new Comment({
                 postId: data.postId,
@@ -119,8 +123,11 @@ class CommentController {
             });
 
             return {error: error, transaction: tx.hash, currentEpoch: currentEpoch}
-        } catch(e) {
-            return {error: e}
+        } catch(error) {
+            if (JSON.stringify(error).includes('replacement fee too low')) {
+                return await this.leaveComment(data);
+            }
+            return { error }
         }
     }
 }

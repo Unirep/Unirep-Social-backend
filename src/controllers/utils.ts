@@ -113,8 +113,14 @@ const verifyAirdropProof = async(signUpProof: SignUpProof, unirepSocialId: numbe
     return error
 }
 
-const verifyUSTProof = async(results): Promise<string | undefined> => {
+const verifyUSTProof = async(results: any, currentEpoch: number): Promise<string | undefined> => {
     let error
+    // Check if the fromEpoch is less than the current epoch
+    if (Number(results.finalTransitionProof.transitionedFromEpoch) >= currentEpoch) {
+        error = 'Error: user transitions from an invalid epoch';
+        return error;
+    }
+
     // Start user state transition proof
     let isValid = await verifyProof(
         Circuit.startTransition, 
@@ -123,6 +129,7 @@ const verifyUSTProof = async(results): Promise<string | undefined> => {
     )
     if (!isValid) {
         error = 'Error: start state transition proof generated is not valid!'
+        return error;
     }
 
     // Process attestations proofs
@@ -134,6 +141,7 @@ const verifyUSTProof = async(results): Promise<string | undefined> => {
         )
         if (!isValid) {
             error = 'Error: process attestations proof generated is not valid!'
+            return error;
         }
     }
 
@@ -145,6 +153,7 @@ const verifyUSTProof = async(results): Promise<string | undefined> => {
     isValid = await USTProof.verify()
     if (!isValid) {
         error = 'Error: user state transition proof generated is not valid!'
+        return error;
     }
 
     // Check epoch tree root
@@ -155,9 +164,11 @@ const verifyUSTProof = async(results): Promise<string | undefined> => {
     const isEpochTreeExisted = await epochTreeRootExists(epoch, epochTreeRoot)
     if(!isGSTExisted) {
         error = `Global state tree root ${GSTRoot} is not in epoch ${epoch}`
+        return error;
     }
     if(!isEpochTreeExisted){
         error = `Epoch tree root ${epochTreeRoot} is not in epoch ${epoch}`
+        return error;
     }
 
     // check nullifiers
@@ -165,9 +176,10 @@ const verifyUSTProof = async(results): Promise<string | undefined> => {
         const seenNullifier = await nullifierExists(nullifier)
         if(seenNullifier) {
             error = `Error: invalid reputation nullifier ${nullifier}`
+            return error;
         }
     }
-    return error
+    return error;
 }
 
 export {

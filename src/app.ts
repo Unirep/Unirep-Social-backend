@@ -41,7 +41,7 @@ server.app.use((err: ErrorHandler, req: Request, res: Response, next: NextFuncti
         statusCode: err.statusCode,
         message: err.message
     });
-  });
+});
 
 // global variables: actually should be stored in db
 global.epochPeriod = 24 * 60 * 60 * 1000;
@@ -55,8 +55,8 @@ global.adminSessionCode = randomstring.generate(20);
 const delayEpochTransition = async() => {
     console.log('delayed for 3 minutes');
     const delayedPeriod = 3 * 60 * 1000;
-    setTimeout(doEpochTransition, delayedPeriod);
     global.nextEpochTransition = Date.now() + delayedPeriod;
+    setTimeout(doEpochTransition, delayedPeriod);
 }
 
 const doEpochTransition = async () => {
@@ -93,8 +93,7 @@ var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 
 // Initialize ethers provider
-const ethProvider = DEFAULT_ETH_PROVIDER
-const provider = new ethers.providers.JsonRpcProvider(ethProvider)
+const provider = DEFAULT_ETH_PROVIDER
 const unirepSocialContract = new ethers.Contract(
     UNIREP_SOCIAL,
     UNIREP_SOCIAL_ABI,
