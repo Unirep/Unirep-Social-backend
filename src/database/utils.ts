@@ -15,7 +15,7 @@ import Post, { IPost } from "./models/post";
 import Comment, { IComment } from "./models/comment";
 import EpkRecord from './models/epkRecord';
 import userSignUp, { IUserSignUp } from './models/userSignUp';
-import Proof from './models/proof'; 
+import Proof from './models/proof';
 import { Circuit, formatProofForSnarkjsVerification, verifyProof } from '@unirep/circuits';
 import { decodeReputationProof, decodeSignUpProof } from '../controllers/utils';
 
@@ -61,7 +61,7 @@ const GSTRootExists = async (epoch: number, GSTRoot: string | BigInt): Promise<b
         return false
     }
     const root = await GSTRoots.findOne({
-        epoch: epoch, 
+        epoch: epoch,
         GSTRoots: {$eq: GSTRoot.toString()}
     })
     if(root !== null) return true
@@ -86,7 +86,7 @@ const epochTreeRootExists = async (epoch: number, epochTreeRoot: string | BigInt
         return false
     }
     const root = await EpochTreeLeaves.findOne({
-        epoch: epoch, 
+        epoch: epoch,
         epochTreeRoot: epochTreeRoot.toString()
     })
     if(root !== null) return true
@@ -105,7 +105,7 @@ const epochTreeRootExists = async (epoch: number, epochTreeRoot: string | BigInt
                 epoch: epoch,
                 epochTreeRoot: epochTree.getRootHash().toString(),
             })
-        
+
             try {
                 const res = await newEpochTreeLeaves.save()
                 console.log(res)
@@ -130,7 +130,7 @@ const duplicatedNullifierExists = async (nullifier: string, txHash: string, epoc
     // post and attestation submitted both emit nullifiers, but we cannot make sure which one comes first
     // use txHash to differenciate if the nullifier submitted is the same
     // If the same nullifier appears in different txHash, then the nullifier is invalid
-   
+
     const n = await Nullifier.findOne({
         $and: [
             {
@@ -147,12 +147,12 @@ const duplicatedNullifierExists = async (nullifier: string, txHash: string, epoc
         ]
     })
     if (n !== null) return true
-    
+
     return false
 }
 
 const checkAndSaveNullifiers = async (
-    _epoch: number, 
+    _epoch: number,
     _nullifiers: string[],
     _txHash: string
 ): Promise<boolean> => {
@@ -179,7 +179,7 @@ const checkAndSaveNullifiers = async (
             } catch (error) {
                 return true
             }
-        }    
+        }
     }
     return true
 }
@@ -344,8 +344,8 @@ const _fallBack = () => {
 }
 
 const verifyUSTProofByIndex = async(
-    proofIndex: number, 
-    epoch: number, 
+    proofIndex: number,
+    epoch: number,
     transactionHash: string,
 ): Promise<Boolean> => {
     const unirepContract = getUnirepContract(UNIREP, DEFAULT_ETH_PROVIDER)
@@ -363,7 +363,7 @@ const verifyUSTProofByIndex = async(
                 break
             } else {
                 setTimeout(_fallBack, QUERY_DELAY_TIME);
-            }        
+            }
         }
     }
     if (transitionProof?.valid === false ||
@@ -552,7 +552,7 @@ const verifyAttestationProofsByIndex = async (proofIndex: number): Promise<any> 
         console.log('Proof index ', proofIndex, ' is invalid')
         return {isProofValid, proof: formatProof}
     }
-    
+
     // const args = event?.args
     const epoch = Number(formatProof?.epoch)
     const GSTRoot = BigInt(formatProof?.globalStateTree).toString()
@@ -581,7 +581,7 @@ const updateGSTLeaf = async (
         defaultGSTLeaf,
         2,
     )
-    
+
     // update GST leaf document
     await insertGSTLeaf(_epoch, _newLeaf)
 
@@ -659,8 +659,8 @@ const updateDBFromEpochKeyProofEvent = async (
     const proof = epkProofPrefix + encodedProof
     const publicSignals = epkPublicSignalsPrefix + encodedPublicSignals
     const isValid = await verifyProof(
-        Circuit.verifyEpochKey, 
-        formatProofForSnarkjsVerification(formattedProof), 
+        Circuit.verifyEpochKey,
+        formatProofForSnarkjsVerification(formattedProof),
         formatPublicSignals
     )
 
@@ -691,7 +691,7 @@ const updateDBFromReputationProofEvent = async (
 ) => {
     // The event has been processed
     if(event.blockNumber <= startBlock) return
-    
+
     const iface = new ethers.utils.Interface(UNIREP_ABI)
     const _proofIndex = Number(event.topics[1])
     const _epoch = Number(event.topics[2])
@@ -715,8 +715,8 @@ const updateDBFromReputationProofEvent = async (
     const proof = reputationProofPrefix + encodedProof
     const publicSignals = reputationPublicSignalsPrefix + encodedPublicSignals
     const isValid = await verifyProof(
-        Circuit.proveReputation, 
-        formatProofForSnarkjsVerification(formattedProof), 
+        Circuit.proveReputation,
+        formatProofForSnarkjsVerification(formattedProof),
         formatPublicSignals
     )
 
@@ -747,7 +747,7 @@ const updateDBFromUserSignedUpProofEvent = async (
 ) => {
     // The event has been processed
     if(event.blockNumber <= startBlock) return
-    
+
     const iface = new ethers.utils.Interface(UNIREP_ABI)
     const _proofIndex = Number(event.topics[1])
     const _epoch = Number(event.topics[2])
@@ -768,11 +768,11 @@ const updateDBFromUserSignedUpProofEvent = async (
     const proof = signUpProofPrefix + encodedProof
     const publicSignals = signUpPublicSignalsPrefix + encodedPublicSignals
     const isValid = await verifyProof(
-        Circuit.proveUserSignUp, 
-        formatProofForSnarkjsVerification(formattedProof), 
+        Circuit.proveUserSignUp,
+        formatProofForSnarkjsVerification(formattedProof),
         formatPublicSignals
     )
-    
+
     const newProof = new Proof({
         index: _proofIndex,
         epoch: _epoch,
@@ -800,7 +800,7 @@ const updateDBFromStartUSTProofEvent = async (
 ) => {
     // The event has been processed
     if(event.blockNumber <= startBlock) return
-    
+
     const iface = new ethers.utils.Interface(UNIREP_ABI)
     const _proofIndex = Number(event.topics[1])
     const _blindedUserState = BigInt(event.topics[2])
@@ -815,11 +815,11 @@ const updateDBFromStartUSTProofEvent = async (
         _globalStateTree,
     ]
     const isValid = await verifyProof(
-        Circuit.startTransition, 
-        formatProof, 
+        Circuit.startTransition,
+        formatProof,
         formatPublicSignals
     )
-    
+
     const newProof = new Proof({
         index: _proofIndex,
         blindedUserState: _blindedUserState,
@@ -848,7 +848,7 @@ const updateDBFromProcessAttestationProofEvent = async (
 ) => {
     // The event has been processed
     if(event.blockNumber <= startBlock) return
-    
+
     const iface = new ethers.utils.Interface(UNIREP_ABI)
     const _proofIndex = Number(event.topics[1])
     const _inputBlindedUserState = BigInt(event.topics[2])
@@ -863,8 +863,8 @@ const updateDBFromProcessAttestationProofEvent = async (
         _inputBlindedUserState,
     ]
     const isValid = await verifyProof(
-        Circuit.processAttestations, 
-        formatProof, 
+        Circuit.processAttestations,
+        formatProof,
         formatPublicSignals
     )
 
@@ -878,7 +878,7 @@ const updateDBFromProcessAttestationProofEvent = async (
         event: "IndexedProcessedAttestationsProof",
         valid: isValid
     })
-    
+
     try {
         await newProof.save()
     } catch (error) {
@@ -897,7 +897,7 @@ const updateDBFromUSTProofEvent = async (
 ) => {
     // The event has been processed
     if(event.blockNumber <= startBlock) return
-    
+
     const iface = new ethers.utils.Interface(UNIREP_ABI)
     const _proofIndex = Number(event.topics[1])
     const decodedData = iface.decodeEventLog("IndexedUserStateTransitionProof", event.data)
@@ -930,7 +930,7 @@ const updateDBFromUSTProofEvent = async (
         transactionHash: event.transactionHash,
         event: "IndexedUserStateTransitionProof",
     })
-    
+
     try {
         await newProof.save()
     } catch (error) {
@@ -1006,14 +1006,14 @@ const updateDBFromPostSubmittedEvent = async (
             return
         }
     }
-    
+
     const repNullifiers = decodedData?.proofRelated?.repNullifiers.map(n => BigInt(n).toString())
     const success = await checkAndSaveNullifiers(_epoch, repNullifiers, event.transactionHash)
     if (!success) {
         console.log(`duplicated nullifier`)
         return
     }
-    
+
     if(findPost){
         findPost?.set('status', 1, { "new": true, "upsert": false})
         findPost?.set('transactionHash', _transactionHash, { "new": true, "upsert": false})
@@ -1082,7 +1082,7 @@ const updateDBFromCommentSubmittedEvent = async (
     const _minRep = Number(decodedData?.proofRelated.minRep._hex)
     const findComment = await Comment.findOne({ transactionHash: commentId })
     const unirepContract = getUnirepContract(UNIREP, DEFAULT_ETH_PROVIDER)
-        
+
     const reputationProof = decodedData?.proofRelated
     const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
     const proofIndex = Number(await unirepContract.getProofIndex(proofNullifier))
@@ -1105,7 +1105,7 @@ const updateDBFromCommentSubmittedEvent = async (
         console.log(`duplicated nullifier`)
         return
     }
-    
+
     if(findComment) {
         findComment?.set('status', 1, { "new": true, "upsert": false})
         findComment?.set('transactionHash', _transactionHash, { "new": true, "upsert": false})
@@ -1166,12 +1166,12 @@ const updateDBFromVoteSubmittedEvent = async (
     const _fromEpochKey = BigInt(event.topics[2]).toString(16)
     const _toEpochKey = BigInt(event.topics[3]).toString(16)
     const _toEpochKeyProofIndex = Number(decodedData?.toEpochKeyProofIndex._hex)
-    
+
     const _posRep = Number(decodedData?.upvoteValue._hex)
     const _negRep = Number(decodedData?.downvoteValue._hex)
-    
+
     const unirepContract = getUnirepContract(UNIREP, DEFAULT_ETH_PROVIDER)
-        
+
     const reputationProof = decodedData?.proofRelated
     const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
     const fromProofIndex = Number(await unirepContract.getProofIndex(proofNullifier))
@@ -1189,7 +1189,7 @@ const updateDBFromVoteSubmittedEvent = async (
     }
 
     const fromValidProof = await Proof.findOne({
-        epoch: _epoch, 
+        epoch: _epoch,
         index: fromProofIndex,
     })
     if (fromValidProof?.valid === false) {
@@ -1202,7 +1202,7 @@ const updateDBFromVoteSubmittedEvent = async (
             return
         }
     }
-    
+
     const repNullifiers = decodedData?.proofRelated?.repNullifiers.map(n => BigInt(n).toString())
     const success = await checkAndSaveNullifiers(_epoch, repNullifiers, event.transactionHash)
     if (!success) {
@@ -1235,7 +1235,7 @@ const updateDBFromAirdropSubmittedEvent = async (
     const signUpProof = decodedData?.proofRelated
 
     const unirepContract = getUnirepContract(UNIREP, DEFAULT_ETH_PROVIDER)
-    
+
     const proofNullifier = await unirepContract.hashSignUpProof(signUpProof)
     const proofIndex = Number(await unirepContract.getProofIndex(proofNullifier))
 
@@ -1322,7 +1322,7 @@ const updateDBFromUSTEvent = async (
 
     const isValid = await verifyUSTProofByIndex(
         proofIndex,
-        _epoch, 
+        _epoch,
         event.transactionHash
     )
     if (isValid === false) {
@@ -1389,7 +1389,7 @@ const updateDBFromAttestationEvent = async (
     await insertAttestation(_epoch, _epochKey.toString(16), attestIndex, newAttestation)
 
     const validProof = await Proof.findOne({
-        epoch: _epoch, 
+        epoch: _epoch,
         index: toProofIndex,
     })
     if (validProof?.valid === false) {
@@ -1401,7 +1401,7 @@ const updateDBFromAttestationEvent = async (
         if (isProofValid === false || proof === undefined) {
             console.log(`receiver epoch key ${_epochKey} of proof index ${toProofIndex} is invalid`)
             await Proof.findOneAndUpdate({
-                epoch: _epoch, 
+                epoch: _epoch,
                 index: toProofIndex
             }, {
                 valid: false
@@ -1413,7 +1413,7 @@ const updateDBFromAttestationEvent = async (
             console.log(`receiver epoch key is not in the current epoch`)
             return
         }
-        if (BigInt(_epochKey) !== BigInt(proof?.epochKey)) { 
+        if (BigInt(_epochKey) !== BigInt(proof?.epochKey)) {
             console.log(`epoch key mismath in the proof index ${toProofIndex}`)
             return
         }
@@ -1424,7 +1424,7 @@ const updateDBFromAttestationEvent = async (
             if (!success) {
                 console.log(`duplicated nullifiers`)
                 await Proof.findOneAndUpdate({
-                    epoch: _epoch, 
+                    epoch: _epoch,
                     index: toProofIndex
                 }, {
                     valid: false
@@ -1432,18 +1432,18 @@ const updateDBFromAttestationEvent = async (
                 await saveAttestationResult(_epoch, _epochKey.toString(16), attestIndex, false)
                 return
             }
-        } 
+        }
         await Proof.findOneAndUpdate({
-            epoch: _epoch, 
+            epoch: _epoch,
             index: toProofIndex
         }, {
             valid: true
         })
     }
-    
+
     if (fromProofIndex) {
         const fromValidProof = await Proof.findOne({
-            epoch: _epoch, 
+            epoch: _epoch,
             index: fromProofIndex,
         })
         if (fromValidProof?.valid === false) {
@@ -1518,9 +1518,9 @@ const writeRecord = async (to: string, from: string, posRep: number, negRep: num
 
     if (action === ActionType.Vote) {
         EpkRecord.findOneAndUpdate(
-            {epk: from, epoch}, 
+            {epk: from, epoch},
             { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep: 0, negRep: 0, spent: posRep + negRep} },
-            { "new": true, "upsert": true }, 
+            { "new": true, "upsert": true },
             (err, record) => {
                 // console.log('update voter record is: ' + record);
                 if (err !== null) {
@@ -1529,9 +1529,9 @@ const writeRecord = async (to: string, from: string, posRep: number, negRep: num
         });
 
         EpkRecord.findOneAndUpdate(
-            {epk: to, epoch}, 
+            {epk: to, epoch},
             { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep, negRep} },
-            { "new": true, "upsert": true }, 
+            { "new": true, "upsert": true },
             (err, record) => {
                 // console.log('update receiver record is: ' + record);
                 if (err !== null) {
@@ -1540,9 +1540,9 @@ const writeRecord = async (to: string, from: string, posRep: number, negRep: num
         });
     } else {
         EpkRecord.findOneAndUpdate(
-            {epk: from, epoch}, 
+            {epk: from, epoch},
             { "$push": { "records": newRecord._id.toString() }, "$inc": {posRep: 0, negRep: 0, spent: negRep} },
-            { "new": true, "upsert": true }, 
+            { "new": true, "upsert": true },
             (err, record) => {
                 // console.log('update action record is: ' + record);
                 if (err !== null) {

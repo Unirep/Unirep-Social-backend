@@ -1,17 +1,26 @@
 import dotenv from 'dotenv';
-import UnirepSocial from "../node_modules/@unirep/unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json"
-import Unirep from "../node_modules/@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json"
+import UnirepSocial from "@unirep/unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json"
+import Unirep from "@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json"
 import { ethers } from 'ethers';
 
 // load the environment variables from the .env file
-dotenv.config({
-    path: '.env'
-});
+dotenv.config();
 
-export const DEPLOYER_PRIV_KEY = process.env.BACKEND_PRIVATE_KEY!;
-export const UNIREP = '0x0165878A594ca255338adfa4d48449f69242Eb8F';
-export const UNIREP_SOCIAL = '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853';
-const DEFAULT_ETH_PROVIDER_URL = 'ws://localhost:8545';
+// Provide default values for process.env
+Object.assign(process.env, {
+    UNIREP: '0x3DdC8069e7d740C86AFfB8bc10Fa66ad10181bd2',
+    UNIREP_SOCIAL: '0x22251B1135379dA965614D83c9FC3D8F012B68CE',
+    DEFAULT_ETH_PROVIDER_URL: 'ws://localhost:8546',
+    ...process.env
+})
+
+export const {
+    DEPLOYER_PRIV_KEY,
+    UNIREP,
+    UNIREP_SOCIAL,
+    DEFAULT_ETH_PROVIDER_URL,
+} = process.env as any
+
 // export const UNIREP = '0xE7709F35fb195E1D117D486aEB24bA58CEccCD29';
 // export const UNIREP_SOCIAL = '0x0F50453236B2Ca88D5C1fBC8D7FA91001d93eC68';
 // const DEFAULT_ETH_PROVIDER_URL = 'wss://eth-goerli.alchemyapi.io/v2/tYp-IJU_idg28iohx9gsLqhq6KRZxk7f';
