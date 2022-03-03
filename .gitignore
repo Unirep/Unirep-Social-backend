@@ -3,6 +3,8 @@
 */.DS_Store
 */*/.DS_Store
 
+build
+
 # artifacts
 artifacts/
 */artifacts/
