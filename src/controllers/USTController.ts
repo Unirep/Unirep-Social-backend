@@ -15,7 +15,7 @@ class USTController {
 
     submitStartTransitionProof = async (startTransitionProof: any)=> {
         try {
-            const tx = await this.contract.submitStartTransitionProof(
+            const tx = await (this.contract as any).submitStartTransitionProof(
                 startTransitionProof
             )
             await tx.wait()
@@ -31,7 +31,7 @@ class USTController {
 
     submitProcessAttestationsProof = async (processAttestationProof: any) => {
         try {
-            const tx = await this.contract.submitProcessAttestationsProof(
+            const tx = await (this.contract as any).submitProcessAttestationsProof(
                 processAttestationProof
             )
             await tx.wait()
@@ -47,7 +47,7 @@ class USTController {
 
     submitUserStateTransitionProof = async (finalTransitionProof: any, proofIndexes: BigInt[]) => {
         try {
-            const tx = await this.contract.submitUserStateTransitionProof(
+            const tx = await (this.contract as any).submitUserStateTransitionProof(
                 finalTransitionProof,
                 proofIndexes
             )
@@ -81,7 +81,7 @@ class USTController {
             res = await this.submitProcessAttestationsProof(results.processAttestationProofs[i])
             if (res.error !== undefined) {
                 return { error: res.error }
-            }    
+            }
         }
         const proofIndex = await this.contract.getStartTransitionProofIndex(
             results.startTransitionProof
