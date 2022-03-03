@@ -42,7 +42,11 @@ class AirdropController {
         // submit epoch key to unirep social contract
         try {
             const tx = await unirepSocialContract.airdrop(signUpProof)
-            return { transaction: tx.hash }
+            const receipt = await tx.wait()
+            if (receipt.status)
+                return { transaction: tx.hash }
+            else 
+                return { error: "Transaction reverted", transaction: tx.hash }
         } catch(error) {
             if (JSON.stringify(error).includes('replacement fee too low')) {
                 return await this.getAirdrop(data);

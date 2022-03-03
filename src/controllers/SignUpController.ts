@@ -21,6 +21,10 @@ class SignUpController {
         try {
             const tx = await unirepSocialContract.userSignUp(commitment);
             const epoch = await unirepSocialContract.currentEpoch();
+            const receipt = await tx.wait()
+            if (receipt.state === 0) {
+                return { error: "Transaction reverted", transaction: tx.hash, epoch: epoch.toNumber() }
+            }
             console.log('transaction: ' + tx.hash + ', sign up epoch: ' + epoch.toString());
 
             return {transaction: tx.hash, epoch: epoch.toNumber()};

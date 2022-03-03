@@ -99,6 +99,10 @@ class CommentController {
                 data.postId,
                 data.content,
             );
+            const receipt = await tx.wait()
+            if (receipt.state === 0) {
+                return { error: "Transaction reverted", transaction: tx.hash, currentEpoch: currentEpoch }
+            }
 
             const newComment: IComment = new Comment({
                 postId: data.postId,

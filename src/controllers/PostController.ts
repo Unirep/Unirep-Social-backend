@@ -137,6 +137,10 @@ class PostController {
                 reputationProof, 
                 data.title !== undefined && data.title.length > 0? `${titlePrefix}${data.title}${titlePostfix}${data.content}` : data.content
             );
+            const receipt = await tx.wait()
+            if (receipt.state === 0) {
+                return { error: "Transaction reverted", transaction: tx.hash, currentEpoch: currentEpoch }
+            }
             console.log('transaction hash: ' + tx.hash + ', epoch key of epoch ' + currentEpoch + ': ' + epochKey);
 
             const newPost: IPost = new Post({
