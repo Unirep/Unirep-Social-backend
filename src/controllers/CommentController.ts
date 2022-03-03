@@ -119,8 +119,11 @@ class CommentController {
             });
 
             return {error: error, transaction: tx.hash, currentEpoch: currentEpoch}
-        } catch(e) {
-            return {error: e}
+        } catch(error) {
+            if (JSON.stringify(error).includes('replacement fee too low')) {
+                return await this.leaveComment(data);
+            }
+            return { error }
         }
     }
 }

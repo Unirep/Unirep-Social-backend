@@ -40,18 +40,15 @@ class AirdropController {
         // Connect a signer
         await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY)
         // submit epoch key to unirep social contract
-        let tx
         try {
-            tx = await unirepSocialContract.airdrop(signUpProof)
-        } catch(e) {
-            return {error: e, transaction: tx?.hash}
+            const tx = await unirepSocialContract.airdrop(signUpProof)
+            return { transaction: tx.hash }
+        } catch(error) {
+            if (JSON.stringify(error).includes('replacement fee too low')) {
+                return await this.getAirdrop(data);
+            }
+            return { error }
         }
-
-        if(tx != undefined){
-            console.log(`The user of epoch key ${signUpProof.epochKey.toString(16)} will get airdrop in the next epoch`)
-            console.log('Transaction hash:', tx?.hash)
-        }
-        return {transaction: tx.hash}
     }
 }
 

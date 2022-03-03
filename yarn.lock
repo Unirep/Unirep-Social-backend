@@ -631,7 +631,7 @@
 
 "@unirep/unirep-social@git+https://github.com/Unirep/unirep-social.git":
   version "1.0.0"
-  resolved "git+https://github.com/Unirep/unirep-social.git#f89b5351c1443c32053c831e246c8ff540aee604"
+  resolved "git+https://github.com/Unirep/unirep-social.git#0f26f96523287de5e0955e4a502bd329577b2167"
   dependencies:
     "@unirep/circuits" "git+https://github.com/Unirep/circuits.git"
     "@unirep/contracts" "git+https://github.com/Unirep/contracts.git"
@@ -639,7 +639,8 @@
     "@unirep/unirep" "git+https://github.com/Unirep/unirep.git"
     argparse "^2.0.1"
     base64url "^3.0.1"
-    ethers "^5.4.6"
+    dotenv "^10.0.0"
+    ethers "^5.5.4"
     mongoose "^5.12.10"
     typescript "^4.0.5"
 
@@ -1611,7 +1612,7 @@ ethers@^5.4.6:
     "@ethersproject/web" "5.5.0"
     "@ethersproject/wordlists" "5.5.0"
 
-ethers@^5.5.3:
+ethers@^5.5.3, ethers@^5.5.4:
   version "5.5.4"
   resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.5.4.tgz#e1155b73376a2f5da448e4a33351b57a885f4352"
   integrity sha512-N9IAXsF8iKhgHIC6pquzRgPBJEzc9auw3JoRkaKe+y4Wl/LFBtDDunNe7YmdomontECAcC5APaAgWZBiu1kirw==

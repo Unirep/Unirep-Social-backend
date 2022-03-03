@@ -18,16 +18,18 @@ class SignUpController {
         const commitment = add0x(decodedCommitment);
         console.log(commitment);
       
-        let tx
         try {
-            tx = await unirepSocialContract.userSignUp(commitment);
-        } catch (e) {
-            return {error: e, transaction: tx?.hash}
-        }
-        const epoch = await unirepSocialContract.currentEpoch();
-        console.log('transaction: ' + tx.hash + ', sign up epoch: ' + epoch.toString());
+            const tx = await unirepSocialContract.userSignUp(commitment);
+            const epoch = await unirepSocialContract.currentEpoch();
+            console.log('transaction: ' + tx.hash + ', sign up epoch: ' + epoch.toString());
 
-        return {transaction: tx.hash, epoch: epoch.toNumber()};
+            return {transaction: tx.hash, epoch: epoch.toNumber()};
+        } catch (error) {
+            if (JSON.stringify(error).includes('replacement fee too low')) {
+                return await this.signUp(uploadedCommitment, epk);
+            }
+            return { error }
+        }
     }
 
     // signUpUnirepUser = async (data: any) => {

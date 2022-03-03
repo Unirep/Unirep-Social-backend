@@ -39,6 +39,12 @@ const encodeBigIntArray = (arr: BigInt[]): string => {
     return base64url.encode(JSON.stringify(stringifyBigInts(arr)))
 }
 
+const getCurrentEpoch = async (): Promise<number> => {
+    const unirepContract = getUnirepContract(UNIREP, DEFAULT_ETH_PROVIDER);
+    const epoch = await unirepContract.currentEpoch()
+    return Number(epoch);
+}
+
 const getGSTLeaves = async (epoch: number): Promise<IGSTLeaf[]> => {
     const leaves = await GSTLeaves.findOne({epoch: epoch})
     return leaves? leaves.GSTLeaves : []
@@ -50,14 +56,65 @@ const getEpochTreeLeaves = async (epoch: number): Promise<IEpochTreeLeaf[]> => {
 }
 
 const GSTRootExists = async (epoch: number, GSTRoot: string | BigInt): Promise<boolean> => {
-    const root = await GSTRoots.findOne({epoch: epoch, GSTRoots: {$eq: GSTRoot.toString()}})
-    if(root != undefined) return true
+    const currentEpoch = await getCurrentEpoch();
+    if (epoch > currentEpoch) {
+        return false
+    }
+    const root = await GSTRoots.findOne({
+        epoch: epoch, 
+        GSTRoots: {$eq: GSTRoot.toString()}
+    })
+    if(root !== null) return true
+    else {
+        console.log('Global state tree is not stored successfully');
+        const unirepState = await genUnirepStateFromContract(
+            DEFAULT_ETH_PROVIDER,
+            UNIREP
+        )
+        const exist = unirepState.GSTRootExists(GSTRoot, epoch);
+        if (exist) {
+            await insertGSTRoot(epoch, GSTRoot.toString());
+            return true
+        }
+    }
     return false
 }
 
 const epochTreeRootExists = async (epoch: number, epochTreeRoot: string | BigInt): Promise<boolean> => {
-    const root = await EpochTreeLeaves.findOne({epoch: epoch, epochTreeRoot: epochTreeRoot.toString()})
-    if(root != undefined) return true
+    const currentEpoch = await getCurrentEpoch();
+    if (epoch >= currentEpoch) {
+        return false
+    }
+    const root = await EpochTreeLeaves.findOne({
+        epoch: epoch, 
+        epochTreeRoot: epochTreeRoot.toString()
+    })
+    if(root !== null) return true
+    else {
+        console.log('Epoch tree is not stored successfully');
+        const findEpoch = await EpochTreeLeaves.findOne({
+            epoch: epoch,
+        })
+        if (findEpoch === null) {
+            const unirepState = await genUnirepStateFromContract(
+                DEFAULT_ETH_PROVIDER,
+                UNIREP
+            )
+            const epochTree = await unirepState.genEpochTree(epoch)
+            const newEpochTreeLeaves = new EpochTreeLeaves({
+                epoch: epoch,
+                epochTreeRoot: epochTree.getRootHash().toString(),
+            })
+        
+            try {
+                const res = await newEpochTreeLeaves.save()
+                console.log(res)
+            } catch(e) {
+                console.log(e)
+            }
+            if (epochTreeRoot.toString() === newEpochTreeLeaves.epochTreeRoot) return true
+        }
+    }
     return false
 }
 
@@ -291,8 +348,7 @@ const verifyUSTProofByIndex = async(
     epoch: number, 
     transactionHash: string,
 ): Promise<Boolean> => {
-    const provider = new ethers.providers.JsonRpcProvider(DEFAULT_ETH_PROVIDER)
-    const unirepContract = getUnirepContract(UNIREP, provider)
+    const unirepContract = getUnirepContract(UNIREP, DEFAULT_ETH_PROVIDER)
 
     // verify user state transition proof
     let transitionProof = await Proof.findOne({index: proofIndex})
@@ -453,8 +509,7 @@ const verifyAttestationProofsByIndex = async (proofIndex: number): Promise<any> 
     } else {
         for (let l = 0; l < DEFAULT_QUERY_DEPTH; l++) {
             console.log('Attestation proof index', proofIndex, 'not found, try again')
-            const provider = new ethers.providers.JsonRpcProvider(DEFAULT_ETH_PROVIDER)
-            const unirepContract = getUnirepContract(UNIREP, provider)
+            const unirepContract = getUnirepContract(UNIREP, DEFAULT_ETH_PROVIDER)
             const epochKeyProofFilter = unirepContract.filters.IndexedEpochKeyProof(proofIndex)
             const epochKeyProofEvents = await unirepContract.queryFilter(epochKeyProofFilter)
             if (epochKeyProofEvents.length === 1) {
@@ -551,9 +606,7 @@ const saveAttestationResult = async (epoch: number, epochKey: string, attestInde
 }
 
 const findAttestationEventFromFilter = async (proofIndex: number) => {
-    const ethProvider = DEFAULT_ETH_PROVIDER
-    const provider = new ethers.providers.JsonRpcProvider(ethProvider)
-    const unirepContract = getUnirepContract(UNIREP, provider)
+    const unirepContract = getUnirepContract(UNIREP, DEFAULT_ETH_PROVIDER)
     let isProofValid = false
     let event
 
@@ -929,9 +982,7 @@ const updateDBFromPostSubmittedEvent = async (
 
     const postId = event.transactionHash
     const findPost = await Post.findOne({ transactionHash: postId })
-    const ethProvider = DEFAULT_ETH_PROVIDER
-    const provider = new ethers.providers.JsonRpcProvider(ethProvider)
-    const unirepContract = getUnirepContract(UNIREP, provider)
+    const unirepContract = getUnirepContract(UNIREP, DEFAULT_ETH_PROVIDER)
 
     const iface = new ethers.utils.Interface(UNIREP_SOCIAL_ABI)
     const decodedData = iface.decodeEventLog("PostSubmitted",event.data)
@@ -1030,9 +1081,7 @@ const updateDBFromCommentSubmittedEvent = async (
     const _epochKey = BigInt(event.topics[3]).toString(16)
     const _minRep = Number(decodedData?.proofRelated.minRep._hex)
     const findComment = await Comment.findOne({ transactionHash: commentId })
-    const ethProvider = DEFAULT_ETH_PROVIDER
-    const provider = new ethers.providers.JsonRpcProvider(ethProvider)
-    const unirepContract = getUnirepContract(UNIREP, provider)
+    const unirepContract = getUnirepContract(UNIREP, DEFAULT_ETH_PROVIDER)
         
     const reputationProof = decodedData?.proofRelated
     const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
@@ -1121,9 +1170,7 @@ const updateDBFromVoteSubmittedEvent = async (
     const _posRep = Number(decodedData?.upvoteValue._hex)
     const _negRep = Number(decodedData?.downvoteValue._hex)
     
-    const ethProvider = DEFAULT_ETH_PROVIDER
-    const provider = new ethers.providers.JsonRpcProvider(ethProvider)
-    const unirepContract = getUnirepContract(UNIREP, provider)
+    const unirepContract = getUnirepContract(UNIREP, DEFAULT_ETH_PROVIDER)
         
     const reputationProof = decodedData?.proofRelated
     const proofNullifier = await unirepContract.hashReputationProof(reputationProof)
@@ -1187,9 +1234,7 @@ const updateDBFromAirdropSubmittedEvent = async (
     const _epochKey = BigInt(event.topics[2]).toString(16)
     const signUpProof = decodedData?.proofRelated
 
-    const ethProvider = DEFAULT_ETH_PROVIDER
-    const provider = new ethers.providers.JsonRpcProvider(ethProvider)
-    const unirepContract = getUnirepContract(UNIREP, provider)
+    const unirepContract = getUnirepContract(UNIREP, DEFAULT_ETH_PROVIDER)
     
     const proofNullifier = await unirepContract.hashSignUpProof(signUpProof)
     const proofIndex = Number(await unirepContract.getProofIndex(proofNullifier))
@@ -1438,16 +1483,20 @@ const updateDBFromEpochEndedEvent = async (
     await Epoch.findOneAndUpdate({currentEpoch: epoch}, {currentEpoch: epoch + 1})
 
     // get epoch tree from @unirep/unirep core function
-    const provider = new ethers.providers.JsonRpcProvider(DEFAULT_ETH_PROVIDER)
-    const unirepState = await genUnirepStateFromContract(provider, UNIREP)
+    const unirepState = await genUnirepStateFromContract(DEFAULT_ETH_PROVIDER, UNIREP)
     const epochTree = await unirepState.genEpochTree(epoch)
 
     const newEpochTreeLeaves = new EpochTreeLeaves({
         epoch: epoch,
-        epochTreeRoot: epochTree.getRootHash(),
+        epochTreeRoot: epochTree.getRootHash().toString(),
     })
 
-    await newEpochTreeLeaves.save()
+    try {
+        const res = await newEpochTreeLeaves.save()
+        console.log(res)
+    } catch(e) {
+        console.log(e)
+    }
     global.nextEpochTransition = Date.now() + global.epochPeriod + 30000; // delay 30 seconds
 }
 
@@ -1630,6 +1679,7 @@ const initDB = async (
 }
 
 export {
+    getCurrentEpoch,
     getGSTLeaves,
     updateGSTLeaf,
     getEpochTreeLeaves,

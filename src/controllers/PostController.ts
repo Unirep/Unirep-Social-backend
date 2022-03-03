@@ -132,14 +132,11 @@ class PostController {
             return {error: error, transaction: undefined, postId: undefined, currentEpoch: currentEpoch};
         }
 
-
-        let tx
         try {
-            tx = await unirepSocialContract.publishPost(
+            const tx = await unirepSocialContract.publishPost(
                 reputationProof, 
                 data.title !== undefined && data.title.length > 0? `${titlePrefix}${data.title}${titlePostfix}${data.content}` : data.content
             );
-            // await tx.wait()
             console.log('transaction hash: ' + tx.hash + ', epoch key of epoch ' + currentEpoch + ': ' + epochKey);
 
             const newPost: IPost = new Post({
@@ -161,8 +158,11 @@ class PostController {
                 error = err;
             });
             return {error: error, transaction: tx.hash, currentEpoch: currentEpoch};
-        } catch (e) {
-            return {error: e, transaction: tx?.hash, currentEpoch: currentEpoch}
+        } catch (error) {
+            if (JSON.stringify(error).includes('replacement fee too low')) {
+                return await this.publishPost(data);
+            }
+            return {error: error, currentEpoch: currentEpoch}
         }
     }
 }

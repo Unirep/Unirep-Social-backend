@@ -85,8 +85,11 @@ class VoteController {
                 data.upvote, 
                 data.downvote
             );
-        } catch(e) {
-            return {error: e, transaction: tx?.hash, postId: undefined, currentEpoch: currentEpoch};
+        } catch(error) {
+            if (JSON.stringify(error).includes('replacement fee too low')) {
+                return await this.vote(data)
+            }
+            return {error: error, transaction: tx?.hash, postId: undefined, currentEpoch: currentEpoch};
         }
         const receipt = await tx.wait()
         if (receipt.status === 0) {

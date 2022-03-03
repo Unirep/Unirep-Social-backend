@@ -14,16 +14,22 @@ class EpochController {
         await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
         
         const currentEpoch = await unirepContract.currentEpoch()
-        const tx = await unirepSocialContract.epochTransition()
-        const receipt = await tx.wait()
+        try {
+            const tx = await unirepSocialContract.epochTransition()
+            const receipt = await tx.wait()
 
-        console.log('Transaction hash:', tx.hash)
-        console.log('End of epoch:', currentEpoch.toString())
+            console.log('Transaction hash:', tx.hash)
+            console.log('End of epoch:', currentEpoch.toString())
 
-        global.nextEpochTransition = Date.now() + global.epochPeriod
-        console.log(global.nextEpochTransition)
-
-        return receipt.status
+            global.nextEpochTransition = Date.now() + global.epochPeriod
+            console.log(global.nextEpochTransition)
+            return receipt.status 
+        } catch(error) {
+            if (JSON.stringify(error).includes('replacement fee too low')) {
+                return await this.epochTransition();
+            }
+            return { error }
+        }
     }
 }
 
