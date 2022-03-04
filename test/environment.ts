@@ -5,6 +5,7 @@ import { deployUnirep } from '@unirep/contracts'
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
+import settings from './config'
 
 const PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000001'
 const PRIVATE_KEY_APP = '0x0000000000000000000000000000000000000000000000000000000000000002'
@@ -13,15 +14,16 @@ export async function deploy() {
   const wallet = new ethers.Wallet(PRIVATE_KEY, provider)
   const epochTreeDepth = 32
   const unirep = await deployUnirep(wallet, {
-      globalStateTreeDepth: 4,
+      globalStateTreeDepth: 16,
       userStateTreeDepth: 4,
       epochTreeDepth,
     },
+    settings
   )
   const UnirepSocialF = new ethers.ContractFactory(UnirepSocial.abi, UnirepSocial.bytecode, wallet)
   const unirepSocial = await UnirepSocialF.deploy(unirep.address, 1, 2, 50)
   await unirepSocial.deployed()
-  return { unirep, unirepSocial, epochTreeDepth }
+  return { unirep, unirepSocial, epochTreeDepth, provider }
 }
 
 export async function startServer() {
@@ -37,12 +39,15 @@ export async function startServer() {
 
   const MasterRouter = require('../src/routers/MasterRouter').default
   const { identityCommitmentPrefix } = require('../src/constants')
+  const TransactionManager = require('../src/TransactionManager').default
 
   const mongoDB = 'mongodb://127.0.0.1:27017/unirep_social';
   mongoose.connect(mongoDB);
   // Bind connection to error event (to get notification of connection errors)
   mongoose.connection
     .on('error', console.error.bind(console, 'MongoDB connection error:'));
+
+  await TransactionManager.start()
 
   global.adminSessionCode = 'ffff'
 

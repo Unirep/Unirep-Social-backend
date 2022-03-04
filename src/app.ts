@@ -1,13 +1,15 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
+import AccountNonce from './database/models/accountNonce'
 import { ethers } from 'ethers';
 import EpochManager from './EpochManager'
+import TransactionManager from './TransactionManager'
 
 import ErrorHandler from './ErrorHandler';
 import MasterRouter from './routers/MasterRouter';
 
-import { DEFAULT_ETH_PROVIDER, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI } from './constants';
+import { DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER, UNIREP, UNIREP_ABI, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI } from './constants';
 import { initDB, updateDBFromAirdropSubmittedEvent, updateDBFromAttestationEvent, updateDBFromCommentSubmittedEvent, updateDBFromEpochEndedEvent, updateDBFromEpochKeyProofEvent, updateDBFromPostSubmittedEvent, updateDBFromProcessAttestationProofEvent, updateDBFromReputationProofEvent, updateDBFromStartUSTProofEvent, updateDBFromUnirepUserSignUpEvent, updateDBFromUserSignedUpProofEvent, updateDBFromUserSignUpEvent, updateDBFromUSTEvent, updateDBFromUSTProofEvent, updateDBFromVoteSubmittedEvent } from './database/utils';
 
 main()
@@ -29,6 +31,8 @@ async function main() {
 
     // start watching for epoch transitions
     await EpochManager.updateWatch()
+
+    await TransactionManager.start()
 
     // now start the http server
     const app = express()

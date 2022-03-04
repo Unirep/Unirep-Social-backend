@@ -1,6 +1,8 @@
 import { ethers } from 'ethers'
 import ErrorHandler from '../ErrorHandler';
 import { UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER, DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, identityCommitmentPrefix, add0x, } from '../constants';
+import AccountNonce from '../database/models/accountNonce'
+import TransactionManager from '../TransactionManager'
 
 class SignUpController {
     defaultMethod() {
@@ -17,15 +19,15 @@ class SignUpController {
         const commitment = add0x(decodedCommitment);
 
         try {
-            const tx = await unirepSocialContract.connect(wallet).userSignUp(commitment);
-            const epoch = await unirepContract.currentEpoch();
-            const receipt = await tx.wait()
-            if (receipt.state === 0) {
-                return { error: "Transaction reverted", transaction: tx.hash, epoch: epoch.toNumber() }
-            }
-            console.log('transaction: ' + tx.hash + ', sign up epoch: ' + epoch.toString());
+            const data = unirepSocialContract.interface.encodeFunctionData('userSignUp', [
+              commitment,
+            ])
+            const hash = await TransactionManager.queueTransaction(unirepSocialContract.address, data)
 
-            return {transaction: tx.hash, epoch: epoch.toNumber()};
+            const epoch = await unirepContract.currentEpoch();
+            console.log('transaction: ' + hash + ', sign up epoch: ' + epoch.toString());
+
+            return {transaction: hash, epoch: epoch.toNumber()};
         } catch (error) {
             if (JSON.stringify(error).includes('replacement fee too low')) {
                 return await this.signUp(uploadedCommitment, epk);

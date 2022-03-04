@@ -19,37 +19,29 @@ class PostRouter {
    */
   private _configure() {
     this._router.get('/', async (req: Request, res: Response, next: NextFunction) => {
-        if (req.query.query === undefined) {
-          try {
-            const result = await this._controller.listAllPosts();
-            res.status(200).json(result);
-          }
-          catch (error) {
-            console.log(error);
-            next(error);
-          }
-        } else {
-          try {
-            let query: string, lastRead: string, epks: string[] = [];
-            query = req.query.query.toString();
-            if (req.query.lastRead === undefined) {
-              lastRead = '0';
+        try {
+            if (req.query.query === undefined) {
+                const result = await this._controller.listAllPosts();
+                res.status(200).json(result);
             } else {
-              lastRead = req.query.lastRead.toString();
+              let query: string, lastRead: string, epks: string[] = [];
+              query = req.query.query.toString();
+              if (req.query.lastRead === undefined) {
+                lastRead = '0';
+              } else {
+                lastRead = req.query.lastRead.toString();
+              }
+              if (req.query.epks !== undefined && req.query.epks.toString() !== '') {
+                epks = req.query.epks.toString().split('_');
+              }
+
+              const result = await this._controller.getPostWithQuery(query, lastRead, epks);
+              res.status(200).json(result);
             }
-            if (req.query.epks !== undefined && req.query.epks.toString() !== '') {
-              epks = req.query.epks.toString().split('_');
-            }
-            
-            const result = await this._controller.getPostWithQuery(query, lastRead, epks);
-            res.status(200).json(result);
-          }
-          catch (error) {
+          } catch (error) {
             console.log(error);
             next(error);
           }
-        }
-        
     });
     this._router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
       try {
