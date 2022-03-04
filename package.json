@@ -5,7 +5,7 @@
   "scripts": {
     "start": "nodemon src/app.ts",
     "build": "tsc",
-    "test": "sh scripts/pretest.sh && ava build/test/*.test.js --no-worker-threads"
+    "test": "sh scripts/pretest.sh && ava test/*.test.ts --no-worker-threads"
   },
   "keywords": [],
   "author": "",
