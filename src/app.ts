@@ -44,10 +44,10 @@ server.app.use((err: ErrorHandler, req: Request, res: Response, next: NextFuncti
 });
 
 // global variables: actually should be stored in db
-global.epochPeriod = 24 * 60 * 60 * 1000;
+global.epochPeriod = 24 * 60 * 60 * 1000 + 30000;
 // global.epochPeriod = 10 * 60 * 1000;
 
-global.nextEpochTransition = Date.now() + global.epochPeriod + 30000; // delay 30 seconds
+global.nextEpochTransition = Date.now() + global.epochPeriod; // delay 30 seconds
 console.log(global.nextEpochTransition);
 
 global.adminSessionCode = randomstring.generate(20);
