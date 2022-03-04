@@ -1,8 +1,6 @@
-import base64url from 'base64url';
-
+import { ethers } from 'ethers'
 import ErrorHandler from '../ErrorHandler';
-import { DEFAULT_ETH_PROVIDER, DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, identityCommitmentPrefix, add0x, } from '../constants';
-import { UnirepSocialContract } from '@unirep/unirep-social';
+import { UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER, DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, identityCommitmentPrefix, add0x, } from '../constants';
 
 class SignUpController {
     defaultMethod() {
@@ -10,17 +8,17 @@ class SignUpController {
     }
 
     signUp = async (uploadedCommitment: string, epk: string) => {
-        const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
-        await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
+        const wallet = new ethers.Wallet(DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER)
+        const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
+        const unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER)
 
         const encodedCommitment = uploadedCommitment.slice(identityCommitmentPrefix.length);
-        const decodedCommitment = base64url.decode(encodedCommitment);
+        const decodedCommitment = Buffer.from(encodedCommitment, 'base64').toString('hex');
         const commitment = add0x(decodedCommitment);
-        console.log(commitment);
-      
+
         try {
-            const tx = await unirepSocialContract.userSignUp(commitment);
-            const epoch = await unirepSocialContract.currentEpoch();
+            const tx = await unirepSocialContract.connect(wallet).userSignUp(commitment);
+            const epoch = await unirepContract.currentEpoch();
             const receipt = await tx.wait()
             if (receipt.state === 0) {
                 return { error: "Transaction reverted", transaction: tx.hash, epoch: epoch.toNumber() }

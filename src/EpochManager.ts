@@ -44,7 +44,7 @@ class EpochManager {
     }
 
     async doEpochTransition() {
-        const wallet = new ethers.Wallet(DEPLOYER_PRIV_KEY)
+        const wallet = new ethers.Wallet(DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER)
         const currentEpoch = await this.unirepContract.currentEpoch()
         const tx = await this.unirepSocialContract
             .connect(wallet)

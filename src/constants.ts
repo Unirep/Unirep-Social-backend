@@ -24,7 +24,9 @@ export const {
 // export const UNIREP = '0xE7709F35fb195E1D117D486aEB24bA58CEccCD29';
 // export const UNIREP_SOCIAL = '0x0F50453236B2Ca88D5C1fBC8D7FA91001d93eC68';
 // const DEFAULT_ETH_PROVIDER_URL = 'wss://eth-goerli.alchemyapi.io/v2/tYp-IJU_idg28iohx9gsLqhq6KRZxk7f';
-export const DEFAULT_ETH_PROVIDER = new ethers.providers.WebSocketProvider(DEFAULT_ETH_PROVIDER_URL);
+export const DEFAULT_ETH_PROVIDER = DEFAULT_ETH_PROVIDER_URL.startsWith('http') ?
+  new ethers.providers.JsonRpcProvider(DEFAULT_ETH_PROVIDER_URL) :
+  new ethers.providers.WebSocketProvider(DEFAULT_ETH_PROVIDER_URL);
 export const DEFAULT_START_BLOCK = 0;
 export const UNIREP_SOCIAL_ATTESTER_ID = 1
 

@@ -4,7 +4,8 @@
   "description": "",
   "scripts": {
     "start": "nodemon src/app.ts",
-    "test": "ava"
+    "build": "tsc",
+    "test": "sh scripts/pretest.sh && ava build/test/*.test.js --no-worker-threads"
   },
   "keywords": [],
   "author": "",
@@ -13,8 +14,10 @@
     "@ava/typescript": "^3.0.1",
     "@types/express": "^4.17.13",
     "@types/node": "^16.4.6",
-    "ethers": "^5.5.4",
+    "@types/node-fetch": "^2.6.1",
     "ava": "^4.0.1",
+    "ethers": "^5.5.4",
+    "node-fetch": "2",
     "nodemon": "^2.0.12",
     "ts-node": "^10.1.0",
     "typescript": "^4.3.5"
