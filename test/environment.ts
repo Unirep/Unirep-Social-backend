@@ -11,7 +11,7 @@ import getPort from 'get-port';
 const PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000001'
 const PRIVATE_KEY_APP = '0x0000000000000000000000000000000000000000000000000000000000000002'
 export async function deploy() {
-  const provider = new ethers.providers.JsonRpcProvider('http://localhost:8545')
+  const provider = new ethers.providers.JsonRpcProvider('http://localhost:18545')
   const wallet = new ethers.Wallet(PRIVATE_KEY, provider)
   const epochTreeDepth = 32
   const unirep = await deployUnirep(wallet, {
@@ -35,7 +35,7 @@ export async function startServer() {
     UNIREP: unirep.address,
     UNIREP_SOCIAL: unirepSocial.address,
     DEPLOYER_PRIV_KEY: PRIVATE_KEY_APP,
-    DEFAULT_ETH_PROVIDER_URL: 'http://localhost:8545',
+    DEFAULT_ETH_PROVIDER_URL: 'http://localhost:18545',
     ...process.env,
   })
 
