@@ -10,24 +10,19 @@ import {
 } from '@unirep/unirep'
 
 test.before(async (t) => {
-  const { unirep, unirepSocial, identityCommitmentPrefix, provider } = await startServer()
-  Object.assign(t.context, {
-    unirep,
-    unirepSocial,
-    identityCommitmentPrefix,
-    provider,
-  })
+  const context = await startServer()
+  Object.assign(t.context, context)
 })
 
 test('should get signup code', async (t: any) => {
   let signupCode: string
   {
-    const r = await fetch('http://localhost:5000/api/genInvitationCode?code=ffff')
+    const r = await fetch(`${t.context.url}/api/genInvitationCode?code=ffff`)
     t.assert(r.status === 200)
     signupCode = await r.json()
   }
   {
-    const r = await fetch(`http://localhost:5000/api/genInvitationCode/${signupCode}`)
+    const r = await fetch(`${t.context.url}/api/genInvitationCode/${signupCode}`)
     t.assert(r.status === 200)
   }
 })
@@ -47,7 +42,7 @@ test('should sign up', async (t: any) => {
     commitment: t.context.identityCommitmentPrefix + Buffer.from(commitment, 'hex').toString('base64'),
     epk,
   })
-  const r = await fetch(`http://localhost:5000/api/signup?${params}`)
+  const r = await fetch(`${t.context.url}/api/signup?${params}`)
   const data = await r.json()
   t.assert(/^0x[0-9a-fA-F]{64}$/.test(data.transaction))
   t.is(currentEpoch.toString(), data.epoch.toString())
@@ -70,7 +65,7 @@ test('should sign up many in parallel', async (t: any) => {
       commitment: t.context.identityCommitmentPrefix + Buffer.from(commitment, 'hex').toString('base64'),
       epk,
     })
-    const r = await fetch(`http://localhost:5000/api/signup?${params}`)
+    const r = await fetch(`${t.context.url}/api/signup?${params}`)
     const data = await r.json()
     await t.context.provider.waitForTransaction(data.transaction)
   }
@@ -98,7 +93,7 @@ test('should sign in', async (t: any) => {
       commitment: t.context.identityCommitmentPrefix + Buffer.from(commitment, 'hex').toString('base64'),
       epk,
     })
-    const r = await fetch(`http://localhost:5000/api/signup?${params}`)
+    const r = await fetch(`${t.context.url}/api/signup?${params}`)
     const data = await r.json()
     t.context.provider.waitForTransaction(data.transaction)
   }
@@ -107,7 +102,7 @@ test('should sign in', async (t: any) => {
   const params = new URLSearchParams({
     commitment: t.context.identityCommitmentPrefix + Buffer.from(commitment, 'hex').toString('base64'),
   })
-  const r = await fetch(`http://localhost:5000/api/signin?${params}`)
+  const r = await fetch(`${t.context.url}/api/signin?${params}`)
   const data = await r.text()
   console.log(data)
   t.pass()

@@ -12,7 +12,7 @@ Object.assign(process.env, {
     UNIREP: '0x3DdC8069e7d740C86AFfB8bc10Fa66ad10181bd2',
     UNIREP_SOCIAL: '0x22251B1135379dA965614D83c9FC3D8F012B68CE',
     DEFAULT_ETH_PROVIDER_URL: 'ws://localhost:8546',
-    ADMIN_SESSION_CODE: randomstring(20),
+    ADMIN_SESSION_CODE: randomstring.generate(20),
     ...process.env
 })
 
