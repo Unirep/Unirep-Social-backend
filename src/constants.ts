@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import UnirepSocial from "@unirep/unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json"
 import Unirep from "@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json"
 import { ethers } from 'ethers';
+import randomstring from 'randomstring';
 
 // load the environment variables from the .env file
 dotenv.config();
@@ -11,8 +12,11 @@ Object.assign(process.env, {
     UNIREP: '0x3DdC8069e7d740C86AFfB8bc10Fa66ad10181bd2',
     UNIREP_SOCIAL: '0x22251B1135379dA965614D83c9FC3D8F012B68CE',
     DEFAULT_ETH_PROVIDER_URL: 'ws://localhost:8546',
+    ADMIN_SESSION_CODE: randomstring(20),
     ...process.env
 })
+
+global.adminSessionCode = process.env.ADMIN_SESSION_CODE
 
 export const {
     DEPLOYER_PRIV_KEY,
