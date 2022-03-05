@@ -48,7 +48,7 @@ class EpochManager {
         const currentEpoch = await this.unirepContract.currentEpoch()
         const tx = await this.unirepSocialContract
             .connect(wallet)
-            .epochTransition()
+            .beginEpochTransition()
             .then((t: any) => t.wait())
         console.log('Transaction hash:', tx.hash)
         console.log('End of epoch:', currentEpoch.toString())
