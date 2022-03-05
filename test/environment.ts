@@ -10,7 +10,20 @@ import getPort from 'get-port';
 
 const PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000001'
 const PRIVATE_KEY_APP = '0x0000000000000000000000000000000000000000000000000000000000000002'
+
+async function waitForGanache() {
+  for (let x = 0; x < 100; x++) {
+    await new Promise(r => setTimeout(r, 1000))
+    try {
+      const provider = new ethers.providers.JsonRpcProvider('http://localhost:18545')
+      await provider.getNetwork()
+      break
+    } catch (_) {}
+  }
+}
+
 export async function deploy() {
+  await waitForGanache()
   const provider = new ethers.providers.JsonRpcProvider('http://localhost:18545')
   const wallet = new ethers.Wallet(PRIVATE_KEY, provider)
   const epochTreeDepth = 32
