@@ -61,6 +61,7 @@ export class TransactionManager {
           // if the transaction is reverted the nonce is still used, so we return true
           return true
         } else {
+          console.log(err)
           return false
         }
       }
@@ -96,6 +97,7 @@ export class TransactionManager {
         nonce,
         gasLimit,
         to,
+        gasPrice: 10000,
         ...args,
       })
       await this.AccountTransaction.create({

@@ -8,7 +8,8 @@ import mongoose from 'mongoose';
 import settings from './config'
 import getPort from 'get-port';
 
-const GANACHE_URL = 'http://localhost:18545'
+// const GANACHE_URL = 'https://hardhat.unirep.social'
+const GANACHE_URL = 'http://127.0.0.1:18545'
 const FUNDED_PRIVATE_KEY = '0x0000000000000000000000000000000000000000000000000000000000000001'
 
 async function waitForGanache() {
@@ -72,7 +73,7 @@ export async function startServer() {
 
   // now fund our fresh wallet
   const hash = await txManager.queueTransaction(wallet.address, {
-    value: ethers.BigNumber.from(10).pow(18)
+    value: ethers.BigNumber.from(10).pow(20) // 100 eth
   })
   await provider.waitForTransaction(hash)
 

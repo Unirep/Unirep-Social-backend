@@ -1,15 +1,23 @@
 import ErrorHandler from '../ErrorHandler';
 import { formatProofForSnarkjsVerification } from '@unirep/circuits';
 import { ReputationProof } from '@unirep/contracts';
-import { UnirepSocialContract } from '@unirep/unirep-social';
-
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, ActionType, UNIREP_SOCIAL_ATTESTER_ID } from '../constants';
+import { ethers } from 'ethers'
+import {
+  UNIREP,
+  UNIREP_SOCIAL_ABI,
+  UNIREP_ABI,
+  UNIREP_SOCIAL,
+  DEFAULT_ETH_PROVIDER,
+  ActionType,
+  UNIREP_SOCIAL_ATTESTER_ID
+} from '../constants';
 import { IVote } from '../database/models/vote';
 import Proof from '../database/models/proof';
 import Post from '../database/models/post';
 import Comment from '../database/models/comment';
 import { decodeReputationProof, verifyReputationProof } from "../controllers/utils"
 import { writeRecord } from '../database/utils';
+import TransactionManager from '../TransactionManager'
 
 class VoteController {
     defaultMethod() {
@@ -17,56 +25,60 @@ class VoteController {
     }
 
     vote = async (data: any) => {
-        console.log(data);
 
-        const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
-        await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
+        const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
+        const unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER)
         const unirepSocialId = UNIREP_SOCIAL_ATTESTER_ID
-        const unirepContract = await unirepSocialContract.getUnirep()
         const currentEpoch = Number(await unirepContract.currentEpoch())
+
 
         const { publicSignals, proof } = decodeReputationProof(data.proof, data.publicSignals)
         const reputationProof = new ReputationProof(publicSignals, formatProofForSnarkjsVerification(proof))
         const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
-        const receiver = BigInt(parseInt(data.receiver, 16))
-        let error
+        const receiver = parseInt(data.receiver, 16)
 
         const dataId = data.isPost? data.dataId : data.dataId.split('_')[1];
 
         let postProofIndex: number = 0
         if (data.isPost) {
             const post = await Post.findOne({ transactionHash: dataId })
-            console.log('find post proof index: ' + post?.proofIndex);
-            const validProof = await Proof.findOne({ index: post?.proofIndex, epoch: currentEpoch, valid: true })
-            if (validProof === null) 
-                return { error: "vote to an invalid post", transaction: undefined, currentEpoch: currentEpoch}
-            if(post !== null) {
-                if (post.epoch !== currentEpoch)
-                    return {error: "the epoch key is expired", transaction: undefined, currentEpoch: currentEpoch}
-                postProofIndex = post.proofIndex;
+            if (!post) {
+              throw new Error('Post not found')
             }
+            if (post.epoch !== currentEpoch) {
+                return {error: "the epoch key is expired", transaction: undefined, currentEpoch: currentEpoch}
+            }
+            console.log('find post proof index: ' + post.proofIndex);
+            const validProof = await Proof.findOne({ index: post.proofIndex, epoch: currentEpoch, valid: true })
+            if (!validProof) {
+                return { error: "vote to an invalid post", transaction: undefined, currentEpoch: currentEpoch}
+            }
+            postProofIndex = post.proofIndex;
         } else {
             const comment = await Comment.findOne({ transactionHash: dataId });
-            console.log('find comment proof index: ' + comment?.proofIndex);
-            const validProof = await Proof.findOne({ index: comment?.proofIndex, epoch: currentEpoch, valid: true })
-            if (validProof === null) 
-                return { error: "vote to an invalid comment", transaction: undefined, currentEpoch: currentEpoch}
-            if(comment !== null) {
-                if (comment.epoch !== currentEpoch)
-                    return {error: "the epoch key is expired", transaction: undefined, currentEpoch: currentEpoch}
-                postProofIndex = comment.proofIndex;
+            if (!comment) {
+              throw new Error('Comment not found')
             }
+            if (comment.epoch !== currentEpoch) {
+                return {error: "the epoch key is expired", transaction: undefined, currentEpoch: currentEpoch}
+            }
+            console.log('find comment proof index: ' + comment.proofIndex);
+            const validProof = await Proof.findOne({ index: comment.proofIndex, epoch: currentEpoch, valid: true })
+            if (!validProof) {
+                return { error: "vote to an invalid comment", transaction: undefined, currentEpoch: currentEpoch}
+            }
+            postProofIndex = comment.proofIndex;
         }
 
-        if(Number(postProofIndex) === 0) {
-            error = 'Error: cannot find post proof index'
+        if (Number(postProofIndex) === 0) {
+            const error = 'Error: cannot find post proof index'
             return {error: error, transaction: undefined, currentEpoch: currentEpoch};
         }
 
-        error = await verifyReputationProof(
-            reputationProof, 
-            data.upvote + data.downvote, 
-            unirepSocialId, 
+        const error = await verifyReputationProof(
+            reputationProof,
+            data.upvote + data.downvote,
+            unirepSocialId,
             currentEpoch
         )
         if (error !== undefined) {
@@ -74,32 +86,29 @@ class VoteController {
         }
 
         console.log(`Attesting to epoch key ${data.receiver} with pos rep ${data.upvote}, neg rep ${data.downvote}`)
-      
+
         console.log('post proof index', postProofIndex)
-        let tx
-        try {
-            tx = await unirepSocialContract.vote(
-                reputationProof, 
-                receiver, 
-                postProofIndex, 
-                data.upvote, 
-                data.downvote
-            );
-        } catch(error) {
-            if (JSON.stringify(error).includes('replacement fee too low')) {
-                return await this.vote(data)
-            }
-            return {error: error, transaction: tx?.hash, postId: undefined, currentEpoch: currentEpoch};
-        }
-        const receipt = await tx.wait()
-        if (receipt.status === 0) {
-            error = 'Error: transaction failed'
-            return {error: error, transaction: tx?.hash, postId: undefined, currentEpoch: currentEpoch};
-        }
-      
+
+        const attestingFee = await unirepContract.attestingFee()
+        const calldata = unirepSocialContract.interface.encodeFunctionData('vote', [
+          data.upvote,
+          data.downvote,
+          receiver,
+          postProofIndex,
+          reputationProof,
+        ])
+        const hash = await TransactionManager.queueTransaction(
+          unirepSocialContract.address,
+          {
+            data: calldata,
+            // TODO: make this more clear?
+            // 2 attestation calls into unirep: https://github.com/Unirep/Unirep-Social/blob/alpha/contracts/UnirepSocial.sol#L200
+            value: attestingFee.mul(2),
+          }
+        )
         // save to db data
         const newVote: IVote = {
-            transactionHash: tx.hash.toString(),
+            transactionHash: hash,
             epoch: currentEpoch,
             voter: epochKey,
             posRep: data.upvote,
@@ -109,54 +118,44 @@ class VoteController {
         };
 
         if (data.isPost) {
-            try {
-                await Post.findOneAndUpdate(
-                    { transactionHash: dataId }, 
-                    { "$push": { "votes": newVote }, 
-                      "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
-                    { "new": true, "upsert": false }
-                )
-            } catch(e) {
-            console.log('update votes of post error: ' + e)
-            return {error: e, transaction: tx.hash};
-            }
+            await Post.findOneAndUpdate(
+                { transactionHash: dataId },
+                { "$push": { "votes": newVote },
+                  "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
+                { "new": true, "upsert": false }
+            )
 
             await writeRecord(
-                data.receiver, 
-                epochKey, 
-                data.upvote, 
-                data.downvote, 
-                currentEpoch, 
-                ActionType.Vote, 
-                tx.hash.toString(), 
+                data.receiver,
+                epochKey,
+                data.upvote,
+                data.downvote,
+                currentEpoch,
+                ActionType.Vote,
+                hash,
                 data.dataId
             );
         } else {
-            try {
-                const comment = await Comment.findOneAndUpdate(
-                    { transactionHash: dataId }, 
-                    { "$push": { "votes": newVote }, 
-                    "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
-                    { "new": true, "upsert": false }
-                )
-                if (comment !== undefined && comment !== null) {
-                    await writeRecord(
-                        data.receiver, 
-                        epochKey, 
-                        data.upvote, 
-                        data.downvote, 
-                        currentEpoch, 
-                        ActionType.Vote, 
-                        tx.hash.toString(), 
-                        data.dataId
-                    );
-                }
-            } catch (e) {
-                console.log('update votes of comment error: ' + e);
-                return {error: e, transaction: tx.hash};
+            const comment = await Comment.findOneAndUpdate(
+                { transactionHash: dataId },
+                { "$push": { "votes": newVote },
+                "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
+                { "new": true, "upsert": false }
+            )
+            if (comment !== undefined && comment !== null) {
+                await writeRecord(
+                    data.receiver,
+                    epochKey,
+                    data.upvote,
+                    data.downvote,
+                    currentEpoch,
+                    ActionType.Vote,
+                    hash,
+                    data.dataId
+                );
             }
         }
-      return {error: error, transaction: tx.hash};
+      return {error: error, transaction: hash};
     }
 }
 
