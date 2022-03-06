@@ -33,7 +33,15 @@ async function deploy(wallet: ethers.Wallet) {
     settings
   )
   const UnirepSocialF = new ethers.ContractFactory(UnirepSocial.abi, UnirepSocial.bytecode, wallet)
-  const unirepSocial = await UnirepSocialF.deploy(unirep.address, 3, 5, 30)
+  const postReputation = 5
+  const commentReputation = 3
+  const airdrop = 30
+  const unirepSocial = await UnirepSocialF.deploy(
+    unirep.address,
+    postReputation,
+    commentReputation,
+    airdrop
+  )
   await unirepSocial.deployed()
   return { unirep, unirepSocial, epochTreeDepth, provider }
 }
@@ -41,7 +49,11 @@ async function deploy(wallet: ethers.Wallet) {
 export async function startServer() {
   await waitForGanache()
 
-  const mongoDB = 'mongodb://127.0.0.1:27017/unirep_social_test';
+  const sharedName = `unirep_test`
+
+  const dbName = `${Math.floor(Math.random() * 100000000)}`
+  const sharedDB = `mongodb://localhost:27017/${sharedName}`
+  const mongoDB = `mongodb://127.0.0.1:27017/${dbName}`;
   mongoose.connect(mongoDB);
   // Bind connection to error event (to get notification of connection errors)
   mongoose.connection
@@ -53,7 +65,7 @@ export async function startServer() {
   // this is the global manager shared across test processes
   const txManager = new TransactionManager()
   txManager.configure(FUNDED_PRIVATE_KEY, provider)
-  await txManager.start()
+  await txManager.start(sharedDB)
 
 
   const wallet = ethers.Wallet.createRandom().connect(provider)

@@ -6,7 +6,7 @@ export interface IAccountNonce extends Document {
     nonce: number
 }
 
-const AccountNonceSchema = new Schema({
+export const AccountNonceSchema = new Schema({
   address: { type: String, required: true, },
   nonce: { type: Number, required: true, }
 })

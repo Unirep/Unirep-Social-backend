@@ -7,7 +7,7 @@ export interface IAccountTransaction extends Document {
     nonce: number
 }
 
-const AccountTransactionSchema = new Schema({
+export const AccountTransactionSchema = new Schema({
   signedData: { type: String, required: true, },
   address: { type: String, required: true, },
   nonce: { type: Number, required: true, }

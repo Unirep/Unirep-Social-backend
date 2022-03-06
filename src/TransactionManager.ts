@@ -1,19 +1,23 @@
 import mongoose from 'mongoose'
-import AccountNonce from './database/models/accountNonce'
-import AccountTransaction from './database/models/accountTransaction'
+import AccountNonce, { IAccountNonce, AccountNonceSchema } from './database/models/accountNonce'
+import AccountTransaction, { IAccountTransaction, AccountTransactionSchema } from './database/models/accountTransaction'
 import { ethers } from 'ethers'
 
 export class TransactionManager {
     wallet?: ethers.Wallet
+    AccountNonce: mongoose.Model<IAccountNonce> = AccountNonce
+    AccountTransaction: mongoose.Model<IAccountTransaction> = AccountTransaction
 
     configure(key: string, provider: any) {
       this.wallet = new ethers.Wallet(key, provider)
     }
 
-    async start() {
+    async start(connection?: any) {
         if (!this.wallet) throw new Error('Not initialized')
         const latestNonce = await this.wallet.getTransactionCount()
-        await AccountNonce.findOneAndUpdate({
+        this.AccountNonce = (connection ? mongoose.createConnection(connection) : mongoose).model('AccountNonce', AccountNonceSchema)
+        this.AccountTransaction = (connection ? mongoose.createConnection(connection) : mongoose).model('AccountTransaction', AccountTransactionSchema)
+        await this.AccountNonce.findOneAndUpdate({
           address: this.wallet.address,
         }, {
           address: this.wallet.address,
@@ -28,7 +32,7 @@ export class TransactionManager {
 
     async startDaemon() {
         for (;;) {
-            const nextTx = await AccountTransaction.findOne({}).sort({
+            const nextTx = await this.AccountTransaction.findOne({}).sort({
               nonce: 1,
             })
             if (!nextTx) {
@@ -37,7 +41,7 @@ export class TransactionManager {
             }
             const sent = await this.tryBroadcastTransaction(nextTx.signedData)
             if (sent) {
-              await AccountTransaction.deleteOne({
+              await this.AccountTransaction.deleteOne({
                 signedData: nextTx.signedData,
               })
             } else {
@@ -63,7 +67,7 @@ export class TransactionManager {
     }
 
     async getNonce(address: string) {
-        const doc = await AccountNonce.findOneAndUpdate({
+        const doc = await this.AccountNonce.findOneAndUpdate({
           address,
         }, {
           $inc: {
@@ -94,7 +98,7 @@ export class TransactionManager {
         to,
         ...args,
       })
-      await AccountTransaction.create({
+      await this.AccountTransaction.create({
         address: this.wallet.address,
         signedData,
         nonce,
