@@ -35,6 +35,7 @@ async function main() {
     // start watching for epoch transitions
     await EpochManager.updateWatch()
 
+    TransactionManager.configure(DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER)
     await TransactionManager.start()
 
     // now start the http server

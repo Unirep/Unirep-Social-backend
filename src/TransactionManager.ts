@@ -2,20 +2,21 @@ import mongoose from 'mongoose'
 import AccountNonce from './database/models/accountNonce'
 import AccountTransaction from './database/models/accountTransaction'
 import { ethers } from 'ethers'
-import {
-  DEPLOYER_PRIV_KEY,
-  DEFAULT_ETH_PROVIDER,
-} from './constants';
 
-class TransactionManager {
+export class TransactionManager {
+    wallet?: ethers.Wallet
+
+    configure(key: string, provider: any) {
+      this.wallet = new ethers.Wallet(key, provider)
+    }
 
     async start() {
-        const wallet = new ethers.Wallet(DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER)
-        const latestNonce = await wallet.getTransactionCount()
+        if (!this.wallet) throw new Error('Not initialized')
+        const latestNonce = await this.wallet.getTransactionCount()
         await AccountNonce.updateMany({
-          address: wallet.address,
+          address: this.wallet.address,
         }, {
-          address: wallet.address,
+          address: this.wallet.address,
           nonce: latestNonce,
         }, {
           upsert: true,
@@ -43,10 +44,11 @@ class TransactionManager {
         }
     }
 
-    async tryBroadcastTransaction(signedData) {
+    async tryBroadcastTransaction(signedData: string) {
+      if (!this.wallet) throw new Error('Not initialized')
       try {
         console.log(`Sending tx ${ethers.utils.keccak256(signedData)}`)
-        await DEFAULT_ETH_PROVIDER.sendTransaction(signedData)
+        await this.wallet.provider.sendTransaction(signedData)
         return true
       } catch (err: any) {
         if (err.toString().indexOf('VM Exception while processing transaction') !== -1) {
@@ -70,21 +72,28 @@ class TransactionManager {
         return doc.nonce
     }
 
-    async queueTransaction(to: string, data: string) {
-      const wallet = new ethers.Wallet(DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER)
-      const gasLimit = await wallet.provider.estimateGas({
+    async queueTransaction(to: string, data: string|any = {}) {
+      const args = {} as any
+      if (typeof data === 'string') {
+        // assume it's input data
+        args.data = data
+      } else {
+        Object.assign(args, data)
+      }
+      if (!this.wallet) throw new Error('Not initialized')
+      const gasLimit = await this.wallet.provider.estimateGas({
         to,
-        data,
+        ...args,
       })
-      const nonce = await this.getNonce(wallet.address)
-      const signedData = await wallet.signTransaction({
+      const nonce = await this.getNonce(this.wallet.address)
+      const signedData = await this.wallet.signTransaction({
+        nonce,
         gasLimit,
         to,
-        data,
-        nonce,
+        ...args,
       })
       await AccountTransaction.create({
-        address: wallet.address,
+        address: this.wallet.address,
         signedData,
         nonce,
       })
