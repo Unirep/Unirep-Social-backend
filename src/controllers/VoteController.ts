@@ -37,11 +37,9 @@ class VoteController {
         const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
         const receiver = parseInt(data.receiver, 16)
 
-        const dataId = data.isPost? data.dataId : data.dataId.split('_')[1];
-
         let postProofIndex: number = 0
         if (data.isPost) {
-            const post = await Post.findOne({ transactionHash: dataId })
+            const post = await Post.findOne({ transactionHash: data.dataId })
             if (!post) {
               throw new Error('Post not found')
             }
@@ -55,7 +53,7 @@ class VoteController {
             }
             postProofIndex = post.proofIndex;
         } else {
-            const comment = await Comment.findOne({ transactionHash: dataId });
+            const comment = await Comment.findOne({ transactionHash: data.dataId });
             if (!comment) {
               throw new Error('Comment not found')
             }
@@ -119,7 +117,7 @@ class VoteController {
 
         if (data.isPost) {
             await Post.findOneAndUpdate(
-                { transactionHash: dataId },
+                { transactionHash: data.dataId },
                 { "$push": { "votes": newVote },
                   "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
                 { "new": true, "upsert": false }
@@ -137,7 +135,7 @@ class VoteController {
             );
         } else {
             const comment = await Comment.findOneAndUpdate(
-                { transactionHash: dataId },
+                { transactionHash: data.dataId },
                 { "$push": { "votes": newVote },
                 "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
                 { "new": true, "upsert": false }
