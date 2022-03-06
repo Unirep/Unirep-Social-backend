@@ -35,7 +35,9 @@ test('should get signup code', async (t: any) => {
 
 test('should sign up', async (t: any) => {
   const iden = genIdentity()
-  const commitment = genIdentityCommitment(iden).toString(16)
+  const commitment = genIdentityCommitment(iden)
+    .toString(16)
+    .padStart(64, '0')
   const currentEpoch = await t.context.unirep.currentEpoch()
   const epk = genEpochKey(
     iden.identityNullifier,
@@ -57,8 +59,9 @@ test('should sign up', async (t: any) => {
 
 test('should airdrop', async (t: any) => {
   const iden = genIdentity()
-  const _commitment = genIdentityCommitment(iden)
-  const commitment = _commitment.toString(16)
+  const commitment = genIdentityCommitment(iden)
+    .toString(16)
+    .padStart(64, '0')
   const currentEpoch = await t.context.unirep.currentEpoch()
   const epochKeyNonce = 0
   const epk = genEpochKey(
@@ -77,9 +80,6 @@ test('should airdrop', async (t: any) => {
     const data = await r.json()
     await t.context.provider.waitForTransaction(data.transaction)
   }
-  // wait for server to process events
-  // TODO: find a way to more precisely wait for this
-  await new Promise(r => setTimeout(r, 5000))
   const userState = await genUserStateFromContract(
     t.context.unirepSocial.provider,
     t.context.unirep.address,
@@ -113,7 +113,9 @@ test('should airdrop', async (t: any) => {
 test('should sign up many in parallel', async (t: any) => {
   const signup = async () => {
     const iden = genIdentity()
-    const commitment = genIdentityCommitment(iden).toString(16)
+    const commitment = genIdentityCommitment(iden)
+      .toString(16)
+      .padStart(64, '0')
     const currentEpoch = await t.context.unirep.currentEpoch()
     const epk = genEpochKey(
       iden.identityNullifier,
@@ -140,7 +142,9 @@ test('should sign up many in parallel', async (t: any) => {
 
 test('should sign in', async (t: any) => {
   const iden = genIdentity()
-  const commitment = genIdentityCommitment(iden).toString(16)
+  const commitment = genIdentityCommitment(iden)
+    .toString(16)
+    .padStart(64, '0')
   const currentEpoch = await t.context.unirep.currentEpoch()
   const epk = genEpochKey(
     iden.identityNullifier,

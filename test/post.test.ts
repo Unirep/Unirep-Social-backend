@@ -24,7 +24,9 @@ test.before(async (t) => {
 
 test('should create a post', async (t: any) => {
   const iden = genIdentity()
-  const commitment = genIdentityCommitment(iden).toString(16)
+  const commitment = genIdentityCommitment(iden)
+    .toString(16)
+    .padStart(64, '0')
   const currentEpoch = await t.context.unirep.currentEpoch()
   const epochKeyNonce = 0
   const epk = genEpochKey(
@@ -43,8 +45,6 @@ test('should create a post', async (t: any) => {
     const data = await r.json()
     await t.context.provider.waitForTransaction(data.transaction)
   }
-  // wait for server to process events
-  await new Promise(r => setTimeout(r, 20000))
   const userState = await genUserStateFromContract(
     t.context.unirepSocial.provider,
     t.context.unirep.address,
