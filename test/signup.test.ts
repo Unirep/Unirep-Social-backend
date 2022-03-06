@@ -78,7 +78,8 @@ test('should airdrop', async (t: any) => {
     await t.context.provider.waitForTransaction(data.transaction)
   }
   // wait for server to process events
-  await new Promise(r => setTimeout(r, 2000))
+  // TODO: find a way to more precisely wait for this
+  await new Promise(r => setTimeout(r, 5000))
   const userState = await genUserStateFromContract(
     t.context.unirepSocial.provider,
     t.context.unirep.address,

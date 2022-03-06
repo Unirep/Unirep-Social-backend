@@ -122,8 +122,6 @@ class PostController {
     }
 
     publishPost = async (data: any) => { // should have content, epk, proof, minRep, nullifiers, publicSignals
-        console.log(data);
-
         const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
         const unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER)
         const unirepSocialId = UNIREP_SOCIAL_ATTESTER_ID
@@ -145,37 +143,35 @@ class PostController {
             return {error: error, transaction: undefined, postId: undefined, currentEpoch: currentEpoch};
         }
 
-        try {
-            const calldata = unirepSocialContract.interface.encodeFunctionData('publishPost', [
-              reputationProof,
-              data.title !== undefined && data.title.length > 0? `${titlePrefix}${data.title}${titlePostfix}${data.content}` : data.content
-            ])
-            const hash = await TransactionManager.queueTransaction(unirepSocialContract.address, calldata)
-            const tx = await unirepSocialContract.publishPost(
-                reputationProof,
-                data.title !== undefined && data.title.length > 0? `${titlePrefix}${data.title}${titlePostfix}${data.content}` : data.content
-            );
-            console.log('transaction hash: ' + tx.hash + ', epoch key of epoch ' + currentEpoch + ': ' + epochKey);
+        const attestingFee = await unirepContract.attestingFee()
 
-            const newPost: IPost = new Post({
-                content: data.content,
-                title: data.title,
-                epochKey: epochKey,
-                epoch: currentEpoch,
-                proveMinRep: minRep !== null ? true : false,
-                minRep: Number(minRep),
-                posRep: 0,
-                negRep: 0,
-                comments: [],
-                status: 0,
-                transactionHash: hash
-            });
+        const calldata = unirepSocialContract.interface.encodeFunctionData('publishPost', [
+          data.title !== undefined && data.title.length > 0? `${titlePrefix}${data.title}${titlePostfix}${data.content}` : data.content,
+          reputationProof,
+        ])
+        const hash = await TransactionManager.queueTransaction(
+          unirepSocialContract.address,
+          {
+            data: calldata,
+            value: attestingFee,
+          })
 
-            await newPost.save()
-            return {error: error, transaction: hash, currentEpoch: currentEpoch};
-        } catch (error) {
-            return {error: error, currentEpoch: currentEpoch}
-        }
+        const newPost: IPost = new Post({
+            content: data.content,
+            title: data.title,
+            epochKey: epochKey,
+            epoch: currentEpoch,
+            proveMinRep: minRep !== null ? true : false,
+            minRep: Number(minRep),
+            posRep: 0,
+            negRep: 0,
+            comments: [],
+            status: 0,
+            transactionHash: hash
+        });
+
+        await newPost.save()
+        return {error: error, transaction: hash, currentEpoch: currentEpoch};
     }
 }
 
