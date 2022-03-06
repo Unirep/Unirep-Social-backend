@@ -47,7 +47,7 @@ test('should sign up', async (t: any) => {
   ).toString(16)
 
   const params = new URLSearchParams({
-    commitment: t.context.constants.identityCommitmentPrefix + Buffer.from(commitment, 'hex').toString('base64'),
+    commitment: t.context.constants.identityCommitmentPrefix + commitment,
     epk,
   })
   const r = await fetch(`${t.context.url}/api/signup?${params}`)
@@ -72,7 +72,7 @@ test('should airdrop', async (t: any) => {
   ).toString(16)
 
   const params = new URLSearchParams({
-    commitment: t.context.constants.identityCommitmentPrefix + Buffer.from(commitment, 'hex').toString('base64'),
+    commitment: t.context.constants.identityCommitmentPrefix + commitment,
     epk,
   })
   {
@@ -125,7 +125,7 @@ test('should sign up many in parallel', async (t: any) => {
     ).toString(16)
 
     const params = new URLSearchParams({
-      commitment: t.context.constants.identityCommitmentPrefix + Buffer.from(commitment, 'hex').toString('base64'),
+      commitment: t.context.constants.identityCommitmentPrefix + commitment,
       epk,
     })
     const r = await fetch(`${t.context.url}/api/signup?${params}`)
@@ -155,7 +155,7 @@ test('should sign in', async (t: any) => {
 
   {
     const params = new URLSearchParams({
-      commitment: t.context.constants.identityCommitmentPrefix + Buffer.from(commitment, 'hex').toString('base64'),
+      commitment: t.context.constants.identityCommitmentPrefix + commitment,
       epk,
     })
     const r = await fetch(`${t.context.url}/api/signup?${params}`)
@@ -165,7 +165,7 @@ test('should sign in', async (t: any) => {
 
   // now try signing in using this identity
   const params = new URLSearchParams({
-    commitment: t.context.constants.identityCommitmentPrefix + Buffer.from(commitment, 'hex').toString('base64'),
+    commitment: t.context.constants.identityCommitmentPrefix + commitment,
   })
   const r = await fetch(`${t.context.url}/api/signin?${params}`)
   const data = await r.text()

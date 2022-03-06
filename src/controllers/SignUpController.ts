@@ -20,9 +20,11 @@ class SignUpController {
         const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
         const unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER)
 
-        const encodedCommitment = uploadedCommitment.slice(identityCommitmentPrefix.length);
-        const decodedCommitment = Buffer.from(encodedCommitment, 'base64').toString('hex');
-        const commitment = add0x(decodedCommitment);
+        const _commitment = uploadedCommitment.slice(identityCommitmentPrefix.length)
+        if (!/^(0x)?[0-9a-fA-F]{64}$/.test(_commitment)) {
+          return { error: 'Commitment must be exactly 64 hex characters with an optional 0x prefix' }
+        }
+        const commitment = `0x${_commitment.replace('0x', '')}`
 
         const calldata = unirepSocialContract.interface.encodeFunctionData('userSignUp', [
           commitment,

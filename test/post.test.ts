@@ -37,7 +37,7 @@ test('should create a post', async (t: any) => {
   ).toString(16)
 
   const params = new URLSearchParams({
-    commitment: t.context.constants.identityCommitmentPrefix + Buffer.from(commitment, 'hex').toString('base64'),
+    commitment: t.context.constants.identityCommitmentPrefix + commitment,
     epk,
   })
   {
