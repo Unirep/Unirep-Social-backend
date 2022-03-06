@@ -1,11 +1,9 @@
 import ErrorHandler from '../ErrorHandler';
 import { formatProofForSnarkjsVerification } from '@unirep/circuits';
 import { ReputationProof } from '@unirep/contracts';
-import { UnirepSocialContract } from '@unirep/unirep-social';
 import { ethers } from 'ethers'
 
 import {
-  DEPLOYER_PRIV_KEY,
   UNIREP_SOCIAL,
   DEFAULT_ETH_PROVIDER,
   DEFAULT_POST_KARMA,
@@ -170,8 +168,13 @@ class PostController {
             transactionHash: hash
         });
 
-        await newPost.save()
-        return {error: error, transaction: hash, currentEpoch: currentEpoch};
+        const post = await newPost.save()
+        return {
+          error: error,
+          transaction: hash,
+          currentEpoch: currentEpoch,
+          post,
+        };
     }
 }
 
