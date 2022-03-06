@@ -2,11 +2,26 @@ import ErrorHandler from '../ErrorHandler';
 import { formatProofForSnarkjsVerification } from '@unirep/circuits';
 import { ReputationProof } from '@unirep/contracts';
 import { UnirepSocialContract } from '@unirep/unirep-social';
+import { ethers } from 'ethers'
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, QueryType, UNIREP_SOCIAL_ATTESTER_ID, loadPostCount, titlePrefix, titlePostfix } from '../constants';
+import {
+  DEPLOYER_PRIV_KEY,
+  UNIREP_SOCIAL,
+  DEFAULT_ETH_PROVIDER,
+  DEFAULT_POST_KARMA,
+  QueryType,
+  UNIREP_SOCIAL_ATTESTER_ID,
+  loadPostCount,
+  titlePrefix,
+  titlePostfix,
+  UNIREP,
+  UNIREP_ABI,
+  UNIREP_SOCIAL_ABI,
+} from '../constants';
 import Post, { IPost } from "../database/models/post";
 import Comment, { IComment } from "../database/models/comment";
-import { decodeReputationProof, verifyReputationProof } from "../controllers/utils"; 
+import { decodeReputationProof, verifyReputationProof } from "../controllers/utils";
+import TransactionManager from '../TransactionManager'
 
 
 class PostController {
@@ -78,11 +93,11 @@ class PostController {
         } else if (query === QueryType.Boost) {
           allPosts.sort((a, b) => a.posRep > b.posRep? -1 : 1);
         } else if (query === QueryType.Comments) {
-          allPosts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1); 
+          allPosts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1);
         } else if (query === QueryType.Squash) {
-          allPosts.sort((a, b) => a.negRep > b.negRep? -1 : 1); 
+          allPosts.sort((a, b) => a.negRep > b.negRep? -1 : 1);
         } else if (query === QueryType.Rep) {
-          allPosts.sort((a, b) => (a.posRep - a.negRep) >= (b.posRep - b.negRep)? -1 : 1); 
+          allPosts.sort((a, b) => (a.posRep - a.negRep) >= (b.posRep - b.negRep)? -1 : 1);
         }
 
         // console.log(allPosts);
@@ -106,13 +121,12 @@ class PostController {
         }
     }
 
-    publishPost = async (data: any) => { // should have content, epk, proof, minRep, nullifiers, publicSignals  
+    publishPost = async (data: any) => { // should have content, epk, proof, minRep, nullifiers, publicSignals
         console.log(data);
 
-        const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
-        await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
+        const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
+        const unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER)
         const unirepSocialId = UNIREP_SOCIAL_ATTESTER_ID
-        const unirepContract = await unirepSocialContract.getUnirep()
         const currentEpoch = Number(await unirepContract.currentEpoch())
 
         // Parse Inputs
@@ -121,11 +135,10 @@ class PostController {
         const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
         const minRep = Number(reputationProof.minRep)
 
-        let error
-        error = await verifyReputationProof(
-            reputationProof, 
-            DEFAULT_POST_KARMA, 
-            unirepSocialId, 
+        const error = await verifyReputationProof(
+            reputationProof,
+            DEFAULT_POST_KARMA,
+            unirepSocialId,
             currentEpoch
         )
         if (error !== undefined) {
@@ -133,14 +146,15 @@ class PostController {
         }
 
         try {
+            const calldata = unirepSocialContract.interface.encodeFunctionData('publishPost', [
+              reputationProof,
+              data.title !== undefined && data.title.length > 0? `${titlePrefix}${data.title}${titlePostfix}${data.content}` : data.content
+            ])
+            const hash = await TransactionManager.queueTransaction(unirepSocialContract.address, calldata)
             const tx = await unirepSocialContract.publishPost(
-                reputationProof, 
+                reputationProof,
                 data.title !== undefined && data.title.length > 0? `${titlePrefix}${data.title}${titlePostfix}${data.content}` : data.content
             );
-            const receipt = await tx.wait()
-            if (receipt.state === 0) {
-                return { error: "Transaction reverted", transaction: tx.hash, currentEpoch: currentEpoch }
-            }
             console.log('transaction hash: ' + tx.hash + ', epoch key of epoch ' + currentEpoch + ': ' + epochKey);
 
             const newPost: IPost = new Post({
@@ -154,18 +168,12 @@ class PostController {
                 negRep: 0,
                 comments: [],
                 status: 0,
-                transactionHash: tx.hash
+                transactionHash: hash
             });
 
-            await newPost.save((err, post) => {
-                console.log('new post error: ' + err);
-                error = err;
-            });
-            return {error: error, transaction: tx.hash, currentEpoch: currentEpoch};
+            await newPost.save()
+            return {error: error, transaction: hash, currentEpoch: currentEpoch};
         } catch (error) {
-            if (JSON.stringify(error).includes('replacement fee too low')) {
-                return await this.publishPost(data);
-            }
             return {error: error, currentEpoch: currentEpoch}
         }
     }

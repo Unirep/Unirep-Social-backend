@@ -33,7 +33,7 @@ async function deploy(wallet: ethers.Wallet) {
     settings
   )
   const UnirepSocialF = new ethers.ContractFactory(UnirepSocial.abi, UnirepSocial.bytecode, wallet)
-  const unirepSocial = await UnirepSocialF.deploy(unirep.address, 1, 2, 50)
+  const unirepSocial = await UnirepSocialF.deploy(unirep.address, 3, 5, 30)
   await unirepSocial.deployed()
   return { unirep, unirepSocial, epochTreeDepth, provider }
 }
@@ -76,13 +76,16 @@ export async function startServer() {
   })
 
   const MasterRouter = require('../src/routers/MasterRouter').default
-  const { identityCommitmentPrefix } = require('../src/constants')
+  const constants = require('../src/constants')
   const appTxManager = require('../src/TransactionManager').default
+  const { startEventListeners } = require('../src/listener')
 
   appTxManager.configure(wallet.privateKey, provider)
   await appTxManager.start()
 
   global.adminSessionCode = 'ffff'
+
+  await startEventListeners()
 
   const app = express()
   app.use(cors());
@@ -92,5 +95,5 @@ export async function startServer() {
   const port = await getPort()
   const url = `http://127.0.0.1:${port}`
   await new Promise(r => app.listen(port, r as any))
-  return { ...data, identityCommitmentPrefix, url }
+  return { ...data, constants, url }
 }

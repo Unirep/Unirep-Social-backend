@@ -1,14 +1,18 @@
 import { formatProofForSnarkjsVerification } from '@unirep/circuits';
 import { SignUpProof } from '@unirep/contracts'
-import { UnirepSocialContract } from '@unirep/unirep-social';
 
 import ErrorHandler from '../ErrorHandler';
-import { 
-    DEPLOYER_PRIV_KEY, 
-    UNIREP_SOCIAL, 
-    DEFAULT_ETH_PROVIDER,  
-    UNIREP_SOCIAL_ATTESTER_ID} from '../constants';
+import {
+    UNIREP_SOCIAL,
+    DEFAULT_ETH_PROVIDER,
+    UNIREP_SOCIAL_ATTESTER_ID,
+    UNIREP,
+    UNIREP_ABI,
+    UNIREP_SOCIAL_ABI,
+  } from '../constants';
 import { decodeSignUpProof, verifyAirdropProof } from './utils';
+import { ethers } from 'ethers'
+import TransactionManager from '../TransactionManager'
 
 
 class AirdropController {
@@ -18,9 +22,9 @@ class AirdropController {
 
     getAirdrop = async (data: any) => {
         // Unirep Social contract
-        const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER)
+        const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
+        const unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER)
         const unirepSocialId = UNIREP_SOCIAL_ATTESTER_ID
-        const unirepContract = await unirepSocialContract.getUnirep()
         const currentEpoch = Number(await unirepContract.currentEpoch())
 
         // Parse Inputs
@@ -37,22 +41,10 @@ class AirdropController {
             return {error: error, transaction: undefined};
         }
 
-        // Connect a signer
-        await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY)
         // submit epoch key to unirep social contract
-        try {
-            const tx = await unirepSocialContract.airdrop(signUpProof)
-            const receipt = await tx.wait()
-            if (receipt.status)
-                return { transaction: tx.hash }
-            else 
-                return { error: "Transaction reverted", transaction: tx.hash }
-        } catch(error) {
-            if (JSON.stringify(error).includes('replacement fee too low')) {
-                return await this.getAirdrop(data);
-            }
-            return { error }
-        }
+        const calldata = unirepSocialContract.interface.encodeFunctionData('airdrop', [signUpProof])
+        const hash = await TransactionManager.queueTransaction(calldata)
+        return { transaction: hash }
     }
 }
 

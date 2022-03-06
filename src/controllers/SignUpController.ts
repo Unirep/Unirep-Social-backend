@@ -1,7 +1,14 @@
 import { ethers } from 'ethers'
 import ErrorHandler from '../ErrorHandler';
-import { UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER, DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, identityCommitmentPrefix, add0x, } from '../constants';
-import AccountNonce from '../database/models/accountNonce'
+import {
+  UNIREP,
+  UNIREP_ABI,
+  DEFAULT_ETH_PROVIDER,
+  UNIREP_SOCIAL,
+  UNIREP_SOCIAL_ABI,
+  identityCommitmentPrefix,
+  add0x,
+} from '../constants';
 import TransactionManager from '../TransactionManager'
 
 class SignUpController {
@@ -10,7 +17,6 @@ class SignUpController {
     }
 
     signUp = async (uploadedCommitment: string, epk: string) => {
-        const wallet = new ethers.Wallet(DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER)
         const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
         const unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER)
 
@@ -18,22 +24,18 @@ class SignUpController {
         const decodedCommitment = Buffer.from(encodedCommitment, 'base64').toString('hex');
         const commitment = add0x(decodedCommitment);
 
-        try {
-            const data = unirepSocialContract.interface.encodeFunctionData('userSignUp', [
-              commitment,
-            ])
-            const hash = await TransactionManager.queueTransaction(unirepSocialContract.address, data)
+        const calldata = unirepSocialContract.interface.encodeFunctionData('userSignUp', [
+          commitment,
+        ])
+        const hash = await TransactionManager.queueTransaction(unirepSocialContract.address, calldata)
 
-            const epoch = await unirepContract.currentEpoch();
-            console.log('transaction: ' + hash + ', sign up epoch: ' + epoch.toString());
+        const epoch = await unirepContract.currentEpoch();
+        console.log('transaction: ' + hash + ', sign up epoch: ' + epoch.toString());
 
-            return {transaction: hash, epoch: epoch.toNumber()};
-        } catch (error) {
-            if (JSON.stringify(error).includes('replacement fee too low')) {
-                return await this.signUp(uploadedCommitment, epk);
-            }
-            return { error }
-        }
+        return {
+            transaction: hash,
+            epoch: epoch.toNumber()
+        };
     }
 
     // signUpUnirepUser = async (data: any) => {
