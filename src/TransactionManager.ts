@@ -13,11 +13,13 @@ export class TransactionManager {
     async start() {
         if (!this.wallet) throw new Error('Not initialized')
         const latestNonce = await this.wallet.getTransactionCount()
-        await AccountNonce.updateMany({
+        await AccountNonce.findOneAndUpdate({
           address: this.wallet.address,
         }, {
           address: this.wallet.address,
-          nonce: latestNonce,
+          $setOnInsert: {
+            nonce: latestNonce,
+          }
         }, {
           upsert: true,
         })
