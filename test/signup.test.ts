@@ -9,19 +9,11 @@ import {
   genEpochKey,
   genUserStateFromContract,
 } from '@unirep/unirep'
-
-const formatProofForVerifierContract = (_proof: any) => {
-    return ([
-        _proof.pi_a[0],
-        _proof.pi_a[1],
-        _proof.pi_b[0][1],
-        _proof.pi_b[0][0],
-        _proof.pi_b[1][1],
-        _proof.pi_b[1][0],
-        _proof.pi_c[0],
-        _proof.pi_c[1],
-    ]).map((x) => x.toString());
-};
+import {
+  Circuit,
+  formatProofForVerifierContract,
+  verifyProof
+} from '@unirep/circuits'
 
 test.before(async (t) => {
   const context = await startServer()
@@ -41,7 +33,7 @@ test('should get signup code', async (t: any) => {
   }
 })
 
-test.skip('should sign up', async (t: any) => {
+test('should sign up', async (t: any) => {
   const iden = genIdentity()
   const commitment = genIdentityCommitment(iden).toString(16)
   const currentEpoch = await t.context.unirep.currentEpoch()
@@ -85,16 +77,20 @@ test('should airdrop', async (t: any) => {
     const data = await r.json()
     await t.context.provider.waitForTransaction(data.transaction)
   }
+  // wait for server to process events
+  await new Promise(r => setTimeout(r, 2000))
   const userState = await genUserStateFromContract(
     t.context.unirepSocial.provider,
     t.context.unirep.address,
     iden,
   )
-  // wait for server to process events
   const { proof, publicSignals } = await userState.genUserSignUpProof(BigInt(1))
-  console.log(proof, publicSignals)
+  const isValid = await verifyProof(Circuit.proveUserSignUp, proof, publicSignals)
+  if (!isValid) {
+    console.error('Error: user sign up proof generated is not valid!')
+    return
+  }
   const formattedProof = formatProofForVerifierContract(proof)
-  console.log(proof)
   const encodedProof = Buffer.from(JSON.stringify(formattedProof)).toString('base64')
   const encodedPublicSignals = Buffer.from(JSON.stringify(publicSignals)).toString('base64')
   const r = await fetch(`${t.context.url}/api/airdrop`, {
@@ -108,10 +104,12 @@ test('should airdrop', async (t: any) => {
       userState,
     })
   })
-  console.log(await r.json())
+  const data = await r.json()
+  await t.context.provider.waitForTransaction(data.transaction)
+  t.pass()
 })
 
-test.skip('should sign up many in parallel', async (t: any) => {
+test('should sign up many in parallel', async (t: any) => {
   const signup = async () => {
     const iden = genIdentity()
     const commitment = genIdentityCommitment(iden).toString(16)
@@ -132,14 +130,14 @@ test.skip('should sign up many in parallel', async (t: any) => {
     await t.context.provider.waitForTransaction(data.transaction)
   }
   const promises = [] as Promise<any>[]
-  for (let x = 0; x < 30; x++) {
+  for (let x = 0; x < 10; x++) {
     promises.push(signup())
   }
   await Promise.all(promises)
   t.pass()
 })
 
-test.skip('should sign in', async (t: any) => {
+test('should sign in', async (t: any) => {
   const iden = genIdentity()
   const commitment = genIdentityCommitment(iden).toString(16)
   const currentEpoch = await t.context.unirep.currentEpoch()
@@ -157,7 +155,7 @@ test.skip('should sign in', async (t: any) => {
     })
     const r = await fetch(`${t.context.url}/api/signup?${params}`)
     const data = await r.json()
-    t.context.provider.waitForTransaction(data.transaction)
+    await t.context.provider.waitForTransaction(data.transaction)
   }
 
   // now try signing in using this identity

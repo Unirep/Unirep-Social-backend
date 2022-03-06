@@ -31,6 +31,8 @@ class AirdropController {
         const { publicSignals, proof } = decodeSignUpProof(data.proof, data.publicSignals)
         const signUpProof = new SignUpProof(publicSignals, formatProofForSnarkjsVerification(proof))
 
+        const attestingFee = await unirepContract.attestingFee()
+
         console.log('in airdrop controller:')
         console.log(signUpProof)
         console.log('end in airdrop controller.')
@@ -43,7 +45,10 @@ class AirdropController {
 
         // submit epoch key to unirep social contract
         const calldata = unirepSocialContract.interface.encodeFunctionData('airdrop', [signUpProof])
-        const hash = await TransactionManager.queueTransaction(calldata)
+        const hash = await TransactionManager.queueTransaction(unirepSocialContract.address, {
+          data: calldata,
+          value: attestingFee,
+        })
         return { transaction: hash }
     }
 }
