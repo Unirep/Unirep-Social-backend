@@ -1,8 +1,7 @@
 import { ethers } from 'ethers'
 import UnirepSocial from '@unirep/unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json'
-import Unirep from '@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json'
 import { deployUnirep } from '@unirep/contracts'
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import settings from './config'
@@ -23,7 +22,7 @@ async function waitForGanache() {
   }
 }
 
-async function deploy(wallet: ethers.Wallet) {
+async function deploy(wallet: ethers.Wallet, overrides = {}) {
   const provider = new ethers.providers.JsonRpcProvider(GANACHE_URL)
   const epochTreeDepth = 32
   const unirep = await deployUnirep(wallet, {
@@ -31,7 +30,10 @@ async function deploy(wallet: ethers.Wallet) {
       userStateTreeDepth: 4,
       epochTreeDepth,
     },
-    settings
+    {
+      ...settings,
+      ...overrides,
+    }
   )
   const UnirepSocialF = new ethers.ContractFactory(UnirepSocial.abi, UnirepSocial.bytecode, wallet)
   const postReputation = 5
@@ -47,7 +49,7 @@ async function deploy(wallet: ethers.Wallet) {
   return { unirep, unirepSocial, epochTreeDepth, provider }
 }
 
-export async function startServer() {
+export async function startServer(contractOverrides = {}) {
   await waitForGanache()
 
   const sharedName = `unirep_test`
@@ -77,7 +79,7 @@ export async function startServer() {
   })
   await provider.waitForTransaction(hash)
 
-  const data = await deploy(wallet)
+  const data = await deploy(wallet, contractOverrides)
   const { unirep, unirepSocial } = data
 
   Object.assign(process.env, {

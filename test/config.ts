@@ -6,7 +6,7 @@ const numEpochKeyNoncePerEpoch = 3;
 
 const numAttestationsPerProof = 5;
 
-const epochLength = 30;  // 30 seconds
+const epochLength = 900;  // seconds
 
 
 const circuitGlobalStateTreeDepth = 4;

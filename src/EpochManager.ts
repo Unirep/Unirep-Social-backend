@@ -8,7 +8,7 @@ import {
   UNIREP_SOCIAL_ABI
 } from './constants';
 
-class EpochManager {
+export class EpochManager {
     timer: NodeJS.Timeout | null = null
     unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
     unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER);
@@ -24,12 +24,13 @@ class EpochManager {
             this.unirepContract.epochLength(),
         ])
         const nextTransition = lastTransition.toNumber() + epochLength.toNumber()
-        const waitTime = (nextTransition - +(new Date())/1000) * 1000
+        const waitTime = Math.max((nextTransition - +(new Date())/1000) * 1000, 0)
         console.log(`Next epoch transition in ${waitTime / (60 * 60 * 1000)} hours`)
         this.timer = setTimeout(() => {
             this.timer = null
             this.tryTransition()
-        }, Math.max(waitTime, 0)) // if it's in the past make wait time 0
+        }, waitTime) // if it's in the past make wait time 0
+        return waitTime
     }
 
     async tryTransition() {
