@@ -4,6 +4,7 @@
   "description": "",
   "scripts": {
     "start": "nodemon src/app.ts",
+    "start:daemon": "ts-node src/app.ts",
     "build": "tsc",
     "test": "sh scripts/pretest.sh && ava test/*.test.ts -T 5m --verbose"
   },

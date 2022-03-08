@@ -1,0 +1,12 @@
+version: '3'
+services:
+  mongo:
+    image: mongo:4.4
+    restart: always
+  ganache:
+    image: trufflesuite/ganache-cli:v6.12.2
+  backend:
+    build: ./
+    depends_on:
+      - mongo
+      - ganache
