@@ -3,7 +3,6 @@ import { Schema, Document } from 'mongoose';
 
 export interface IVote {
   transactionHash: string
-  proofIndex: number
   epoch: number
   voter: string
   posRep: number
@@ -18,7 +17,7 @@ export interface IVotes extends Document {
 }
   
 const AttestationsSchema: Schema = new Schema({
-  epochKey: { type: String },
+  epochKey: { type: String, unique: true },
   attestations: { type: Array },
 }, {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }

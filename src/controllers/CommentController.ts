@@ -1,79 +1,130 @@
-import ErrorHandler from '../ErrorHandler';
-
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_COMMENT_KARMA, UNIREP_SOCIAL_ATTESTER_ID } from '../constants';
-import base64url from 'base64url';
+import { formatProofForSnarkjsVerification } from '@unirep/circuits';
+import { ReputationProof } from '@unirep/contracts'
+import { ethers } from 'ethers'
+import {
+  UNIREP,
+  UNIREP_SOCIAL_ABI,
+  UNIREP_ABI,
+  UNIREP_SOCIAL,
+  DEFAULT_ETH_PROVIDER,
+  DEFAULT_COMMENT_KARMA,
+  UNIREP_SOCIAL_ATTESTER_ID,
+  QueryType,
+  loadPostCount
+} from '../constants';
 import Comment, { IComment } from "../database/models/comment";
 import { verifyReputationProof } from "../controllers/utils"
-import { UnirepSocialContract } from '@unirep/unirep-social';
+import TransactionManager from '../daemons/TransactionManager'
 
-class CommentController {
-    defaultMethod() {
-      throw new ErrorHandler(501, 'API: Not implemented method');
+const listAllComments = async () => {
+    const comments = await Comment.find({})
+    return comments.map(c => c.toObject())
+}
+
+const getCommentsWithEpks = async (epks: string[]) => {
+    return Comment.find({epochKey: {$in: epks}});
+}
+
+const getCommentsWithQuery = async (query: string, lastRead: string, epks: string[]) => {
+    let allComments: any[] = [];
+    if (epks.length === 0) {
+      allComments = await listAllComments();
+    } else {
+      allComments = await getCommentsWithEpks(epks);
+    }
+    allComments.sort((a, b) => a.created_at > b.created_at? -1 : 1);
+    if (query === QueryType.New) {
+        // allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
+    } else if (query === QueryType.Boost) {
+      allComments.sort((a, b) => a.posRep > b.posRep? -1 : 1);
+    } else if (query === QueryType.Squash) {
+      allComments.sort((a, b) => a.negRep > b.negRep? -1 : 1);
+    } else if (query === QueryType.Rep) {
+      allComments.sort((a, b) => (a.posRep - a.negRep) >= (b.posRep - b.negRep)? -1 : 1);
     }
 
-    leaveComment = async (data: any) => {
-      console.log(data);
+    // console.log(allComments);
 
-      const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
-      await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
-      const unirepSocialId = UNIREP_SOCIAL_ATTESTER_ID
-      const unirepContract = await unirepSocialContract.getUnirep()
-      const currentEpoch = await unirepContract.currentEpoch()
-
-      // Parse Inputs
-      const decodedProof = base64url.decode(data.proof.slice(reputationProofPrefix.length))
-      const decodedPublicSignals = base64url.decode(data.publicSignals.slice(reputationPublicSignalsPrefix.length))
-      const publicSignals = JSON.parse(decodedPublicSignals)
-      const proof = JSON.parse(decodedProof)
-      const repNullifiers = publicSignals.slice(0, maxReputationBudget)
-      const epoch = publicSignals[maxReputationBudget]
-      const epochKey = Number(publicSignals[maxReputationBudget + 1]).toString(16)
-      const GSTRoot = publicSignals[maxReputationBudget + 2]
-      const attesterId = publicSignals[maxReputationBudget + 3]
-      const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
-      const minRep = publicSignals[maxReputationBudget + 5]
-      let error
-
-      error = await verifyReputationProof(publicSignals, proof, DEFAULT_COMMENT_KARMA, Number(unirepSocialId), currentEpoch)
-      if (error !== undefined) {
-        return {error: error, transaction: undefined, postId: undefined, currentEpoch: epoch};
-      } 
-
-      const randomNum = (Math.floor(Math.random() * (10^16))).toString()
-      let tx
-      try {
-        tx = await unirepSocialContract.leaveComment(
-          publicSignals,
-          proof,
-          data.postId,
-          randomNum,
-          data.content,
-        );
-
-        const newComment: IComment = new Comment({
-          postId: data.postId,
-          content: data.content, // TODO: hashedContent
-          epochKey,
-          epoch,
-          // epkProof: proof.map((n)=>add0x(BigInt(n).toString(16))),
-          proveMinRep: minRep !== 0 ? true : false,
-          minRep: Number(minRep),
-          posRep: 0,
-          negRep: 0,
-          status: 0,
-          transactionHash: tx.hash
+    // filter out posts more than loadPostCount
+    if (lastRead === '0') {
+        return allComments.slice(0, Math.min(loadPostCount, allComments.length));
+    } else {
+        let index : number = -1;
+        allComments.forEach((p, i) => {
+            if (p.transactionHash === lastRead) {
+                index = i;
+            }
         });
-  
-        await newComment.save((err, comment) => {
-          console.log('new comment error: ' + err);
-          error = err
-        });
+        if (index > -1) {
+            return allComments.slice(index+1, Math.min(allComments.length, index + 1 + loadPostCount));
+        } else {
+            return allComments.slice(0, loadPostCount);
+        }
+    }
+}
 
-        return {error: error, transaction: tx.hash, currentEpoch: epoch}
-      } catch(e) {
-        return {error: e}
+const leaveComment = async (req: any, res: any) => {
+    const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
+    const unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER)
+    const unirepSocialId = UNIREP_SOCIAL_ATTESTER_ID
+    const currentEpoch = Number(await unirepContract.currentEpoch())
+
+    // Parse Inputs
+    const { publicSignals, proof } = req.body
+    const reputationProof = new ReputationProof(publicSignals, formatProofForSnarkjsVerification(proof))
+    const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
+    const minRep = Number(reputationProof.minRep)
+
+    const error = await verifyReputationProof(
+        reputationProof,
+        DEFAULT_COMMENT_KARMA,
+        unirepSocialId,
+        currentEpoch
+    )
+    if (error !== undefined) {
+      throw error
+    }
+
+    const attestingFee = await unirepContract.attestingFee()
+    const calldata = unirepSocialContract.interface.encodeFunctionData('leaveComment', [
+      '0x' + req.body.postId,
+      req.body.content,
+      reputationProof,
+    ])
+    const hash = await TransactionManager.queueTransaction(
+      unirepSocialContract.address,
+      {
+        data: calldata,
+        value: attestingFee,
       }
-    }
-  }
+    )
 
-  export = new CommentController();
+    const newComment: IComment = new Comment({
+        postId: req.body.postId,
+        content: req.body.content, // TODO: hashedContent
+        epochKey: epochKey,
+        epoch: currentEpoch,
+        proveMinRep: minRep !== 0 ? true : false,
+        minRep: Number(minRep),
+        posRep: 0,
+        negRep: 0,
+        status: 0,
+        transactionHash: hash
+    });
+
+    const comment = await newComment.save();
+
+    res.json({
+      error: error,
+      transaction: hash,
+      currentEpoch: currentEpoch,
+      comment
+    })
+}
+
+export default {
+  leaveComment,
+  getCommentsWithQuery,
+  getCommentsWithEpks,
+  listAllComments,
+}

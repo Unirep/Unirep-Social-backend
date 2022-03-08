@@ -1,238 +1,179 @@
-import ErrorHandler from '../ErrorHandler';
+import { formatProofForSnarkjsVerification } from '@unirep/circuits';
+import { ReputationProof } from '@unirep/contracts';
+import { ethers } from 'ethers'
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, add0x, reputationProofPrefix, reputationPublicSignalsPrefix, maxReputationBudget, DEFAULT_POST_KARMA, ActionType, QueryType, UNIREP_SOCIAL_ATTESTER_ID, loadPostCount } from '../constants';
-import base64url from 'base64url';
+import {
+  UNIREP_SOCIAL,
+  DEFAULT_ETH_PROVIDER,
+  DEFAULT_POST_KARMA,
+  QueryType,
+  UNIREP_SOCIAL_ATTESTER_ID,
+  loadPostCount,
+  titlePrefix,
+  titlePostfix,
+  UNIREP,
+  UNIREP_ABI,
+  UNIREP_SOCIAL_ABI,
+} from '../constants';
 import Post, { IPost } from "../database/models/post";
 import Comment, { IComment } from "../database/models/comment";
-import { verifyReputationProof } from "../controllers/utils"; 
-import { UnirepSocialContract } from '@unirep/unirep-social';
-import post from '../database/models/post';
+import { verifyReputationProof } from "../controllers/utils";
+import TransactionManager from '../daemons/TransactionManager'
 
-class PostController {
-    defaultMethod() {
-      throw new ErrorHandler(501, 'API: Not implemented method');
-    }
-
-    filterOneComment = (comments: IComment[]) => {
-      let score: number = 0;
-      let ret: any = {};
-      for (var i = 0; i < comments.length; i ++) {
+const filterOneComment = (comments: IComment[]) => {
+    let score: number = 0;
+    let ret: any = {};
+    for (var i = 0; i < comments.length; i ++) {
         const _score = comments[i].posRep * 1.5 + comments[i].negRep * 0.5;
         if (_score >= score) {
-          score = _score;
-          ret = comments[i];
+            score = _score;
+            ret = comments[i];
         }
-      }
-      return ret;
     }
+    return ret;
+}
 
-    commentIdToObject = (commentIds: string[]) => {
-      const comments = Comment.find({transactionHash: {$in: commentIds}});
-      return comments;
-    }
+const commentIdToObject = (commentIds: string[]) => {
+    const comments = Comment.find({transactionHash: {$in: commentIds}});
+    return comments;
+}
 
-    sortPosts = (posts: IPost[], sort: string, subtype: string, lastRead: string) => { // must be popularity related
-      if (subtype === QueryType.reputation) {
-        console.log('query by reputation');
-        if (sort === QueryType.most) {
-          posts.sort((a, b) => a.minRep > b.minRep? -1 : 1);
-        } else {
-          posts.sort((a, b) => a.minRep > b.minRep? 1 : -1);
-        }
-      } else if (subtype === QueryType.votes) {
-        console.log('query by votes');
-        if (sort === QueryType.most) {
-          posts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? -1 : 1);
-        } else {
-          posts.sort((a, b) => a.posRep + a.negRep > b.posRep + b.negRep? 1 : -1);
-        }
-      } else if (subtype === QueryType.upvotes) {
-        console.log('query by upvotes');
-        if (sort === QueryType.most) {
-          posts.sort((a, b) => a.posRep > b.posRep? -1 : 1);
-        } else {
-          posts.sort((a, b) => a.posRep > b.posRep? 1 : -1);
-        }
-      } else if (subtype === QueryType.comments) {
-        console.log('query by comments');
-        if (sort === QueryType.most) {
-          posts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1);
-        } else {
-          posts.sort((a, b) => a.comments.length > b.comments.length? 1 : -1);
-        }
-      } 
-      
-      let lastReadIndex: number = 0;
-      let hasLastRead: boolean = false;
-      for (var i = 0; i < posts.length; i ++) {
-        if (posts[i]._id.toString() !== lastRead) {
-          lastReadIndex = lastReadIndex + 1;
-        } else {
-          hasLastRead = true;
-          break;
-        }
-      }
-
-      let retPosts: IPost[] = [];
-      const startIndex = hasLastRead? lastReadIndex + 1 : 0;
-      for (var i = startIndex; i < posts.length; i ++) {
-        retPosts = [...retPosts, posts[i]];
-      }      
-
-      const ret = {posts: retPosts, hasLastRead};
-      return ret;
-    }
-
-    listAllPosts = () => {
-      const allPosts = Post.find({}).then(async(posts) => {
+const listAllPosts = () => {
+    const allPosts = Post.find({status: 1}).then(async(posts) => {
         let ret: any[] = [];
         for (var i = 0; i < posts.length; i ++) {
-          ret = [...ret, posts[i].toObject()];
+            ret = [...ret, posts[i].toObject()];
         }
         return ret;
-      });
-      return allPosts;
-    }
+    });
+    return allPosts;
+}
 
-    getPostWithId = async (postId: string) => {
-      const post = Post.findOne({ transactionHash: postId }).then(async (p) => {
+const getPostsWithEpks = async (epks: string[]) => {
+  return Post.find({epochKey: {$in: epks}});
+}
+
+const getPostWithId = async (postId: string) => {
+    const post = Post.findOne({ transactionHash: postId }).then(async (p) => {
         if (p !== null) {
-          if (p.comments.length > 0) {
-            const comments = await Comment.find({ transactionHash: {$in: p.comments} });
-            return {...(p.toObject()), comments};
-          } else {
-            return p.toObject();
-          }
+            if (p.comments.length > 0) {
+                const comments = await Comment.find({ transactionHash: {$in: p.comments} });
+                return {...(p.toObject()), comments};
+            } else {
+                return p.toObject();
+            }
         } else {
-          return p;
+            return p;
         }
-      });
+    });
 
-      return post;
+    return post;
+}
+
+const getPostWithQuery = async (query: string, lastRead: string, epks: string[]) => {
+    // get posts and sort
+    let allPosts: any[] = [];
+    if (epks.length === 0) {
+      allPosts = await listAllPosts();
+    } else {
+      allPosts = await getPostsWithEpks(epks);
+    }
+    allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
+    if (query === QueryType.New) {
+        // allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
+    } else if (query === QueryType.Boost) {
+      allPosts.sort((a, b) => a.posRep > b.posRep? -1 : 1);
+    } else if (query === QueryType.Comments) {
+      allPosts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1);
+    } else if (query === QueryType.Squash) {
+      allPosts.sort((a, b) => a.negRep > b.negRep? -1 : 1);
+    } else if (query === QueryType.Rep) {
+      allPosts.sort((a, b) => (a.posRep - a.negRep) >= (b.posRep - b.negRep)? -1 : 1);
     }
 
-    getPostWithQuery = async (sort: string, maintype: string, subtype: string, start: number, end: number, lastRead: string) => {
-      const allPosts = await this.listAllPosts();
-      let tmp: any[] = [];
-      if (maintype === QueryType.popularity) {
-        allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
+    // console.log(allPosts);
 
-        let inPosts: any[] = [];
-        let outPosts: any[] = [];
-        // 1. classify posts to [in time range] and [out of time range]
-        allPosts.forEach((post) => {
-          const postTime = Date.parse(post.created_at);
-          if (postTime >= start && postTime <= end) {
-            inPosts = [...inPosts, post];
-          } else {
-            outPosts = [...outPosts, post];
-          }
+    // filter out posts more than loadPostCount
+    if (lastRead === '0') {
+        return allPosts.slice(0, Math.min(loadPostCount, allPosts.length));
+    } else {
+        console.log('last read is : ' + lastRead);
+        let index : number = -1;
+        allPosts.forEach((p, i) => {
+            if (p.transactionHash === lastRead) {
+                index = i;
+            }
         });
-        // 2. sort each of the groups by subtype & sort
-        const retOfSortInPosts = this.sortPosts(inPosts, sort, subtype, lastRead);
-        
-        tmp = [...retOfSortInPosts.posts];
-        if (retOfSortInPosts.posts.length < loadPostCount) { // has chance to sort less posts
-          const retOfSortOutPosts = this.sortPosts(outPosts, sort, subtype, lastRead);
-          tmp = [...tmp, ...retOfSortOutPosts.posts];
-        }
-      } else if (maintype === QueryType.time) {
-        // subtype is posts --> sort posts by time
-        if (subtype === QueryType.posts) {
-          if (sort === QueryType.newest) {
-            console.log('query by newest posts');
-            allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
-          } else if (sort === QueryType.oldest) {
-            console.log('query by oldest posts');
-            allPosts.sort((a, b) => a.created_at > b.created_at? 1 : -1);          }
-        } else if (subtype === QueryType.comments) {
-          if (sort === QueryType.newest) {
-            console.log('query by newest comments');
-            allPosts.sort((a, b) => a.updated_at > b.updated_at? -1 : 1);
-          } else if (sort === QueryType.oldest) {
-            console.log('query by oldest comments');
-            allPosts.sort((a, b) => a.updated_at > b.updated_at? 1 : -1);
-          }
-        }
-        tmp = [...allPosts];
-        // subtype is comments --> sort comments by time, and get posts of each comment, filter out repeated posts --> not yet implemented
-      }
-
-      // filter out posts more than loadPostCount
-      let ret: any[] = [];
-      const retLength = tmp.length > loadPostCount? loadPostCount : tmp.length;
-      for (var i = 0; i < retLength; i ++) {
-        if (tmp[i].comments.length > 0) {
-          const comments = await this.commentIdToObject(tmp[i].comments);
-          const singleComment = this.filterOneComment(comments);
-          const p = {...tmp[i], comments: [singleComment]};
-          ret = [...ret, p];
+        if (index > -1) {
+            return allPosts.slice(index+1, Math.min(allPosts.length, index + 1 + loadPostCount));
         } else {
-          ret = [...ret, tmp[i]];
+            return allPosts.slice(0, loadPostCount);
         }
-      }
-      return ret;
+    }
+}
+
+const publishPost = async (req: any, res: any) => { // should have content, epk, proof, minRep, nullifiers, publicSignals
+    const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
+    const unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER)
+    const unirepSocialId = UNIREP_SOCIAL_ATTESTER_ID
+    const currentEpoch = Number(await unirepContract.currentEpoch())
+
+    // Parse Inputs
+    const { publicSignals, proof } = req.body
+    const reputationProof = new ReputationProof(publicSignals, formatProofForSnarkjsVerification(proof))
+    const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
+    const minRep = Number(reputationProof.minRep)
+
+    const error = await verifyReputationProof(
+        reputationProof,
+        DEFAULT_POST_KARMA,
+        unirepSocialId,
+        currentEpoch
+    )
+    if (error !== undefined) {
+        throw error
     }
 
-    publishPost = async (data: any) => { // should have content, epk, proof, minRep, nullifiers, publicSignals  
-      console.log(data);
+    const attestingFee = await unirepContract.attestingFee()
 
-      const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
-      await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
-      const unirepSocialId = UNIREP_SOCIAL_ATTESTER_ID
-      const unirepContract = await unirepSocialContract.getUnirep()
-      const currentEpoch = await unirepContract.currentEpoch()
+    const { title, content } = req.body
 
-      // Parse Inputs
-      const decodedProof = base64url.decode(data.proof.slice(reputationProofPrefix.length))
-      const decodedPublicSignals = base64url.decode(data.publicSignals.slice(reputationPublicSignalsPrefix.length))
-      const publicSignals = JSON.parse(decodedPublicSignals)
-      const proof = JSON.parse(decodedProof)
-      const repNullifiers = publicSignals.slice(0, maxReputationBudget)
-      const epoch = publicSignals[maxReputationBudget]
-      const epochKey = Number(publicSignals[maxReputationBudget + 1]).toString(16)
-      const GSTRoot = publicSignals[maxReputationBudget + 2]
-      const attesterId = publicSignals[maxReputationBudget + 3]
-      const repNullifiersAmount = publicSignals[maxReputationBudget + 4]
-      const minRep = publicSignals[maxReputationBudget + 5]
-      let error
+    const calldata = unirepSocialContract.interface.encodeFunctionData('publishPost', [
+      title !== undefined && title.length > 0? `${titlePrefix}${title}${titlePostfix}${content}` : content,
+      reputationProof,
+    ])
+    const hash = await TransactionManager.queueTransaction(
+      unirepSocialContract.address,
+      {
+        data: calldata,
+        value: attestingFee,
+      })
 
-      error = await verifyReputationProof(publicSignals, proof, DEFAULT_POST_KARMA, Number(unirepSocialId), currentEpoch)
-      if (error !== undefined) {
-        return {error: error, transaction: undefined, postId: undefined, currentEpoch: epoch};
-      }
+    const newPost: IPost = new Post({
+        content,
+        title,
+        epochKey: epochKey,
+        epoch: currentEpoch,
+        proveMinRep: minRep !== null ? true : false,
+        minRep: Number(minRep),
+        posRep: 0,
+        negRep: 0,
+        comments: [],
+        status: 0,
+        transactionHash: hash
+    });
 
-      const randomNum = (Math.floor(Math.random() * (10^16))).toString()
+    const post = await newPost.save()
+    res.json({
+      transaction: hash,
+      currentEpoch: currentEpoch,
+      post,
+    })
+}
 
-      let tx
-      try {
-        tx = await unirepSocialContract.publishPost(randomNum, publicSignals, proof, data.content);
-        // await tx.wait()
-        console.log('transaction hash: ' + tx.hash + ', epoch key of epoch ' + epoch + ': ' + epochKey);
-
-        const newPost: IPost = new Post({
-          content: data.content,
-          epochKey: epochKey,
-          epoch: epoch,
-          // epkProof: proof.map((n)=>add0x(BigInt(n).toString(16))),
-          proveMinRep: minRep !== null ? true : false,
-          minRep: Number(minRep),
-          posRep: 0,
-          negRep: 0,
-          comments: [],
-          status: 0,
-          transactionHash: tx.hash
-        });
-
-        await newPost.save((err, post) => {
-          console.log('new post error: ' + err);
-          error = err;
-        });
-        return {error: error, transaction: tx.hash, currentEpoch: epoch};
-      } catch (e) {
-        return {error: e, transaction: tx?.hash, currentEpoch: epoch}
-      }
-    }
-  }
-
-  export = new PostController();
+export default {
+  listAllPosts,
+  getPostWithQuery,
+  getPostWithId,
+  publishPost,
+}

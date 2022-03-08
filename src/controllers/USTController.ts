@@ -1,45 +1,99 @@
-import ErrorHandler from '../ErrorHandler';
-
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER } from '../constants';
-import { UnirepSocialContract } from '@unirep/unirep-social';
+import {
+  UserTransitionProof,
+  computeStartTransitionProofHash,
+} from '@unirep/contracts';
+import { ethers } from 'ethers'
+import { UNIREP, UNIREP_ABI, UNIREP_SOCIAL_ABI, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, } from '../constants';
+import { formatProofForVerifierContract } from '@unirep/circuits'
 import { verifyUSTProof } from './utils';
-import { updateGSTLeaf } from '../database/utils';
-import { IGSTLeaf } from '../database/models/GSTLeaf';
+import TransactionManager from '../daemons/TransactionManager'
 
-class USTController {
-    defaultMethod() {
-      throw new ErrorHandler(501, 'API: Not implemented method');
+const userStateTransition = async (req: any, res: any) => {
+    const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
+    const unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER)
+    const currentEpoch = Number(await unirepContract.currentEpoch())
+    const { results } = req.body;
+
+    const error = await verifyUSTProof(results, currentEpoch)
+    if (error !== undefined) throw error
+
+    // submit user state transition proofs
+    const {
+      blindedUserState,
+      blindedHashChain,
+      globalStateTreeRoot,
+      proof
+    } = results.startTransitionProof
+    {
+      const calldata = unirepSocialContract.interface.encodeFunctionData('startUserStateTransition', [
+        blindedUserState,
+        blindedHashChain,
+        globalStateTreeRoot,
+        formatProofForVerifierContract(proof)
+      ])
+      const hash = await TransactionManager.queueTransaction(unirepSocialContract.address, calldata)
+      await TransactionManager.wait(hash)
     }
 
-    userStateTransition = async (data: any) => {
-      const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
-      await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
-      const currentEpoch = await unirepSocialContract.currentEpoch()
-      const results = data.results;
-
-      const error = await verifyUSTProof(results)
-      if(error !== undefined) return {error, transactionHash: undefined}
-
-      // submit user state transition proofs
-      let txList
-      try {
-        txList = await unirepSocialContract.userStateTransition(results)
-      } catch(e) {
-        return {error: e, transaction: txList[txList.length - 1]?.hash}
-      } 
-
-      if(txList[0] != undefined){
-          console.log('Transaction hash:', txList[txList.length - 1]?.hash)
-          // save GST leaf before gen airdrop proof
-          const newLeaf: IGSTLeaf = {
-            transactionHash: txList[txList.length - 1]?.hash,
-            hashedLeaf: results.finalTransitionProof.newGlobalStateTreeLeaf
-          }
-          await updateGSTLeaf(newLeaf, Number(currentEpoch))
-      }
-
-      return {transaction: txList[txList.length - 1]?.hash}
+    const txPromises = [] as Promise<any>[]
+    for (let i = 0; i < results.processAttestationProofs.length; i++) {
+      const {
+        outputBlindedUserState,
+        outputBlindedHashChain,
+        inputBlindedUserState,
+        proof,
+      } = results.processAttestationProofs[i]
+      const calldata = unirepSocialContract.interface.encodeFunctionData('processAttestations', [
+        outputBlindedUserState,
+        outputBlindedHashChain,
+        inputBlindedUserState,
+        formatProofForVerifierContract(proof),
+      ])
+      const hash = await TransactionManager.queueTransaction(unirepSocialContract.address, calldata)
+      txPromises.push(TransactionManager.wait(hash))
     }
-  }
+    await Promise.all(txPromises)
 
-  export = new USTController();
+    const proofIndexes: BigInt[] = []
+    {
+      const proofNullifier = computeStartTransitionProofHash(
+        blindedUserState,
+        blindedHashChain,
+        globalStateTreeRoot,
+        formatProofForVerifierContract(proof)
+      )
+      const proofIndex = await unirepContract.getProofIndex(proofNullifier)
+      proofIndexes.push(BigInt(proofIndex))
+    }
+    for (let i = 0; i < results.processAttestationProofs.length; i++) {
+        const {
+          outputBlindedUserState,
+          outputBlindedHashChain,
+          inputBlindedUserState,
+          proof,
+        } = results.processAttestationProofs[i]
+        const proofNullifier = computeStartTransitionProofHash(
+          outputBlindedUserState,
+          outputBlindedHashChain,
+          inputBlindedUserState,
+          formatProofForVerifierContract(proof),
+        )
+        const proofIndex = await unirepContract.getProofIndex(proofNullifier)
+        proofIndexes.push(BigInt(proofIndex))
+    }
+    const USTProof = new UserTransitionProof(
+        results.finalTransitionProof.publicSignals,
+        results.finalTransitionProof.proof
+    )
+    const calldata = unirepSocialContract.interface.encodeFunctionData(
+      'updateUserStateRoot', [ USTProof, proofIndexes ]
+    )
+    const hash = await TransactionManager.queueTransaction(unirepSocialContract.address, calldata)
+    res.json({
+      transaction: hash
+    })
+}
+
+export default {
+  userStateTransition,
+}

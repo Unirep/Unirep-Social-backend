@@ -2,6 +2,7 @@ import * as mongoose from 'mongoose';
 import { Schema, Document } from 'mongoose';
 
 export interface IAttestation {
+    index: number
     transactionHash: string
     attester: string
     proofIndex: number
@@ -10,6 +11,7 @@ export interface IAttestation {
     negRep: number
     graffiti: string
     signUp: boolean
+    hash: string
 }
 
 export interface IAttestations extends Document {
@@ -21,7 +23,7 @@ export interface IAttestations extends Document {
   
 const AttestationsSchema: Schema = new Schema({
     epoch: { type: Number },
-    epochKey: { type: String },
+    epochKey: { type: String, unique: true },
     epochKeyToHashchainMap: { type: String },
     attestations: { type: Array },
 }, { collection: 'Attestations' });
