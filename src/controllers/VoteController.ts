@@ -16,7 +16,7 @@ import Post from '../database/models/post';
 import Comment from '../database/models/comment';
 import { verifyReputationProof } from "../controllers/utils"
 import { writeRecord } from '../database/utils';
-import TransactionManager from '../TransactionManager'
+import TransactionManager from '../daemons/TransactionManager'
 
 const vote = async (req: any, res: any) => {
 

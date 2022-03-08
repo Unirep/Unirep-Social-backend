@@ -21,7 +21,7 @@ test.serial('should use api to epoch transition', async (t: any) => {
 })
 
 test.serial('should use EpochManager to epoch transition', async (t: any) => {
-  const { EpochManager } = require('../src/EpochManager')
+  const { EpochManager } = require('../src/daemons/EpochManager')
   const { unirep } = t.context
   const startEpoch = (await unirep.currentEpoch()).toNumber()
   const epochManager = new EpochManager()

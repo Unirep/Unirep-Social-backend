@@ -6,7 +6,7 @@ import {
   DEFAULT_ETH_PROVIDER,
   UNIREP_ABI,
   UNIREP_SOCIAL_ABI
-} from './constants';
+} from '../constants';
 
 export class EpochManager {
     timer: NodeJS.Timeout | null = null

@@ -14,7 +14,7 @@ import {
 } from '../constants';
 import Comment, { IComment } from "../database/models/comment";
 import { verifyReputationProof } from "../controllers/utils"
-import TransactionManager from '../TransactionManager'
+import TransactionManager from '../daemons/TransactionManager'
 
 const listAllComments = async () => {
     const comments = await Comment.find({})

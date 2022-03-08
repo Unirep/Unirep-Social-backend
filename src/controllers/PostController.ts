@@ -18,7 +18,7 @@ import {
 import Post, { IPost } from "../database/models/post";
 import Comment, { IComment } from "../database/models/comment";
 import { verifyReputationProof } from "../controllers/utils";
-import TransactionManager from '../TransactionManager'
+import TransactionManager from '../daemons/TransactionManager'
 
 const filterOneComment = (comments: IComment[]) => {
     let score: number = 0;

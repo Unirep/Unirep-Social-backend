@@ -6,7 +6,7 @@ import { ethers } from 'ethers'
 import { UNIREP, UNIREP_ABI, UNIREP_SOCIAL_ABI, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, } from '../constants';
 import { formatProofForVerifierContract } from '@unirep/circuits'
 import { verifyUSTProof } from './utils';
-import TransactionManager from '../TransactionManager'
+import TransactionManager from '../daemons/TransactionManager'
 
 const userStateTransition = async (req: any, res: any) => {
     const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)

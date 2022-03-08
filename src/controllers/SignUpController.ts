@@ -6,7 +6,7 @@ import {
   UNIREP_SOCIAL,
   UNIREP_SOCIAL_ABI,
 } from '../constants';
-import TransactionManager from '../TransactionManager'
+import TransactionManager from '../daemons/TransactionManager'
 
 const signUp = async (req: any, res: any) => {
     const uploadedCommitment = req.query.commitment!.toString()

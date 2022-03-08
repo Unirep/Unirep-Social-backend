@@ -11,7 +11,7 @@ import {
   } from '../constants';
 import { verifyAirdropProof } from './utils';
 import { ethers } from 'ethers'
-import TransactionManager from '../TransactionManager'
+import TransactionManager from '../daemons/TransactionManager'
 
 
 export const getAirdrop = async (req, res) => {

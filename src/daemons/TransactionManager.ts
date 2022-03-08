@@ -1,6 +1,6 @@
 import mongoose from 'mongoose'
-import AccountNonce, { IAccountNonce, AccountNonceSchema } from './database/models/accountNonce'
-import AccountTransaction, { IAccountTransaction, AccountTransactionSchema } from './database/models/accountTransaction'
+import AccountNonce, { IAccountNonce, AccountNonceSchema } from '../database/models/accountNonce'
+import AccountTransaction, { IAccountTransaction, AccountTransactionSchema } from '../database/models/accountTransaction'
 import { ethers } from 'ethers'
 
 export class TransactionManager {
@@ -109,6 +109,7 @@ export class TransactionManager {
         signedData,
         nonce,
       })
+      console.log(ethers.utils.keccak256(signedData))
       return ethers.utils.keccak256(signedData)
     }
 }

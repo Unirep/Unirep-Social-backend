@@ -62,7 +62,7 @@ export async function startServer(contractOverrides = {}) {
   mongoose.connection
     .on('error', console.error.bind(console, 'MongoDB connection error:'));
 
-  const { TransactionManager } = require('../src/TransactionManager')
+  const { TransactionManager } = require('../src/daemons/TransactionManager')
 
   const provider = new ethers.providers.JsonRpcProvider(GANACHE_URL)
   // this is the global manager shared across test processes
@@ -92,8 +92,8 @@ export async function startServer(contractOverrides = {}) {
 
   const MasterRouter = require('../src/routers/MasterRouter').default
   const constants = require('../src/constants')
-  const appTxManager = require('../src/TransactionManager').default
-  const { startEventListeners } = require('../src/listener')
+  const appTxManager = require('../src/daemons/TransactionManager').default
+  const { startEventListeners } = require('../src/daemons/listener')
 
   appTxManager.configure(wallet.privateKey, provider)
   await appTxManager.start()

@@ -4,7 +4,7 @@ import {
   UNIREP,
   DEFAULT_ETH_PROVIDER,
 } from '../constants';
-import TransactionManager from '../TransactionManager'
+import TransactionManager from '../daemons/TransactionManager'
 
 const epochTransition = async (req: any, res: any) => {
     if (req.headers.authorization !== 'NLmKDUnJUpc6VzuPc7Wm') {

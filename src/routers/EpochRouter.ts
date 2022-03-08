@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import EpochController from '../controllers/EpochController';
-import EpochManager from '../EpochManager'
+import EpochManager from '../daemons/EpochManager'
 import catchError from './catchError'
 
 const router = Router()

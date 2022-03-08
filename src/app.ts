@@ -1,8 +1,8 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import EpochManager from './EpochManager'
-import TransactionManager from './TransactionManager'
+import EpochManager from './daemons/EpochManager'
+import TransactionManager from './daemons/TransactionManager'
 
 import MasterRouter from './routers/MasterRouter';
 import dotenv from 'dotenv';
@@ -11,7 +11,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER, } from './constants';
-import { startEventListeners } from './listener'
+import { startEventListeners } from './daemons/listener'
 
 main()
   .catch(err => {
