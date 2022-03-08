@@ -42,7 +42,7 @@ export const USTProofPrefix = 'Unirep.UST.proof.'
 export const USTPublicSignalsPrefix = 'Unirep.UST.publicSignals.'
 export const maxReputationBudget = 10
 
-export const loadPostCount = 10
+export const LOAD_POST_COUNT = 10
 
 export const UNIREP_ABI = Unirep.abi
 export const UNIREP_SOCIAL_ABI = UnirepSocial.abi

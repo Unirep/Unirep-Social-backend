@@ -3,7 +3,7 @@ import { formatProofForSnarkjsVerification } from '@unirep/circuits';
 import { ReputationProof } from '@unirep/contracts';
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, QueryType, UNIREP_SOCIAL_ATTESTER_ID, loadPostCount, titlePrefix, titlePostfix } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, QueryType, UNIREP_SOCIAL_ATTESTER_ID, LOAD_POST_COUNT, titlePrefix, titlePostfix } from '../constants';
 import Post, { IPost } from "../database/models/post";
 import Comment, { IComment } from "../database/models/comment";
 import { decodeReputationProof, verifyReputationProof } from "../controllers/utils"; 
@@ -89,7 +89,7 @@ class PostController {
 
         // filter out posts more than loadPostCount
         if (lastRead === '0') {
-            return allPosts.slice(0, Math.min(loadPostCount, allPosts.length));
+            return allPosts.slice(0, Math.min(LOAD_POST_COUNT, allPosts.length));
         } else {
             console.log('last read is : ' + lastRead);
             let index : number = -1;
@@ -99,9 +99,9 @@ class PostController {
                 }
             });
             if (index > -1) {
-                return allPosts.slice(index+1, Math.min(allPosts.length, index + 1 + loadPostCount));
+                return allPosts.slice(index+1, Math.min(allPosts.length, index + 1 + LOAD_POST_COUNT));
             } else {
-                return allPosts.slice(0, loadPostCount);
+                return allPosts.slice(0, LOAD_POST_COUNT);
             }
         }
     }

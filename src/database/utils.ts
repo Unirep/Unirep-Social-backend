@@ -1131,12 +1131,12 @@ const updateDBFromCommentSubmittedEvent = async (
     }
 
     const findPost = await Post.findOne({ transactionHash: postId })
-    if(findPost === undefined) {
+    if (findPost === undefined) {
         console.log('cannot find post ID', postId)
         return
     }
     const commentExists = await Post.findOne({ comments: {$in: [commentId]} })
-    if(commentExists === null) {
+    if (commentExists === null) {
         findPost?.comments.push(commentId)
         findPost?.set({ "new": true, "upsert": true })
         await findPost?.save((err) => console.log('update comments of post error: ' + err))

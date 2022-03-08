@@ -3,7 +3,7 @@ import { formatProofForSnarkjsVerification } from '@unirep/circuits';
 import { ReputationProof } from '@unirep/contracts'
 import { UnirepSocialContract } from '@unirep/unirep-social';
 
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, DEFAULT_COMMENT_KARMA, UNIREP_SOCIAL_ATTESTER_ID, QueryType, loadPostCount } from '../constants';
+import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, DEFAULT_COMMENT_KARMA, UNIREP_SOCIAL_ATTESTER_ID, QueryType, LOAD_POST_COUNT } from '../constants';
 import Comment, { IComment } from "../database/models/comment";
 import { decodeReputationProof, verifyReputationProof } from "../controllers/utils"
 
@@ -49,7 +49,7 @@ class CommentController {
 
         // filter out posts more than loadPostCount
         if (lastRead === '0') {
-            return allComments.slice(0, Math.min(loadPostCount, allComments.length));
+            return allComments.slice(0, Math.min(LOAD_POST_COUNT, allComments.length));
         } else {
             let index : number = -1;
             allComments.forEach((p, i) => {
@@ -58,9 +58,9 @@ class CommentController {
                 }
             });
             if (index > -1) {
-                return allComments.slice(index+1, Math.min(allComments.length, index + 1 + loadPostCount));
+                return allComments.slice(index+1, Math.min(allComments.length, index + 1 + LOAD_POST_COUNT));
             } else {
-                return allComments.slice(0, loadPostCount);
+                return allComments.slice(0, LOAD_POST_COUNT);
             }
         }
     }
