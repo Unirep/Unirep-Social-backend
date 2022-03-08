@@ -94,6 +94,7 @@ export class TransactionManager {
       if (!this.wallet) throw new Error('Not initialized')
       const gasLimit = await this.wallet.provider.estimateGas({
         to,
+        from: this.wallet.address,
         ...args,
       })
       const nonce = await this.getNonce(this.wallet.address)
