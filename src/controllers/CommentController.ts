@@ -1,135 +1,130 @@
-import ErrorHandler from '../ErrorHandler';
 import { formatProofForSnarkjsVerification } from '@unirep/circuits';
 import { ReputationProof } from '@unirep/contracts'
-import { UnirepSocialContract } from '@unirep/unirep-social';
-
-import { DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER, DEFAULT_COMMENT_KARMA, UNIREP_SOCIAL_ATTESTER_ID, QueryType, LOAD_POST_COUNT } from '../constants';
+import { ethers } from 'ethers'
+import {
+  UNIREP,
+  UNIREP_SOCIAL_ABI,
+  UNIREP_ABI,
+  UNIREP_SOCIAL,
+  DEFAULT_ETH_PROVIDER,
+  DEFAULT_COMMENT_KARMA,
+  UNIREP_SOCIAL_ATTESTER_ID,
+  QueryType,
+  LOAD_POST_COUNT
+} from '../constants';
 import Comment, { IComment } from "../database/models/comment";
-import { decodeReputationProof, verifyReputationProof } from "../controllers/utils"
+import { verifyReputationProof } from "../controllers/utils"
+import TransactionManager from '../daemons/TransactionManager'
 
-class CommentController {
-    defaultMethod() {
-      throw new ErrorHandler(501, 'API: Not implemented method');
+const listAllComments = async () => {
+    const comments = await Comment.find({})
+    return comments.map(c => c.toObject())
+}
+
+const getCommentsWithEpks = async (epks: string[]) => {
+    return Comment.find({epochKey: {$in: epks}});
+}
+
+const getCommentsWithQuery = async (query: string, lastRead: string, epks: string[]) => {
+    let allComments: any[] = [];
+    if (epks.length === 0) {
+      allComments = await listAllComments();
+    } else {
+      allComments = await getCommentsWithEpks(epks);
+    }
+    allComments.sort((a, b) => a.created_at > b.created_at? -1 : 1);
+    if (query === QueryType.New) {
+        // allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
+    } else if (query === QueryType.Boost) {
+      allComments.sort((a, b) => a.posRep > b.posRep? -1 : 1);
+    } else if (query === QueryType.Squash) {
+      allComments.sort((a, b) => a.negRep > b.negRep? -1 : 1);
+    } else if (query === QueryType.Rep) {
+      allComments.sort((a, b) => (a.posRep - a.negRep) >= (b.posRep - b.negRep)? -1 : 1);
     }
 
-    listAllComments = () => {
-        const allComments = Comment.find({}).then(async(comments) => {
-            let ret: any[] = [];
-            for (var i = 0; i < comments.length; i ++) {
-                ret = [...ret, comments[i].toObject()];
+    // console.log(allComments);
+
+    // filter out posts more than loadPostCount
+    if (lastRead === '0') {
+        return allComments.slice(0, Math.min(LOAD_POST_COUNT, allComments.length));
+    } else {
+        let index : number = -1;
+        allComments.forEach((p, i) => {
+            if (p.transactionHash === lastRead) {
+                index = i;
             }
-            return ret;
         });
-        return allComments;
-    }
-
-    getCommentsWithEpks = async (epks: string[]) => {
-        return Comment.find({epochKey: {$in: epks}});
-    }
-
-    getCommentsWithQuery = async (query: string, lastRead: string, epks: string[]) => {
-        let allComments: any[] = [];
-        if (epks.length === 0) {
-          allComments = await this.listAllComments();
+        if (index > -1) {
+            return allComments.slice(index+1, Math.min(allComments.length, index + 1 + LOAD_POST_COUNT));
         } else {
-          allComments = await this.getCommentsWithEpks(epks);
-        }
-        allComments.sort((a, b) => a.created_at > b.created_at? -1 : 1);
-        if (query === QueryType.New) {
-            // allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
-        } else if (query === QueryType.Boost) {
-          allComments.sort((a, b) => a.posRep > b.posRep? -1 : 1);
-        } else if (query === QueryType.Squash) {
-          allComments.sort((a, b) => a.negRep > b.negRep? -1 : 1); 
-        } else if (query === QueryType.Rep) {
-          allComments.sort((a, b) => (a.posRep - a.negRep) >= (b.posRep - b.negRep)? -1 : 1); 
-        }
-
-        // console.log(allComments);
-
-        // filter out posts more than loadPostCount
-        if (lastRead === '0') {
-            return allComments.slice(0, Math.min(LOAD_POST_COUNT, allComments.length));
-        } else {
-            let index : number = -1;
-            allComments.forEach((p, i) => {
-                if (p.transactionHash === lastRead) {
-                    index = i;
-                }
-            });
-            if (index > -1) {
-                return allComments.slice(index+1, Math.min(allComments.length, index + 1 + LOAD_POST_COUNT));
-            } else {
-                return allComments.slice(0, LOAD_POST_COUNT);
-            }
-        }
-    }
-
-    leaveComment = async (data: any) => {
-        console.log(data);
-
-        const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER);
-        await unirepSocialContract.unlock(DEPLOYER_PRIV_KEY);
-        const unirepSocialId = UNIREP_SOCIAL_ATTESTER_ID
-        const unirepContract = await unirepSocialContract.getUnirep()
-        const currentEpoch = Number(await unirepContract.currentEpoch())
-
-        // Parse Inputs
-        const { publicSignals, proof } = decodeReputationProof(data.proof, data.publicSignals)
-        const reputationProof = new ReputationProof(publicSignals, formatProofForSnarkjsVerification(proof))
-        const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
-        const minRep = Number(reputationProof.minRep)
-      
-        let error
-
-        error = await verifyReputationProof(
-            reputationProof, 
-            DEFAULT_COMMENT_KARMA, 
-            unirepSocialId, 
-            currentEpoch
-        )
-        if (error !== undefined) {
-            return {error: error, transaction: undefined, postId: undefined, currentEpoch: currentEpoch};
-        } 
-
-        let tx
-        try {
-            tx = await unirepSocialContract.leaveComment(
-                reputationProof,
-                data.postId,
-                data.content,
-            );
-            const receipt = await tx.wait()
-            if (receipt.state === 0) {
-                return { error: "Transaction reverted", transaction: tx.hash, currentEpoch: currentEpoch }
-            }
-
-            const newComment: IComment = new Comment({
-                postId: data.postId,
-                content: data.content, // TODO: hashedContent
-                epochKey: epochKey,
-                epoch: currentEpoch,
-                proveMinRep: minRep !== 0 ? true : false,
-                minRep: Number(minRep),
-                posRep: 0,
-                negRep: 0,
-                status: 0,
-                transactionHash: tx.hash
-            });
-  
-            await newComment.save((err, comment) => {
-                console.log('new comment error: ' + err);
-                error = err
-            });
-
-            return {error: error, transaction: tx.hash, currentEpoch: currentEpoch}
-        } catch(error) {
-            if (JSON.stringify(error).includes('replacement fee too low')) {
-                return await this.leaveComment(data);
-            }
-            return { error }
+            return allComments.slice(0, LOAD_POST_COUNT);
         }
     }
 }
 
-export = new CommentController();
+const leaveComment = async (req: any, res: any) => {
+    const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
+    const unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER)
+    const unirepSocialId = UNIREP_SOCIAL_ATTESTER_ID
+    const currentEpoch = Number(await unirepContract.currentEpoch())
+
+    // Parse Inputs
+    const { publicSignals, proof } = req.body
+    const reputationProof = new ReputationProof(publicSignals, formatProofForSnarkjsVerification(proof))
+    const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
+    const minRep = Number(reputationProof.minRep)
+
+    const error = await verifyReputationProof(
+        reputationProof,
+        DEFAULT_COMMENT_KARMA,
+        unirepSocialId,
+        currentEpoch
+    )
+    if (error !== undefined) {
+      throw error
+    }
+
+    const attestingFee = await unirepContract.attestingFee()
+    const calldata = unirepSocialContract.interface.encodeFunctionData('leaveComment', [
+      req.body.postId,
+      req.body.content,
+      reputationProof,
+    ])
+    const hash = await TransactionManager.queueTransaction(
+      unirepSocialContract.address,
+      {
+        data: calldata,
+        value: attestingFee,
+      }
+    )
+
+    const newComment: IComment = new Comment({
+        postId: req.body.postId,
+        content: req.body.content, // TODO: hashedContent
+        epochKey: epochKey,
+        epoch: currentEpoch,
+        proveMinRep: minRep !== 0 ? true : false,
+        minRep: Number(minRep),
+        posRep: 0,
+        negRep: 0,
+        status: 0,
+        transactionHash: hash
+    });
+
+    const comment = await newComment.save();
+
+    res.json({
+      error: error,
+      transaction: hash,
+      currentEpoch: currentEpoch,
+      comment
+    })
+}
+
+export default {
+  leaveComment,
+  getCommentsWithQuery,
+  getCommentsWithEpks,
+  listAllComments,
+}

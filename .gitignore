@@ -1,12 +1,8 @@
-# .DS_Store
 .DS_Store
-*/.DS_Store
-*/*/.DS_Store
 
-# artifacts
+build/
+
 artifacts/
-*/artifacts/
-*/*/artifacts/
 
 # Logs
 logs
