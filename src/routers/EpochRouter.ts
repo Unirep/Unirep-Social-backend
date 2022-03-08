@@ -1,30 +1,15 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import EpochController from '../controllers/EpochController';
+import EpochManager from '../EpochManager'
+import catchError from './catchError'
 
 const router = Router()
 
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-      res.status(200).json(global.nextEpochTransition);
-  } catch (error) {
-      console.log(error);
-      next(error);
-  }
-})
+router.get('/', catchError(async (req: Request, res: Response, next: NextFunction) => {
+  const nextTransition = await EpochManager.nextTransition()
+  res.json({ nextTransition });
+}))
 
-router.post('/', async (req: Request, res: Response, next: NextFunction) => {
-  if (req.headers.authorization === 'NLmKDUnJUpc6VzuPc7Wm') {
-      try {
-          await EpochController.epochTransition();
-          res.status(200).json('epoch transition done.');
-      } catch (error) {
-          console.log(error);
-          next(error);
-      }
-
-  } else {
-      res.status(403).json({error: 'No available authentications'});
-  }
-})
+router.post('/', catchError(EpochController.epochTransition))
 
 export default router

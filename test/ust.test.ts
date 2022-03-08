@@ -50,7 +50,7 @@ test('should do user state transition', async (t: any) => {
         authorization: 'NLmKDUnJUpc6VzuPc7Wm',
       }
     })
-    t.is(await r.text(), '"epoch transition done."')
+    t.is(r.status, 204)
   }
 
   const userState = await genUserStateFromContract(

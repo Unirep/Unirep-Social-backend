@@ -4,7 +4,6 @@ import mongoose from 'mongoose';
 import EpochManager from './EpochManager'
 import TransactionManager from './TransactionManager'
 
-import ErrorHandler from './ErrorHandler';
 import MasterRouter from './routers/MasterRouter';
 import dotenv from 'dotenv';
 
@@ -43,7 +42,8 @@ async function main() {
     app.use(express.json());
     app.use('/api', MasterRouter);
     // make server app handle any error
-    app.use((err: ErrorHandler, req: Request, res: Response, next: NextFunction) => {
+    app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+        // TODO: refactor this middleware out, handle errors at the route level
         res.status(err.statusCode || 500).json({
             status: 'error',
             statusCode: err.statusCode,

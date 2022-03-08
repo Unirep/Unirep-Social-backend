@@ -19,11 +19,7 @@ export class EpochManager {
             this.timer = null
         }
         // load the last transition time
-        const [ lastTransition, epochLength ] = await Promise.all([
-            this.unirepContract.latestEpochTransitionTime(),
-            this.unirepContract.epochLength(),
-        ])
-        const nextTransition = lastTransition.toNumber() + epochLength.toNumber()
+        const nextTransition = await this.nextTransition()
         const waitTime = Math.max((nextTransition - +(new Date())/1000) * 1000, 0)
         console.log(`Next epoch transition in ${waitTime / (60 * 60 * 1000)} hours`)
         this.timer = setTimeout(() => {
@@ -31,6 +27,14 @@ export class EpochManager {
             this.tryTransition()
         }, waitTime) // if it's in the past make wait time 0
         return waitTime
+    }
+
+    async nextTransition() {
+      const [ lastTransition, epochLength ] = await Promise.all([
+          this.unirepContract.latestEpochTransitionTime(),
+          this.unirepContract.epochLength(),
+      ])
+      return lastTransition.toNumber() + epochLength.toNumber()
     }
 
     async tryTransition() {

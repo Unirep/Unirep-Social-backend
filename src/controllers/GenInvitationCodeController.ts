@@ -1,23 +1,18 @@
-import ErrorHandler from '../ErrorHandler';
 import randomstring from 'randomstring';
 import InvitationCode, { IInvitationCode } from '../database/models/invitationCode';
 
-class GenInvitationCodeController {
-    defaultMethod() {
-      throw new ErrorHandler(501, 'API: Not implemented method');
-    }
+const genCode = async () => {
+    const randomOutput = randomstring.generate(8);
+    console.log('random output: ' + randomOutput);
 
-    genCode = async () => {
-        const randomOutput = randomstring.generate(8);
-        console.log('random output: ' + randomOutput);
+    const newCode: IInvitationCode = new InvitationCode({
+      code: randomOutput
+    });
+    await newCode.save();
 
-        const newCode: IInvitationCode = new InvitationCode({
-          code: randomOutput
-        });
-        await newCode.save();
-
-        return randomOutput;
-    }
+    return randomOutput;
 }
 
- export = new GenInvitationCodeController();
+export default {
+  genCode,
+}

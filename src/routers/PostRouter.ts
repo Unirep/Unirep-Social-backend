@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import PostController from '../controllers/PostController';
+import catchError from './catchError'
 
 const router = Router()
 
@@ -39,15 +40,6 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   }
 })
 
-router.post('/', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const result = await PostController.publishPost(req.body);
-        res.status(200).json(result);
-    }
-    catch (error) {
-        console.log(error);
-        next(error);
-    }
-})
+router.post('/', catchError(PostController.publishPost))
 
 export default router

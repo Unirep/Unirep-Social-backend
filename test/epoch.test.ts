@@ -17,7 +17,7 @@ test.serial('should use api to epoch transition', async (t: any) => {
       authorization: 'NLmKDUnJUpc6VzuPc7Wm',
     }
   })
-  t.is(await r.text(), '"epoch transition done."')
+  t.is(r.status, 204)
 })
 
 test.serial('should use EpochManager to epoch transition', async (t: any) => {

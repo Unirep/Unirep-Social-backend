@@ -1,4 +1,3 @@
-import ErrorHandler from '../ErrorHandler';
 import { ethers } from 'ethers'
 import {
   UNIREP_ABI,
@@ -7,18 +6,20 @@ import {
 } from '../constants';
 import TransactionManager from '../TransactionManager'
 
-class EpochController {
-    defaultMethod() {
-      throw new ErrorHandler(501, 'API: Not implemented method');
+const epochTransition = async (req: any, res: any) => {
+    if (req.headers.authorization !== 'NLmKDUnJUpc6VzuPc7Wm') {
+      res.status(401).json({
+        info: 'Not authorized'
+      })
+      return
     }
+    const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
 
-    epochTransition = async () => {
-        const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
-
-        const calldata = unirepContract.interface.encodeFunctionData('beginEpochTransition', [])
-        const hash = await TransactionManager.queueTransaction(unirepContract.address, calldata)
-        return hash
-    }
+    const calldata = unirepContract.interface.encodeFunctionData('beginEpochTransition', [])
+    await TransactionManager.queueTransaction(unirepContract.address, calldata)
+    res.status(204).end()
 }
 
-export = new EpochController();
+export default {
+  epochTransition,
+}

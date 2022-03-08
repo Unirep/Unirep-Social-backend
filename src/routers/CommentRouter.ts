@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import CommentController from '../controllers/CommentController';
+import catchError from './catchError'
 
 const router = Router()
 
@@ -36,15 +37,6 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   }
 })
 
-router.post('/', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const result = await CommentController.leaveComment(req.body);
-        res.status(200).json(result);
-    }
-    catch (error) {
-        console.log(error);
-        next(error);
-    }
-})
+router.post('/', catchError(CommentController.leaveComment))
 
 export default router
