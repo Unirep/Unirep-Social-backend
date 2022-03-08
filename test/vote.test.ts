@@ -361,11 +361,16 @@ test('should vote on a post', async (t: any) => {
   }
   // downvote
   {
-    const rep = userState.getRepByAttester(attesterId);
+    const _userState = await genUserStateFromContract(
+      t.context.unirepSocial.provider,
+      t.context.unirep.address,
+      iden,
+    )
+    const rep = _userState.getRepByAttester(attesterId);
     const nonceList = [] as any[]
     // find valid nonce starter
     // gen proof
-    const epkNonce = 1
+    const epkNonce = 2
     const proveAmount = 3 // upvote by 3
     let nonceStarter: number = -1
     for (let n = 0; n < Number(rep.posRep) - Number(rep.negRep); n++) {
@@ -375,7 +380,7 @@ test('should vote on a post', async (t: any) => {
         n,
         attesterId
       )
-      if (!userState.nullifierExist(reputationNullifier)) {
+      if (!_userState.nullifierExist(reputationNullifier)) {
         nonceStarter = n
         break
       }
@@ -392,7 +397,7 @@ test('should vote on a post', async (t: any) => {
     for (let i = proveAmount ; i < t.context.constants.maxReputationBudget ; i++) {
       nonceList.push(BigInt(-1))
     }
-    const { proof, publicSignals } = await userState.genProveReputationProof(
+    const { proof, publicSignals } = await _userState.genProveReputationProof(
       BigInt(attesterId),
       epkNonce,
       5,
@@ -480,6 +485,8 @@ test('should vote on comment', async (t: any) => {
 
   // upvote
   {
+    // have to regenerate user state to get a valid reputation nullifier
+    // TODO: user state watches contract events?
     const rep = userState.getRepByAttester(attesterId);
     const nonceList = [] as any[]
     // find valid nonce starter
@@ -540,11 +547,18 @@ test('should vote on comment', async (t: any) => {
   }
   // downvote
   {
-    const rep = userState.getRepByAttester(attesterId);
+    // have to regenerate user state to get a valid reputation nullifier
+    // TODO: user state watches contract events?
+    const _userState = await genUserStateFromContract(
+      t.context.unirepSocial.provider,
+      t.context.unirep.address,
+      iden,
+    )
+    const rep = _userState.getRepByAttester(attesterId);
     const nonceList = [] as any[]
     // find valid nonce starter
     // gen proof
-    const epkNonce = 1
+    const epkNonce = 2
     const proveAmount = 3 // upvote by 3
     let nonceStarter: number = -1
     for (let n = 0; n < Number(rep.posRep) - Number(rep.negRep); n++) {
@@ -554,7 +568,7 @@ test('should vote on comment', async (t: any) => {
         n,
         attesterId
       )
-      if (!userState.nullifierExist(reputationNullifier)) {
+      if (!_userState.nullifierExist(reputationNullifier)) {
         nonceStarter = n
         break
       }
@@ -571,7 +585,7 @@ test('should vote on comment', async (t: any) => {
     for (let i = proveAmount ; i < t.context.constants.maxReputationBudget ; i++) {
       nonceList.push(BigInt(-1))
     }
-    const { proof, publicSignals } = await userState.genProveReputationProof(
+    const { proof, publicSignals } = await _userState.genProveReputationProof(
       BigInt(attesterId),
       epkNonce,
       5,

@@ -110,7 +110,6 @@ export class TransactionManager {
         signedData,
         nonce,
       })
-      console.log(ethers.utils.keccak256(signedData))
       return ethers.utils.keccak256(signedData)
     }
 }
