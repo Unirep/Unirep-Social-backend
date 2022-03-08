@@ -60,6 +60,7 @@ export class EpochManager {
         )
         console.log('Transaction hash:', hash)
         console.log('End of epoch:', currentEpoch.toString())
+        await TransactionManager.wait(hash)
     }
 }
 
