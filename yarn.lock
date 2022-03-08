@@ -653,9 +653,9 @@
     maci-crypto "^0.9.1"
     typescript "^4.4.2"
 
-"@unirep/unirep-social@git+https://github.com/Unirep/unirep-social.git":
+"@unirep/unirep-social@git+https://github.com/Unirep/unirep-social.git#alpha":
   version "1.0.0"
-  resolved "git+https://github.com/Unirep/unirep-social.git#18f5d2fe687b1e701e18af6f3614b3652dda1754"
+  resolved "git+https://github.com/Unirep/unirep-social.git#0f26f96523287de5e0955e4a502bd329577b2167"
   dependencies:
     "@unirep/circuits" "git+https://github.com/Unirep/circuits.git"
     "@unirep/contracts" "git+https://github.com/Unirep/contracts.git"
@@ -663,13 +663,28 @@
     "@unirep/unirep" "git+https://github.com/Unirep/unirep.git"
     argparse "^2.0.1"
     base64url "^3.0.1"
-    ethers "^5.4.6"
+    dotenv "^10.0.0"
+    ethers "^5.5.4"
     mongoose "^5.12.10"
     typescript "^4.0.5"
 
 "@unirep/unirep@git+https://github.com/Unirep/unirep.git":
   version "1.0.0"
   resolved "git+https://github.com/Unirep/unirep.git#c27c2e1326397359af833076d5d7272034ad38bf"
+  dependencies:
+    "@typechain/ethers-v5" "^9.0.0"
+    "@typechain/hardhat" "^4.0.0"
+    "@unirep/circuits" "git+https://github.com/Unirep/circuits.git"
+    "@unirep/contracts" "git+https://github.com/Unirep/contracts.git"
+    "@unirep/crypto" "git+https://github.com/Unirep/crypto.git"
+    argparse "^2.0.1"
+    base64url "^3.0.1"
+    ethers "^5.4.6"
+    typescript "^4.5.4"
+
+"@unirep/unirep@git+https://github.com/Unirep/unirep.git#alpha":
+  version "1.0.0"
+  resolved "git+https://github.com/Unirep/unirep.git#60d7bad732b2b0580e6357b4cb290534dcb43297"
   dependencies:
     "@typechain/ethers-v5" "^9.0.0"
     "@typechain/hardhat" "^4.0.0"
