@@ -100,7 +100,7 @@ export class TransactionManager {
       const nonce = await this.getNonce(this.wallet.address)
       const signedData = await this.wallet.signTransaction({
         nonce,
-        gasLimit,
+        gasLimit: gasLimit.add(50000),
         to,
         gasPrice: 10000,
         ...args,

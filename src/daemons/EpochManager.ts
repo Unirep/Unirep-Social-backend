@@ -1,7 +1,6 @@
 import { ethers } from 'ethers'
 import {
   UNIREP,
-  DEPLOYER_PRIV_KEY,
   UNIREP_SOCIAL,
   DEFAULT_ETH_PROVIDER,
   UNIREP_ABI,
@@ -53,10 +52,10 @@ export class EpochManager {
         const currentEpoch = await this.unirepContract.currentEpoch()
         const calldata = (this.unirepContract as any).interface.encodeFunctionData('beginEpochTransition', [])
         const hash = await TransactionManager.queueTransaction(
-               this.unirepContract.address,
-               {
-                    data: calldata
-                }
+          this.unirepContract.address,
+          {
+            data: calldata
+          }
         )
         console.log('Transaction hash:', hash)
         console.log('End of epoch:', currentEpoch.toString())
