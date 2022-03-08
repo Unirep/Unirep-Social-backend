@@ -23,6 +23,11 @@ export const {
     MONGO_URL,
 } = process.env as any
 
+if (!DEPLOYER_PRIV_KEY) {
+  console.error('No DEPLOYER_PRIV_KEY specified')
+  process.exit(1)
+}
+
 // export const UNIREP = '0xE7709F35fb195E1D117D486aEB24bA58CEccCD29';
 // export const UNIREP_SOCIAL = '0x0F50453236B2Ca88D5C1fBC8D7FA91001d93eC68';
 // const DEFAULT_ETH_PROVIDER_URL = 'wss://eth-goerli.alchemyapi.io/v2/tYp-IJU_idg28iohx9gsLqhq6KRZxk7f';

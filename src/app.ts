@@ -1,14 +1,12 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+// load the environment variables from the .env file before constants file
+dotenv.config();
+import MasterRouter from './routers/MasterRouter';
 import EpochManager from './daemons/EpochManager'
 import TransactionManager from './daemons/TransactionManager'
-
-import MasterRouter from './routers/MasterRouter';
-import dotenv from 'dotenv';
-
-// load the environment variables from the .env file
-dotenv.config();
 
 import { MONGO_URL, DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER, } from './constants';
 import { startEventListeners } from './daemons/listener'
@@ -31,7 +29,6 @@ async function main() {
 
     // start watching for epoch transitions
     await EpochManager.updateWatch()
-
     TransactionManager.configure(DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER)
     await TransactionManager.start()
 
