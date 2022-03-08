@@ -426,7 +426,9 @@ const verifyUSTProofByIndex = async(
 
     // verify blinded hash chain result
     const { publicSignals, proof } = transitionProof
-    const formatProof = new UserTransitionProof(publicSignals, formatProofForSnarkjsVerification(proof))
+    const publicSignals_ = decodeBigIntArray(publicSignals)
+    const proof_ = JSON.parse(proof)
+    const formatProof = new UserTransitionProof(publicSignals_, formatProofForSnarkjsVerification(proof_))
     for (const blindedHC of formatProof.blindedHashChains) {
         let allProofIndexQuery: any[] = []
         for (let idx of proofIndexRecords) {
@@ -799,25 +801,26 @@ const updateDBFromStartUSTProofEvent = async (
     const _globalStateTree = BigInt(event.topics[3])
     const decodedData = iface.decodeEventLog("IndexedStartedTransitionProof", event.data)
     const _blindedHashChain = BigInt(decodedData?._blindedHashChain)
-    const formatProof = formatProofForSnarkjsVerification(decodedData?._proof)
-    const encodedProof = stringifyBigInts(formatProof)
     const formatPublicSignals = [
         _blindedUserState,
         _blindedHashChain,
         _globalStateTree,
     ]
+    const formattedProof = decodedData?._proof.map(n => BigInt(n))
     const isValid = await verifyProof(
         Circuit.startTransition,
-        formatProof,
+        formatProofForSnarkjsVerification(formattedProof),
         formatPublicSignals
     )
 
+    const proof = encodeBigIntArray(formattedProof)
+
     const newProof = new Proof({
         index: _proofIndex,
-        blindedUserState: _blindedUserState,
-        blindedHashChain: _blindedHashChain,
-        globalStateTree: _globalStateTree,
-        proof: encodedProof,
+        blindedUserState: _blindedUserState.toString(),
+        blindedHashChain: _blindedHashChain.toString(),
+        globalStateTree: _globalStateTree.toString(),
+        proof: proof,
         transactionHash: event.transactionHash,
         event: "IndexedStartedTransitionProof",
         valid: isValid
@@ -847,25 +850,27 @@ const updateDBFromProcessAttestationProofEvent = async (
     const decodedData = iface.decodeEventLog("IndexedProcessedAttestationsProof", event.data)
     const _outputBlindedUserState = BigInt(decodedData?._outputBlindedUserState)
     const _outputBlindedHashChain = BigInt(decodedData?._outputBlindedHashChain)
-    const formatProof = formatProofForSnarkjsVerification(decodedData?._proof)
-    const encodedProof = stringifyBigInts(formatProof)
+
     const formatPublicSignals = [
         _outputBlindedUserState,
         _outputBlindedHashChain,
         _inputBlindedUserState,
     ]
+    const formattedProof = decodedData?._proof.map(n => BigInt(n))
     const isValid = await verifyProof(
         Circuit.processAttestations,
-        formatProof,
+        formatProofForSnarkjsVerification(formattedProof),
         formatPublicSignals
     )
+    
+    const proof = encodeBigIntArray(formattedProof)
 
     const newProof = new Proof({
         index: _proofIndex,
-        outputBlindedUserState: _outputBlindedUserState,
-        outputBlindedHashChain: _outputBlindedHashChain,
-        inputBlindedUserState: _inputBlindedUserState,
-        proof: encodedProof,
+        outputBlindedUserState: _outputBlindedUserState.toString(),
+        outputBlindedHashChain: _outputBlindedHashChain.toString(),
+        inputBlindedUserState: _inputBlindedUserState.toString(),
+        proof: proof,
         transactionHash: event.transactionHash,
         event: "IndexedProcessedAttestationsProof",
         valid: isValid

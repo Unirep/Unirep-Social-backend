@@ -9,9 +9,9 @@ const numAttestationsPerProof = 5;
 const epochLength = 900;  // seconds
 
 
-const circuitGlobalStateTreeDepth = 4;
+const circuitGlobalStateTreeDepth = 5;
 
-const circuitUserStateTreeDepth = 4;
+const circuitUserStateTreeDepth = 5;
 
 const circuitEpochTreeDepth = 32;
 

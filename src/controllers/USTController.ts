@@ -54,7 +54,7 @@ const userStateTransition = async (req: any, res: any) => {
     }
     await Promise.all(txPromises)
 
-    const proofIndexes: BigInt[] = []
+    const proofIndexes: number[] = []
     {
       const proofNullifier = computeStartTransitionProofHash(
         blindedUserState,
@@ -63,7 +63,7 @@ const userStateTransition = async (req: any, res: any) => {
         formatProofForVerifierContract(proof)
       )
       const proofIndex = await unirepContract.getProofIndex(proofNullifier)
-      proofIndexes.push(BigInt(proofIndex))
+      proofIndexes.push(Number(proofIndex))
     }
     for (let i = 0; i < results.processAttestationProofs.length; i++) {
         const {
@@ -79,7 +79,7 @@ const userStateTransition = async (req: any, res: any) => {
           formatProofForVerifierContract(proof),
         )
         const proofIndex = await unirepContract.getProofIndex(proofNullifier)
-        proofIndexes.push(BigInt(proofIndex))
+        proofIndexes.push(Number(proofIndex))
     }
     const USTProof = new UserTransitionProof(
         results.finalTransitionProof.publicSignals,

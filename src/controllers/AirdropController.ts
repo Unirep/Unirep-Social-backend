@@ -27,14 +27,11 @@ export const getAirdrop = async (req, res) => {
 
     const attestingFee = await unirepContract.attestingFee()
 
-    console.log('in airdrop controller:')
-    console.log(signUpProof)
-    console.log('end in airdrop controller.')
-
     // Verify proof
     const error = await verifyAirdropProof(signUpProof, Number(unirepSocialId), currentEpoch)
     if (error !== undefined) {
-        return {error: error, transaction: undefined};
+      res.json({error: error, transaction: undefined})
+      return
     }
 
     // submit epoch key to unirep social contract

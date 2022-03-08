@@ -87,7 +87,7 @@ const leaveComment = async (req: any, res: any) => {
 
     const attestingFee = await unirepContract.attestingFee()
     const calldata = unirepSocialContract.interface.encodeFunctionData('leaveComment', [
-      '0x' + req.body.postId,
+      req.body.postId,
       req.body.content,
       reputationProof,
     ])

@@ -7,6 +7,7 @@ import {
   UNIREP_ABI,
   UNIREP_SOCIAL_ABI
 } from '../constants';
+import TransactionManager from './TransactionManager';
 
 export class EpochManager {
     timer: NodeJS.Timeout | null = null
@@ -49,13 +50,15 @@ export class EpochManager {
     }
 
     async doEpochTransition() {
-        const wallet = new ethers.Wallet(DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER)
         const currentEpoch = await this.unirepContract.currentEpoch()
-        const tx = await this.unirepContract
-            .connect(wallet)
-            .beginEpochTransition()
-            .then((t: any) => t.wait())
-        console.log('Transaction hash:', tx.hash)
+        const calldata = (this.unirepContract as any).interface.encodeFunctionData('beginEpochTransition', [])
+        const hash = await TransactionManager.queueTransaction(
+               this.unirepContract.address,
+               {
+                    data: calldata
+                }
+        )
+        console.log('Transaction hash:', hash)
         console.log('End of epoch:', currentEpoch.toString())
     }
 }

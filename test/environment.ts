@@ -26,8 +26,8 @@ async function deploy(wallet: ethers.Wallet, overrides = {}) {
   const provider = new ethers.providers.JsonRpcProvider(GANACHE_URL)
   const epochTreeDepth = 32
   const unirep = await deployUnirep(wallet, {
-      globalStateTreeDepth: 4,
-      userStateTreeDepth: 4,
+      globalStateTreeDepth: 5,
+      userStateTreeDepth: 5,
       epochTreeDepth,
     },
     {

@@ -4,11 +4,14 @@ import Unirep from "@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json
 import { ethers } from 'ethers';
 import randomstring from 'randomstring';
 
+// load the environment variables from the .env file
+dotenv.config();
+
 // Provide default values for process.env
 Object.assign(process.env, {
-    UNIREP: '0x3DdC8069e7d740C86AFfB8bc10Fa66ad10181bd2',
-    UNIREP_SOCIAL: '0x22251B1135379dA965614D83c9FC3D8F012B68CE',
-    DEFAULT_ETH_PROVIDER_URL: 'ws://localhost:8546',
+    UNIREP: '0x0165878A594ca255338adfa4d48449f69242Eb8F',
+    UNIREP_SOCIAL: '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
+    DEFAULT_ETH_PROVIDER_URL: 'ws://localhost:8545',
     ADMIN_SESSION_CODE: randomstring.generate(20),
     ...process.env
 })

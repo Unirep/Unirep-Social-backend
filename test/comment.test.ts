@@ -133,7 +133,7 @@ const createPost = async (t) => {
 
 test('should create a comment', async (t: any) => {
   // first create a post
-  const { post } = await createPost(t)
+  const { post, transaction } = await createPost(t)
   // then make an identity and leave a comment
   const iden = genIdentity()
   const commitment = genIdentityCommitment(iden)
@@ -228,13 +228,14 @@ test('should create a comment', async (t: any) => {
     nonceList,
   )
 
+  console.log(post.transaction)
   const r = await fetch(`${t.context.url}/api/comment`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      postId: post._id,
+      postId: transaction,
       content: 'this is a comment!',
       publicSignals,
       proof: formatProofForVerifierContract(proof),

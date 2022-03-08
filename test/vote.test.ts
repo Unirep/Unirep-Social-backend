@@ -132,7 +132,7 @@ const createPost = async (t) => {
 }
 
 const createComment = async (t) => {
-  const { post } = await createPost(t)
+  const { post, transaction } = await createPost(t)
   const iden = genIdentity()
   const commitment = genIdentityCommitment(iden)
     .toString(16)
@@ -232,7 +232,7 @@ const createComment = async (t) => {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      postId: post._id,
+      postId: transaction,
       content: 'this is a comment!',
       publicSignals,
       proof: formatProofForVerifierContract(proof),
