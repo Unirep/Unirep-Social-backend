@@ -10,7 +10,7 @@ import dotenv from 'dotenv';
 // load the environment variables from the .env file
 dotenv.config();
 
-import { DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER, } from './constants';
+import { MONGO_URL, DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER, } from './constants';
 import { startEventListeners } from './daemons/listener'
 
 main()
@@ -21,8 +21,7 @@ main()
 
 async function main() {
     // try database connection
-    const mongoDB = 'mongodb://127.0.0.1:27017/unirep_social';
-    mongoose.connect(mongoDB);
+    mongoose.connect(MONGO_URL);
     // Bind connection to error event (to get notification of connection errors)
     mongoose.connection
       .on('error', console.error.bind(console, 'MongoDB connection error:'));
