@@ -52,6 +52,7 @@ test('should sign up', async (t: any) => {
   })
   const r = await fetch(`${t.context.url}/api/signup?${params}`)
   const data = await r.json()
+  await t.context.provider.waitForTransaction(data.transaction)
   t.assert(/^0x[0-9a-fA-F]{64}$/.test(data.transaction))
   t.is(currentEpoch.toString(), data.epoch.toString())
   t.is(r.status, 200)
