@@ -42,9 +42,8 @@ class SignUpController {
     //   const unirepSocialContract = new UnirepSocialContract(UNIREP_SOCIAL, DEFAULT_ETH_PROVIDER)
 
     //   // Parse Inputs
-    //   const decodedProof = base64url.decode(data.proof.slice(signUpProofPrefix.length))
-    //   const decodedPublicSignals = base64url.decode(data.publicSignals.slice(signUpPublicSignalsPrefix.length))
-    //   const publicSignals = JSON.parse(decodedPublicSignals)
+    //   const decodedProof = data.proof
+    //   const decodedPublicSignals = data.publicSignals
     //   const epoch = publicSignals[0]
     //   const epk = publicSignals[1]
     //   const GSTRoot = publicSignals[2]

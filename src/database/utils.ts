@@ -1,5 +1,4 @@
 import { Attestation, circuitUserStateTreeDepth, circuitGlobalStateTreeDepth, computeEmptyUserStateRoot, computeInitUserStateRoot, genUnirepStateFromContract, } from '@unirep/unirep'
-import base64url from 'base64url';
 import { ethers } from 'ethers'
 import { getUnirepContract, Event, AttestationEvent, EpochKeyProof, ReputationProof, SignUpProof, UserTransitionProof } from '@unirep/contracts';
 import { hashLeftRight, IncrementalQuinTree, stringifyBigInts, unstringifyBigInts } from '@unirep/crypto'
