@@ -10,7 +10,7 @@ import {
     UNIREP_ABI,
     UNIREP_SOCIAL_ABI,
   } from '../constants';
-import { decodeSignUpProof, verifyAirdropProof } from './utils';
+import { verifyAirdropProof } from './utils';
 import { ethers } from 'ethers'
 import TransactionManager from '../TransactionManager'
 
@@ -28,7 +28,7 @@ class AirdropController {
         const currentEpoch = Number(await unirepContract.currentEpoch())
 
         // Parse Inputs
-        const { publicSignals, proof } = decodeSignUpProof(data.proof, data.publicSignals)
+        const { publicSignals, proof } = data
         const signUpProof = new SignUpProof(publicSignals, formatProofForSnarkjsVerification(proof))
 
         const attestingFee = await unirepContract.attestingFee()

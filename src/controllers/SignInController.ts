@@ -1,7 +1,5 @@
-import base64url from 'base64url';
-
 import ErrorHandler from '../ErrorHandler';
-import { DEFAULT_ETH_PROVIDER, DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, identityCommitmentPrefix, add0x } from '../constants';
+import { DEFAULT_ETH_PROVIDER, DEPLOYER_PRIV_KEY, UNIREP_SOCIAL, add0x } from '../constants';
 import { ethers } from 'ethers';
 // import UnirepSocial from '../artifacts/contracts/UnirepSocial.sol/UnirepSocial.json'
 
@@ -20,9 +18,8 @@ class SignInController {
       //     UnirepSocial.abi,
       //     wallet,
       // )
-    
-      // const encodedCommitment = uploadedCommitment.slice(identityCommitmentPrefix.length)
-      // const decodedCommitment = base64url.decode(encodedCommitment)
+
+      // const decodedCommitment = uploadedCommitment
       // const commitment = add0x(decodedCommitment)
       // console.log(commitment)
 

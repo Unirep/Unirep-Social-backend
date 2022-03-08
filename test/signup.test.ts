@@ -47,7 +47,7 @@ test('should sign up', async (t: any) => {
   ).toString(16)
 
   const params = new URLSearchParams({
-    commitment: t.context.constants.identityCommitmentPrefix + commitment,
+    commitment,
     epk,
   })
   const r = await fetch(`${t.context.url}/api/signup?${params}`)
@@ -72,7 +72,7 @@ test('should airdrop', async (t: any) => {
   ).toString(16)
 
   const params = new URLSearchParams({
-    commitment: t.context.constants.identityCommitmentPrefix + commitment,
+    commitment,
     epk,
   })
   {
@@ -91,17 +91,14 @@ test('should airdrop', async (t: any) => {
     console.error('Error: user sign up proof generated is not valid!')
     return
   }
-  const formattedProof = formatProofForVerifierContract(proof)
-  const encodedProof = Buffer.from(JSON.stringify(formattedProof)).toString('base64')
-  const encodedPublicSignals = Buffer.from(JSON.stringify(publicSignals)).toString('base64')
   const r = await fetch(`${t.context.url}/api/airdrop`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      proof: t.context.constants.signUpProofPrefix + encodedProof,
-      publicSignals: t.context.constants.signUpPublicSignalsPrefix + encodedPublicSignals,
+      proof: formatProofForVerifierContract(proof),
+      publicSignals,
       userState,
     })
   })
@@ -125,7 +122,7 @@ test('should sign up many in parallel', async (t: any) => {
     ).toString(16)
 
     const params = new URLSearchParams({
-      commitment: t.context.constants.identityCommitmentPrefix + commitment,
+      commitment,
       epk,
     })
     const r = await fetch(`${t.context.url}/api/signup?${params}`)
@@ -155,7 +152,7 @@ test('should sign in', async (t: any) => {
 
   {
     const params = new URLSearchParams({
-      commitment: t.context.constants.identityCommitmentPrefix + commitment,
+      commitment,
       epk,
     })
     const r = await fetch(`${t.context.url}/api/signup?${params}`)
@@ -165,7 +162,7 @@ test('should sign in', async (t: any) => {
 
   // now try signing in using this identity
   const params = new URLSearchParams({
-    commitment: t.context.constants.identityCommitmentPrefix + commitment,
+    commitment,
   })
   const r = await fetch(`${t.context.url}/api/signin?${params}`)
   const data = await r.text()

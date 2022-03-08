@@ -37,7 +37,7 @@ test('should create a post', async (t: any) => {
   ).toString(16)
 
   const params = new URLSearchParams({
-    commitment: t.context.constants.identityCommitmentPrefix + commitment,
+    commitment,
     epk,
   })
   {
@@ -58,17 +58,14 @@ test('should create a post', async (t: any) => {
       console.error('Error: user sign up proof generated is not valid!')
       return
     }
-    const formattedProof = formatProofForVerifierContract(proof)
-    const encodedProof = Buffer.from(JSON.stringify(formattedProof)).toString('base64')
-    const encodedPublicSignals = Buffer.from(JSON.stringify(publicSignals)).toString('base64')
     const r = await fetch(`${t.context.url}/api/airdrop`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        proof: t.context.constants.signUpProofPrefix + encodedProof,
-        publicSignals: t.context.constants.signUpPublicSignalsPrefix + encodedPublicSignals,
+        proof: formatProofForVerifierContract(proof),
+        publicSignals: publicSignals,
         userState,
       })
     })
@@ -109,7 +106,7 @@ test('should create a post', async (t: any) => {
   for (let i = proveAmount ; i < t.context.constants.maxReputationBudget ; i++) {
     nonceList.push(BigInt(-1))
   }
-  const results = await userState.genProveReputationProof(
+  const { proof, publicSignals } = await userState.genProveReputationProof(
     BigInt(attesterId),
     epkNonce,
     5,
@@ -118,11 +115,6 @@ test('should create a post', async (t: any) => {
     nonceList,
   )
 
-  const formattedProof = formatProofForVerifierContract(results.proof)
-  const encodedProof = Buffer.from(JSON.stringify(formattedProof)).toString('base64')
-  const encodedPublicSignals = Buffer.from(JSON.stringify(results.publicSignals)).toString('base64')
-  const proof = t.context.constants.reputationProofPrefix + encodedProof
-  const publicSignals = t.context.constants.reputationPublicSignalsPrefix + encodedPublicSignals
   const r = await fetch(`${t.context.url}/api/post`, {
     method: 'POST',
     headers: {
@@ -132,7 +124,7 @@ test('should create a post', async (t: any) => {
       title: 'test',
       content: 'some content!',
       publicSignals,
-      proof,
+      proof: formatProofForVerifierContract(proof),
     })
   })
   const data = await r.json()

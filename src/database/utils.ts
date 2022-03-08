@@ -2,8 +2,8 @@ import { Attestation, circuitUserStateTreeDepth, circuitGlobalStateTreeDepth, co
 import base64url from 'base64url';
 import { ethers } from 'ethers'
 import { getUnirepContract, Event, AttestationEvent, EpochKeyProof, ReputationProof, SignUpProof, UserTransitionProof } from '@unirep/contracts';
-import { hashLeftRight, IncrementalQuinTree, stringifyBigInts } from '@unirep/crypto'
-import { DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL_ABI, ActionType, DEFAULT_AIRDROPPED_KARMA, titlePrefix, titlePostfix, reputationProofPrefix, reputationPublicSignalsPrefix, signUpProofPrefix, signUpPublicSignalsPrefix, epkProofPrefix, epkPublicSignalsPrefix, USTPublicSignalsPrefix, USTProofPrefix, DEFAULT_QUERY_DEPTH, QUERY_DELAY_TIME, } from '../constants'
+import { hashLeftRight, IncrementalQuinTree, stringifyBigInts, unstringifyBigInts } from '@unirep/crypto'
+import { DEFAULT_COMMENT_KARMA, DEFAULT_ETH_PROVIDER, DEFAULT_POST_KARMA, DEFAULT_START_BLOCK, UNIREP, UNIREP_ABI, UNIREP_SOCIAL_ABI, ActionType, DEFAULT_AIRDROPPED_KARMA, titlePrefix, titlePostfix, DEFAULT_QUERY_DEPTH, QUERY_DELAY_TIME, } from '../constants'
 import Attestations, { IAttestation } from './models/attestation'
 import GSTLeaves, { IGSTLeaf } from './models/GSTLeaf'
 import GSTRoots from './models/GSTRoots'
@@ -17,26 +17,13 @@ import EpkRecord from './models/epkRecord';
 import userSignUp, { IUserSignUp } from './models/userSignUp';
 import Proof from './models/proof';
 import { Circuit, formatProofForSnarkjsVerification, verifyProof } from '@unirep/circuits';
-import { decodeReputationProof, decodeSignUpProof } from '../controllers/utils';
-
-const decodeEpochKeyProof = (proof: string, publicSignals: string) => {
-    const decodedProof = base64url.decode(proof.slice(epkProofPrefix.length))
-    const decodedPublicSignals = base64url.decode(publicSignals.slice(epkPublicSignalsPrefix.length))
-    const publicSignals_ = JSON.parse(decodedPublicSignals)
-    const proof_ = JSON.parse(decodedProof)
-    return { publicSignals: publicSignals_, proof: proof_ }
-}
-
-const decodeUSTProof = (proof: string, publicSignals: string) => {
-    const decodedProof = base64url.decode(proof.slice(USTProofPrefix.length))
-    const decodedPublicSignals = base64url.decode(publicSignals.slice(USTPublicSignalsPrefix.length))
-    const publicSignals_ = JSON.parse(decodedPublicSignals)
-    const proof_ = JSON.parse(decodedProof)
-    return { publicSignals: publicSignals_, proof: proof_ }
-}
 
 const encodeBigIntArray = (arr: BigInt[]): string => {
-    return base64url.encode(JSON.stringify(stringifyBigInts(arr)))
+    return JSON.stringify(stringifyBigInts(arr))
+}
+
+const decodeBigIntArray = (input: string): BigInt[] => {
+    return unstringifyBigInts(JSON.parse(input))
 }
 
 const getCurrentEpoch = async (): Promise<number> => {
@@ -439,7 +426,7 @@ const verifyUSTProofByIndex = async(
     }
 
     // verify blinded hash chain result
-    const { publicSignals, proof } = decodeUSTProof(transitionProof.proof, transitionProof.publicSignals)
+    const { publicSignals, proof } = transitionProof
     const formatProof = new UserTransitionProof(publicSignals, formatProofForSnarkjsVerification(proof))
     for (const blindedHC of formatProof.blindedHashChains) {
         let allProofIndexQuery: any[] = []
@@ -494,13 +481,19 @@ const verifyAttestationProofsByIndex = async (proofIndex: number): Promise<any> 
     let formatProof
     if (proof_ !== null) {
         if (proof_.event === "IndexedEpochKeyProof") {
-            const { publicSignals, proof } = decodeEpochKeyProof(proof_.proof, proof_.publicSignals)
+            const publicSignals = decodeBigIntArray(proof_.publicSignals)
+            const proof = JSON.parse(proof_.proof)
+            // const { publicSignals, proof } = proof_
             formatProof = new EpochKeyProof(publicSignals, formatProofForSnarkjsVerification(proof))
         } else if (proof_.event === "IndexedReputationProof") {
-            const { publicSignals, proof } = decodeReputationProof(proof_.proof, proof_.publicSignals)
+            const publicSignals = decodeBigIntArray(proof_.publicSignals)
+            const proof = JSON.parse(proof_.proof)
+            // const { publicSignals, proof } = proof_
             formatProof = new ReputationProof(publicSignals, formatProofForSnarkjsVerification(proof))
         } else if (proof_.event === "IndexedUserSignedUpProof") {
-            const { publicSignals, proof } = decodeSignUpProof(proof_.proof, proof_.publicSignals)
+            const publicSignals = decodeBigIntArray(proof_.publicSignals)
+            const proof = JSON.parse(proof_.proof)
+            // const { publicSignals, proof } = proof_
             formatProof = new SignUpProof(publicSignals, formatProofForSnarkjsVerification(proof))
         } else {
             console.log(`proof index ${proofIndex} matches wrong event ${proof_?.event}`);
@@ -516,7 +509,9 @@ const verifyAttestationProofsByIndex = async (proofIndex: number): Promise<any> 
                 await updateDBFromEpochKeyProofEvent(epochKeyProofEvents[0])
                 proof_ = await Proof.findOne({index: proofIndex})
                 if (proof_?.event === "IndexedEpochKeyProof") {
-                    const { publicSignals, proof } = decodeEpochKeyProof(proof_?.proof, proof_?.publicSignals)
+                    const publicSignals = decodeBigIntArray(proof_.publicSignals)
+                    const proof = JSON.parse(proof_.proof)
+                    // const { publicSignals, proof } = proof_
                     formatProof = new EpochKeyProof(publicSignals, formatProofForSnarkjsVerification(proof))
                 }
                 break
@@ -527,7 +522,9 @@ const verifyAttestationProofsByIndex = async (proofIndex: number): Promise<any> 
                 await updateDBFromReputationProofEvent(reputationProofEvents[0])
                 proof_ = await Proof.findOne({index: proofIndex})
                 if (proof_?.event === "IndexedReputationProof") {
-                    const { publicSignals, proof } = decodeReputationProof(proof_?.proof, proof_?.publicSignals)
+                    const publicSignals = decodeBigIntArray(proof_.publicSignals)
+                    const proof = JSON.parse(proof_.proof)
+                    // const { publicSignals, proof } = proof_
                     formatProof = new ReputationProof(publicSignals, formatProofForSnarkjsVerification(proof))
                 }
                 break
@@ -538,7 +535,9 @@ const verifyAttestationProofsByIndex = async (proofIndex: number): Promise<any> 
                 await updateDBFromUserSignedUpProofEvent(signUpProofEvents[0])
                 proof_ = await Proof.findOne({index: proofIndex})
                 if (proof_?.event === "IndexedUserSignedUpProof") {
-                    const { publicSignals, proof } = decodeSignUpProof(proof_?.proof, proof_?.publicSignals)
+                    const publicSignals = decodeBigIntArray(proof_.publicSignals)
+                    const proof = JSON.parse(proof_.proof)
+                    // const { publicSignals, proof } = proof_
                     formatProof = new SignUpProof(publicSignals, formatProofForSnarkjsVerification(proof))
                 }
                 break
@@ -654,10 +653,8 @@ const updateDBFromEpochKeyProofEvent = async (
         args?.epochKey,
     ).map(n => BigInt(n))
     const formattedProof = args?.proof.map(n => BigInt(n))
-    const encodedProof = encodeBigIntArray(formattedProof)
-    const encodedPublicSignals = encodeBigIntArray(formatPublicSignals)
-    const proof = epkProofPrefix + encodedProof
-    const publicSignals = epkPublicSignalsPrefix + encodedPublicSignals
+    const proof = encodeBigIntArray(formattedProof)
+    const publicSignals = encodeBigIntArray(formatPublicSignals)
     const isValid = await verifyProof(
         Circuit.verifyEpochKey,
         formatProofForSnarkjsVerification(formattedProof),
@@ -710,10 +707,8 @@ const updateDBFromReputationProofEvent = async (
         args?.graffitiPreImage,
     ).map(n => BigInt(n))
     const formattedProof = args?.proof.map(n => BigInt(n))
-    const encodedProof = encodeBigIntArray(formattedProof)
-    const encodedPublicSignals = encodeBigIntArray(formatPublicSignals)
-    const proof = reputationProofPrefix + encodedProof
-    const publicSignals = reputationPublicSignalsPrefix + encodedPublicSignals
+    const proof = encodeBigIntArray(formattedProof)
+    const publicSignals = encodeBigIntArray(formatPublicSignals)
     const isValid = await verifyProof(
         Circuit.proveReputation,
         formatProofForSnarkjsVerification(formattedProof),
@@ -763,10 +758,8 @@ const updateDBFromUserSignedUpProofEvent = async (
         args?.userHasSignedUp,
     ).map(n => BigInt(n))
     const formattedProof = args?.proof.map(n => BigInt(n))
-    const encodedProof = encodeBigIntArray(formattedProof)
-    const encodedPublicSignals = encodeBigIntArray(formatPublicSignals)
-    const proof = signUpProofPrefix + encodedProof
-    const publicSignals = signUpPublicSignalsPrefix + encodedPublicSignals
+    const proof = encodeBigIntArray(formattedProof)
+    const publicSignals = encodeBigIntArray(formatPublicSignals)
     const isValid = await verifyProof(
         Circuit.proveUserSignUp,
         formatProofForSnarkjsVerification(formattedProof),
@@ -808,7 +801,7 @@ const updateDBFromStartUSTProofEvent = async (
     const decodedData = iface.decodeEventLog("IndexedStartedTransitionProof", event.data)
     const _blindedHashChain = BigInt(decodedData?._blindedHashChain)
     const formatProof = formatProofForSnarkjsVerification(decodedData?._proof)
-    const encodedProof = base64url.encode(JSON.stringify(stringifyBigInts(formatProof)))
+    const encodedProof = stringifyBigInts(formatProof)
     const formatPublicSignals = [
         _blindedUserState,
         _blindedHashChain,
@@ -856,7 +849,7 @@ const updateDBFromProcessAttestationProofEvent = async (
     const _outputBlindedUserState = BigInt(decodedData?._outputBlindedUserState)
     const _outputBlindedHashChain = BigInt(decodedData?._outputBlindedHashChain)
     const formatProof = formatProofForSnarkjsVerification(decodedData?._proof)
-    const encodedProof = base64url.encode(JSON.stringify(stringifyBigInts(formatProof)))
+    const encodedProof = stringifyBigInts(formatProof)
     const formatPublicSignals = [
         _outputBlindedUserState,
         _outputBlindedHashChain,
@@ -915,10 +908,8 @@ const updateDBFromUSTProofEvent = async (
         args.fromEpochTree,
     ).map(n => BigInt(n))
     const formattedProof = args?.proof.map(n => BigInt(n))
-    const encodedProof = encodeBigIntArray(formattedProof)
-    const encodedPublicSignals = encodeBigIntArray(formatPublicSignals)
-    const proof = USTProofPrefix + encodedProof
-    const publicSignals = USTPublicSignalsPrefix + encodedPublicSignals
+    const proof = encodeBigIntArray(formattedProof)
+    const publicSignals = encodeBigIntArray(formatPublicSignals)
 
     const newProof = new Proof({
         index: _proofIndex,
@@ -1225,7 +1216,7 @@ const updateDBFromAirdropSubmittedEvent = async (
 ) => {
 
     // The event has been processed
-    if(event.blockNumber <= startBlock) return
+    if (event.blockNumber <= startBlock) return
 
     const iface = new ethers.utils.Interface(UNIREP_SOCIAL_ABI)
     const decodedData = iface.decodeEventLog("AirdropSubmitted",event.data)

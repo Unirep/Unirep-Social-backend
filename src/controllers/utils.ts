@@ -1,30 +1,12 @@
-import base64url from 'base64url';
 import { Circuit, verifyProof } from '@unirep/circuits';
 import { ReputationProof, SignUpProof, UserTransitionProof } from '@unirep/contracts';
 import Record from '../database/models/record';
 import { epochTreeRootExists, GSTRootExists, nullifierExists } from '../database/utils';
-import { reputationProofPrefix, reputationPublicSignalsPrefix, signUpProofPrefix, signUpPublicSignalsPrefix } from '../constants';
-
-const decodeSignUpProof = (proof: string, publicSignals: string) => {
-    const decodedProof = base64url.decode(proof.slice(signUpProofPrefix.length))
-    const decodedPublicSignals = base64url.decode(publicSignals.slice(signUpPublicSignalsPrefix.length))
-    const publicSignals_ = JSON.parse(decodedPublicSignals)
-    const proof_ = JSON.parse(decodedProof)
-    return { publicSignals: publicSignals_, proof: proof_ }
-}
-
-const decodeReputationProof = (proof: string, publicSignals: string) => {
-    const decodedProof = base64url.decode(proof.slice(reputationProofPrefix.length))
-    const decodedPublicSignals = base64url.decode(publicSignals.slice(reputationPublicSignalsPrefix.length))
-    const publicSignals_ = JSON.parse(decodedPublicSignals)
-    const proof_ = JSON.parse(decodedProof)
-    return { publicSignals: publicSignals_, proof: proof_ }
-}
 
 const verifyReputationProof = async(
-    reputationProof: ReputationProof, 
-    spendReputation: number, 
-    unirepSocialId: number, 
+    reputationProof: ReputationProof,
+    spendReputation: number,
+    unirepSocialId: number,
     currentEpoch: number
 ): Promise<string | undefined> => {
     let error
@@ -123,8 +105,8 @@ const verifyUSTProof = async(results: any, currentEpoch: number): Promise<string
 
     // Start user state transition proof
     let isValid = await verifyProof(
-        Circuit.startTransition, 
-        results.startTransitionProof.proof, 
+        Circuit.startTransition,
+        results.startTransitionProof.proof,
         results.startTransitionProof.publicSignals
     )
     if (!isValid) {
@@ -135,8 +117,8 @@ const verifyUSTProof = async(results: any, currentEpoch: number): Promise<string
     // Process attestations proofs
     for (let i = 0; i < results.processAttestationProofs.length; i++) {
         const isValid = await verifyProof(
-            Circuit.processAttestations, 
-            results.processAttestationProofs[i].proof, 
+            Circuit.processAttestations,
+            results.processAttestationProofs[i].proof,
             results.processAttestationProofs[i].publicSignals
         )
         if (!isValid) {
@@ -183,8 +165,6 @@ const verifyUSTProof = async(results: any, currentEpoch: number): Promise<string
 }
 
 export {
-    decodeSignUpProof,
-    decodeReputationProof,
     GSTRootExists,
     epochTreeRootExists,
     nullifierExists,

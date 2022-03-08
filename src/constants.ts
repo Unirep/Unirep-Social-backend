@@ -4,9 +4,6 @@ import Unirep from "@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json
 import { ethers } from 'ethers';
 import randomstring from 'randomstring';
 
-// load the environment variables from the .env file
-dotenv.config();
-
 // Provide default values for process.env
 Object.assign(process.env, {
     UNIREP: '0x3DdC8069e7d740C86AFfB8bc10Fa66ad10181bd2',
@@ -41,20 +38,6 @@ export const DEFAULT_AIRDROPPED_KARMA = 30
 export const DEFAULT_QUERY_DEPTH = 5
 export const QUERY_DELAY_TIME = 300
 
-export const identityPrefix = 'Unirep.identity.'
-export const identityCommitmentPrefix = 'Unirep.identityCommitment.'
-export const epkProofPrefix = 'Unirep.epk.proof.'
-export const epkPublicSignalsPrefix = 'Unirep.epk.publicSignals.'
-export const reputationProofPrefix = 'Unirep.reputation.proof.'
-export const reputationPublicSignalsPrefix = 'Unirep.reputation.publicSignals.'
-export const signUpProofPrefix = 'Unirep.signUp.proof.'
-export const signUpPublicSignalsPrefix = 'Unirep.signUp.publicSignals.'
-export const startUSTProofPrefix = 'Unirep.startUST.proof.'
-export const startUSTPublicSignalsPrefix = 'Unirep.startUST.publicSignals.'
-export const processUSTProofPrefix = 'Unirep.processUST.proof.'
-export const processUSTPublicSignalsPrefix = 'Unirep.processUST.publicSignals.'
-export const USTProofPrefix = 'Unirep.UST.proof.'
-export const USTPublicSignalsPrefix = 'Unirep.UST.publicSignals.'
 export const maxReputationBudget = 10
 
 export const loadPostCount = 10

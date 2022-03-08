@@ -18,7 +18,7 @@ import {
 } from '../constants';
 import Post, { IPost } from "../database/models/post";
 import Comment, { IComment } from "../database/models/comment";
-import { decodeReputationProof, verifyReputationProof } from "../controllers/utils";
+import { verifyReputationProof } from "../controllers/utils";
 import TransactionManager from '../TransactionManager'
 
 
@@ -126,7 +126,7 @@ class PostController {
         const currentEpoch = Number(await unirepContract.currentEpoch())
 
         // Parse Inputs
-        const { publicSignals, proof } = decodeReputationProof(data.proof, data.publicSignals)
+        const { publicSignals, proof } = data
         const reputationProof = new ReputationProof(publicSignals, formatProofForSnarkjsVerification(proof))
         const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
         const minRep = Number(reputationProof.minRep)

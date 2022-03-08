@@ -15,7 +15,7 @@ import { IVote } from '../database/models/vote';
 import Proof from '../database/models/proof';
 import Post from '../database/models/post';
 import Comment from '../database/models/comment';
-import { decodeReputationProof, verifyReputationProof } from "../controllers/utils"
+import { verifyReputationProof } from "../controllers/utils"
 import { writeRecord } from '../database/utils';
 import TransactionManager from '../TransactionManager'
 
@@ -32,7 +32,7 @@ class VoteController {
         const currentEpoch = Number(await unirepContract.currentEpoch())
 
 
-        const { publicSignals, proof } = decodeReputationProof(data.proof, data.publicSignals)
+        const { publicSignals, proof } = data
         const reputationProof = new ReputationProof(publicSignals, formatProofForSnarkjsVerification(proof))
         const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
         const receiver = parseInt(data.receiver, 16)
