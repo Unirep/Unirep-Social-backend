@@ -1,11 +1,7 @@
-import dotenv from 'dotenv';
 import UnirepSocial from "@unirep/unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json"
 import Unirep from "@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json"
 import { ethers } from 'ethers';
 import randomstring from 'randomstring';
-
-// load the environment variables from the .env file
-dotenv.config();
 
 // Provide default values for process.env
 Object.assign(process.env, {
