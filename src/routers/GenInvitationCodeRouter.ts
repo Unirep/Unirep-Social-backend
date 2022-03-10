@@ -19,6 +19,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 })
 
 router.get('/:ic', async (req: Request, res: Response, next: NextFunction) => {
+  if (req.params.ic === global.adminSessionCode) {
+    res.status(204).end()
+    return
+  }
   InvitationCode.findOneAndDelete({code: req.params.ic}, (err, code) => {
     if (err !== null) {
       console.log('get invitation code error: ' + err);

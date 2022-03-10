@@ -14,6 +14,7 @@ Object.assign(process.env, {
 })
 
 global.adminSessionCode = process.env.ADMIN_SESSION_CODE
+console.log(`Admin session code is "${global.adminSessionCode}"`)
 
 export const {
     DEPLOYER_PRIV_KEY,
