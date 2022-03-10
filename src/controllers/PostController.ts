@@ -147,6 +147,7 @@ const publishPost = async (req: any, res: any) => { // should have content, epk,
       {
         data: calldata,
         value: attestingFee,
+        gasLimit: 1000000, // don't estimate for now
       })
 
     const newPost: IPost = new Post({

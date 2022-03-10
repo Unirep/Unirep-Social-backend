@@ -1576,7 +1576,6 @@ const initDB = async (
     const processAttestationsEvents = await unirepContract.queryFilter(processAttestationsFilter, DEFAULT_START_BLOCK)
     const userStateTransitionFilter = unirepContract.filters.IndexedUserStateTransitionProof()
     const userStateTransitionEvents = await unirepContract.queryFilter(userStateTransitionFilter, DEFAULT_START_BLOCK)
-
     for (const event of epochKeyProofEvents) {
         await updateDBFromEpochKeyProofEvent(event)
     }
