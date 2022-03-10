@@ -3,6 +3,7 @@ import UnirepSocial from "@unirep/unirep-social/artifacts/contracts/UnirepSocial
 import Unirep from "@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json"
 import { ethers } from 'ethers';
 import randomstring from 'randomstring';
+import { numEpochKeyNoncePerEpoch } from '@unirep/unirep';
 
 // load the environment variables from the .env file
 dotenv.config();
@@ -11,7 +12,7 @@ dotenv.config();
 Object.assign(process.env, {
     UNIREP: '0x0165878A594ca255338adfa4d48449f69242Eb8F',
     UNIREP_SOCIAL: '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
-    DEFAULT_ETH_PROVIDER_URL: 'ws://localhost:8545',
+    DEFAULT_ETH_PROVIDER_URL: 'http://localhost:8545',
     ADMIN_SESSION_CODE: randomstring.generate(20),
     ...process.env
 })
@@ -40,6 +41,7 @@ export const MAX_KARMA_BUDGET = 10
 export const DEFAULT_AIRDROPPED_KARMA = 30
 export const DEFAULT_QUERY_DEPTH = 5
 export const QUERY_DELAY_TIME = 300
+export const EPOCH_KEY_NONCE_PER_EPOCH = numEpochKeyNoncePerEpoch
 
 export const maxReputationBudget = 10
 

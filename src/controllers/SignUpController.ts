@@ -10,7 +10,6 @@ import TransactionManager from '../daemons/TransactionManager'
 
 const signUp = async (req: any, res: any) => {
     const uploadedCommitment = req.query.commitment!.toString()
-    const epk = req.query.epk!.toString()
     const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
     const unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER)
 
