@@ -34,8 +34,9 @@ export interface IComment extends Document {
     negRep: { type: Number, required: true },
     votes: { type: [ ] },
     status: { type: Number, required: true },
-  }, { 
-    timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
-  });
+    }, { 
+        timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+    }
+);
   
-  export default mongoose.model<IComment>('Comment', CommentSchema);
+export default mongoose.model<IComment>('Comment', CommentSchema);

@@ -89,6 +89,29 @@ export const signIn = async (t) => {
     t.is(r.status, 200)
 }
 
+export const getSpent = async (t) => {
+    const currentEpoch = Number(await t.context.unirep.currentEpoch())
+    const epks: string[] = []
+    for (let i = 0; i < t.context.constants.EPOCH_KEY_NONCE_PER_EPOCH; i++) {
+        epks.push(
+            genEpochKey(
+                t.context.iden.identityNullifier,
+                currentEpoch,
+                i,
+                t.context.epochTreeDepth
+            ).toString(16)
+        )
+    }
+    const paramStr = epks.join('_');
+    const r = await fetch(`${t.context.url}/api/records/${paramStr}?spentonly=true`)
+    const data = await r.json()
+    let spent = 0
+    for (var i = 0; i < data.length; i ++) {
+        spent = spent + data[i].spent;
+    }
+    return spent
+}
+
 const genReputationProof = async (t) => {
     const userState = await genUserStateFromContract(
         t.context.unirepSocial.provider,
@@ -99,31 +122,9 @@ const genReputationProof = async (t) => {
     // find valid nonce starter
     // gen proof
     const nonceList = [] as any[]
-    const currentEpoch = Number(await t.context.unirep.currentEpoch())
     const epkNonce = 0
     const proveAmount = t.context.proveAmount
-    let nonceStarter: number
-    {
-        const epks: string[] = []
-        for (let i = 0; i < t.context.constants.EPOCH_KEY_NONCE_PER_EPOCH; i++) {
-            epks.push(
-                genEpochKey(
-                    t.context.iden.identityNullifier,
-                    currentEpoch,
-                    i,
-                    t.context.epochTreeDepth
-                ).toString(16)
-            )
-        }
-        const paramStr = epks.join('_');
-        const r = await fetch(`${t.context.url}/api/records/${paramStr}?spentonly=true`)
-        const data = await r.json()
-        let spent = 0
-        for (var i = 0; i < data.length; i ++) {
-            spent = spent + data[i].spent;
-        }
-        nonceStarter = spent
-    }
+    const nonceStarter: number = await getSpent(t)
     
     for (let i = 0; i < proveAmount; i++) {
         nonceList.push( BigInt(nonceStarter + i) )
@@ -145,6 +146,7 @@ const genReputationProof = async (t) => {
 }
 
 export const createPost = async (t) => {
+    const prevSpent = await getSpent(t)
     const proveAmount = t.context.constants.DEFAULT_POST_KARMA
     Object.assign(t.context, { ...t.context, proveAmount })
     const { proof, publicSignals } = await genReputationProof(t)
@@ -161,13 +163,24 @@ export const createPost = async (t) => {
             proof,
         })
     })
+
     const data = await r.json()
     await t.context.provider.waitForTransaction(data.transaction)
+
+    for (let x = 0; x < 50; x++) {
+        await new Promise(r => setTimeout(r, 1000))
+        try {
+            const currentSpent = await getSpent(t)
+            if (prevSpent + proveAmount !== currentSpent) throw new Error('Spent reputation mismatch')
+            t.is(prevSpent + proveAmount, currentSpent)
+            break
+        } catch (_) {}
+    }
     return data
 }
 
 export const queryPost = async (t) => {
-    for (let x = 0; x < 100; x++) {
+    for (let x = 0; x < 50; x++) {
         await new Promise(r => setTimeout(r, 1000))
         try {
             const r = await fetch(`${t.context.url}/api/post/${t.context.transaction}`)
@@ -180,6 +193,7 @@ export const queryPost = async (t) => {
 }
 
 export const createComment = async (t) => {
+    const prevSpent = await getSpent(t)
     const proveAmount = t.context.constants.DEFAULT_COMMENT_KARMA
     Object.assign(t.context, { ...t.context, proveAmount })
     const { proof, publicSignals } = await genReputationProof(t)
@@ -198,10 +212,21 @@ export const createComment = async (t) => {
     })
     const data = await r.json()
     await t.context.provider.waitForTransaction(data.transaction)
+
+    for (let x = 0; x < 50; x++) {
+        await new Promise(r => setTimeout(r, 1000))
+        try {
+            const currentSpent = await getSpent(t)
+            if (prevSpent + proveAmount !== currentSpent) throw new Error('Spent reputation mismatch')
+            t.is(prevSpent + proveAmount, currentSpent)
+            break
+        } catch (_) {}
+    }
     return data
 }
 
 export const vote = async (t) => {
+    const prevSpent = await getSpent(t)
     const proveAmount = t.context.upvote + t.context.downvote
     Object.assign(t.context, { ...t.context, proveAmount })
     const { proof, publicSignals } = await genReputationProof(t)
@@ -223,6 +248,16 @@ export const vote = async (t) => {
     })
     const data = await r.json()
     await t.context.provider.waitForTransaction(data.transaction)
+
+    for (let x = 0; x < 50; x++) {
+        await new Promise(r => setTimeout(r, 1000))
+        try {
+            const currentSpent = await getSpent(t)
+            if (prevSpent + proveAmount !== currentSpent) throw new Error('Spent reputation mismatch')
+            t.is(prevSpent + proveAmount, currentSpent)
+            break
+        } catch (_) {}
+    }
 }
 
 export const epochTransition = async (t) => {

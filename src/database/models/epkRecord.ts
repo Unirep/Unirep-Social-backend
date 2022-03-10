@@ -20,6 +20,7 @@ const EpkRecordSchema: Schema = new Schema({
     epoch: { type: Number, required: true}
   }, { 
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
-  });
+  }
+);
 
 export default mongoose.model<IEpkRecord>('EpkRecord', EpkRecordSchema);

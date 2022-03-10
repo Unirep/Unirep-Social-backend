@@ -4,6 +4,7 @@ import { startServer } from './environment'
 import { 
     createComment, 
     createPost, 
+    queryPost, 
     signIn, 
     signUp, 
     vote 
@@ -22,6 +23,9 @@ test('should vote on a post', async (t: any) => {
 
     // first create a post
     const { post, transaction } = await createPost(t)
+    Object.assign(t.context, { ...t.context, transaction })
+    const exist = await queryPost(t)
+    t.true(exist)
 
     // sign up second user
     const user2 = await signUp(t)
@@ -71,9 +75,12 @@ test('should vote on comment', async (t: any) => {
 
     // first create a post
     const post = await createPost(t)
-    Object.assign(t.context, { ...t.context, postId: post.transaction })
-    
+    Object.assign(t.context, { ...t.context, transaction: post.transaction })
+    const exist = await queryPost(t)
+    t.true(exist)
+
     // leave a comment
+    Object.assign(t.context, { ...t.context, postId: post.transaction })
     const { comment, transaction } = await createComment(t)
 
     // sign up second user

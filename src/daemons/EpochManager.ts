@@ -1,11 +1,10 @@
 import { ethers } from 'ethers'
 import {
-  UNIREP,
-  DEPLOYER_PRIV_KEY,
-  UNIREP_SOCIAL,
-  DEFAULT_ETH_PROVIDER,
-  UNIREP_ABI,
-  UNIREP_SOCIAL_ABI
+    UNIREP,
+    UNIREP_SOCIAL,
+    DEFAULT_ETH_PROVIDER,
+    UNIREP_ABI,
+    UNIREP_SOCIAL_ABI
 } from '../constants';
 import TransactionManager from './TransactionManager';
 

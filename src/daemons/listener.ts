@@ -6,7 +6,24 @@ import {
     UNIREP_SOCIAL_ABI,
   } from '../constants';
 import { ethers } from 'ethers'
-import { initDB, updateDBFromAirdropSubmittedEvent, updateDBFromAttestationEvent, updateDBFromCommentSubmittedEvent, updateDBFromEpochEndedEvent, updateDBFromEpochKeyProofEvent, updateDBFromPostSubmittedEvent, updateDBFromProcessAttestationProofEvent, updateDBFromReputationProofEvent, updateDBFromStartUSTProofEvent, updateDBFromUnirepUserSignUpEvent, updateDBFromUserSignedUpProofEvent, updateDBFromUserSignUpEvent, updateDBFromUSTEvent, updateDBFromUSTProofEvent, updateDBFromVoteSubmittedEvent } from '../database/utils';
+import { 
+    initDB, 
+    updateDBFromAirdropSubmittedEvent, 
+    updateDBFromAttestationEvent, 
+    updateDBFromCommentSubmittedEvent, 
+    updateDBFromEpochEndedEvent, 
+    updateDBFromEpochKeyProofEvent, 
+    updateDBFromPostSubmittedEvent, 
+    updateDBFromProcessAttestationProofEvent, 
+    updateDBFromReputationProofEvent, 
+    updateDBFromStartUSTProofEvent, 
+    updateDBFromUnirepUserSignUpEvent, 
+    updateDBFromUserSignedUpProofEvent, 
+    updateDBFromUserSignUpEvent, 
+    updateDBFromUSTEvent, 
+    updateDBFromUSTProofEvent, 
+    updateDBFromVoteSubmittedEvent 
+} from '../database/utils';
 
 export async function startEventListeners() {
     // Initialize ethers provider

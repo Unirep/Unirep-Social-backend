@@ -2,15 +2,15 @@ import { formatProofForSnarkjsVerification } from '@unirep/circuits';
 import { ReputationProof } from '@unirep/contracts'
 import { ethers } from 'ethers'
 import {
-  UNIREP,
-  UNIREP_SOCIAL_ABI,
-  UNIREP_ABI,
-  UNIREP_SOCIAL,
-  DEFAULT_ETH_PROVIDER,
-  DEFAULT_COMMENT_KARMA,
-  UNIREP_SOCIAL_ATTESTER_ID,
-  QueryType,
-  loadPostCount
+    UNIREP,
+    UNIREP_SOCIAL_ABI,
+    UNIREP_ABI,
+    UNIREP_SOCIAL,
+    DEFAULT_ETH_PROVIDER,
+    DEFAULT_COMMENT_KARMA,
+    UNIREP_SOCIAL_ATTESTER_ID,
+    QueryType,
+    loadPostCount
 } from '../constants';
 import Comment, { IComment } from "../database/models/comment";
 import { verifyReputationProof } from "../controllers/utils"
@@ -28,19 +28,19 @@ const getCommentsWithEpks = async (epks: string[]) => {
 const getCommentsWithQuery = async (query: string, lastRead: string, epks: string[]) => {
     let allComments: any[] = [];
     if (epks.length === 0) {
-      allComments = await listAllComments();
+        allComments = await listAllComments();
     } else {
-      allComments = await getCommentsWithEpks(epks);
+        allComments = await getCommentsWithEpks(epks);
     }
     allComments.sort((a, b) => a.created_at > b.created_at? -1 : 1);
     if (query === QueryType.New) {
         // allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
     } else if (query === QueryType.Boost) {
-      allComments.sort((a, b) => a.posRep > b.posRep? -1 : 1);
+        allComments.sort((a, b) => a.posRep > b.posRep? -1 : 1);
     } else if (query === QueryType.Squash) {
-      allComments.sort((a, b) => a.negRep > b.negRep? -1 : 1);
+        allComments.sort((a, b) => a.negRep > b.negRep? -1 : 1);
     } else if (query === QueryType.Rep) {
-      allComments.sort((a, b) => (a.posRep - a.negRep) >= (b.posRep - b.negRep)? -1 : 1);
+        allComments.sort((a, b) => (a.posRep - a.negRep) >= (b.posRep - b.negRep)? -1 : 1);
     }
 
     // console.log(allComments);
@@ -82,21 +82,21 @@ const leaveComment = async (req: any, res: any) => {
         currentEpoch
     )
     if (error !== undefined) {
-      throw error
+        throw error
     }
 
     const attestingFee = await unirepContract.attestingFee()
     const calldata = unirepSocialContract.interface.encodeFunctionData('leaveComment', [
-      req.body.postId,
-      req.body.content,
-      reputationProof,
+        req.body.postId,
+        req.body.content,
+        reputationProof,
     ])
     const hash = await TransactionManager.queueTransaction(
-      unirepSocialContract.address,
-      {
-        data: calldata,
-        value: attestingFee,
-      }
+        unirepSocialContract.address,
+        {
+            data: calldata,
+            value: attestingFee,
+        }
     )
 
     const newComment: IComment = new Comment({

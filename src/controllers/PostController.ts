@@ -3,17 +3,17 @@ import { ReputationProof } from '@unirep/contracts';
 import { ethers } from 'ethers'
 
 import {
-  UNIREP_SOCIAL,
-  DEFAULT_ETH_PROVIDER,
-  DEFAULT_POST_KARMA,
-  QueryType,
-  UNIREP_SOCIAL_ATTESTER_ID,
-  loadPostCount,
-  titlePrefix,
-  titlePostfix,
-  UNIREP,
-  UNIREP_ABI,
-  UNIREP_SOCIAL_ABI,
+    UNIREP_SOCIAL,
+    DEFAULT_ETH_PROVIDER,
+    DEFAULT_POST_KARMA,
+    QueryType,
+    UNIREP_SOCIAL_ATTESTER_ID,
+    loadPostCount,
+    titlePrefix,
+    titlePostfix,
+    UNIREP,
+    UNIREP_ABI,
+    UNIREP_SOCIAL_ABI,
 } from '../constants';
 import Post, { IPost } from "../database/models/post";
 import Comment, { IComment } from "../database/models/comment";
@@ -74,21 +74,21 @@ const getPostWithQuery = async (query: string, lastRead: string, epks: string[])
     // get posts and sort
     let allPosts: any[] = [];
     if (epks.length === 0) {
-      allPosts = await listAllPosts();
+        allPosts = await listAllPosts();
     } else {
-      allPosts = await getPostsWithEpks(epks);
+        allPosts = await getPostsWithEpks(epks);
     }
     allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
     if (query === QueryType.New) {
         // allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
     } else if (query === QueryType.Boost) {
-      allPosts.sort((a, b) => a.posRep > b.posRep? -1 : 1);
+        allPosts.sort((a, b) => a.posRep > b.posRep? -1 : 1);
     } else if (query === QueryType.Comments) {
-      allPosts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1);
+        allPosts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1);
     } else if (query === QueryType.Squash) {
-      allPosts.sort((a, b) => a.negRep > b.negRep? -1 : 1);
+        allPosts.sort((a, b) => a.negRep > b.negRep? -1 : 1);
     } else if (query === QueryType.Rep) {
-      allPosts.sort((a, b) => (a.posRep - a.negRep) >= (b.posRep - b.negRep)? -1 : 1);
+        allPosts.sort((a, b) => (a.posRep - a.negRep) >= (b.posRep - b.negRep)? -1 : 1);
     }
 
     // console.log(allPosts);
@@ -143,11 +143,12 @@ const publishPost = async (req: any, res: any) => { // should have content, epk,
       reputationProof,
     ])
     const hash = await TransactionManager.queueTransaction(
-      unirepSocialContract.address,
-      {
-        data: calldata,
-        value: attestingFee,
-      })
+        unirepSocialContract.address,
+        {
+            data: calldata,
+            value: attestingFee,
+        }
+    )
 
     const newPost: IPost = new Post({
         content,
@@ -165,9 +166,9 @@ const publishPost = async (req: any, res: any) => { // should have content, epk,
 
     const post = await newPost.save()
     res.json({
-      transaction: hash,
-      currentEpoch: currentEpoch,
-      post,
+        transaction: hash,
+        currentEpoch: currentEpoch,
+        post,
     })
 }
 

@@ -17,9 +17,9 @@ export interface IPost extends Document {
     negRep: number
     votes: [ IVote ]
     status: number // 0: pending, 1: on-chain, 2: disabled
-  }
+}
   
-  const PostSchema: Schema = new Schema({
+const PostSchema: Schema = new Schema({
     transactionHash: { type: String },
     title: { type: String },
     content: { type: String },
@@ -35,8 +35,9 @@ export interface IPost extends Document {
     negRep: { type: Number, required: true },
     votes: { type: [ ] },
     status: { type: Number, required: true },
-  }, { 
-    timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
-  });
+    }, { 
+        timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+    }
+);
   
   export default mongoose.model<IPost>('Post', PostSchema);

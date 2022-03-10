@@ -1,10 +1,10 @@
 import { ethers } from 'ethers'
 import {
-  UNIREP,
-  UNIREP_ABI,
-  DEFAULT_ETH_PROVIDER,
-  UNIREP_SOCIAL,
-  UNIREP_SOCIAL_ABI,
+    UNIREP,
+    UNIREP_ABI,
+    DEFAULT_ETH_PROVIDER,
+    UNIREP_SOCIAL,
+    UNIREP_SOCIAL_ABI,
 } from '../constants';
 import TransactionManager from '../daemons/TransactionManager'
 
@@ -14,12 +14,12 @@ const signUp = async (req: any, res: any) => {
     const unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER)
 
     if (!/^(0x)?[0-9a-fA-F]{64}$/.test(uploadedCommitment)) {
-      return { error: 'Commitment must be exactly 64 hex characters with an optional 0x prefix' }
+        return { error: 'Commitment must be exactly 64 hex characters with an optional 0x prefix' }
     }
     const commitment = `0x${uploadedCommitment.replace('0x', '')}`
 
     const calldata = unirepSocialContract.interface.encodeFunctionData('userSignUp', [
-      commitment,
+        commitment,
     ])
     const hash = await TransactionManager.queueTransaction(unirepSocialContract.address, calldata)
 

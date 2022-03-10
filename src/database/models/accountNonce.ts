@@ -7,8 +7,8 @@ export interface IAccountNonce extends Document {
 }
 
 export const AccountNonceSchema = new Schema({
-  address: { type: String, required: true, },
-  nonce: { type: Number, required: true, }
+    address: { type: String, required: true, },
+    nonce: { type: Number, required: true, }
 })
 
 export default mongoose.model<IAccountNonce>('AccountNonce', AccountNonceSchema)

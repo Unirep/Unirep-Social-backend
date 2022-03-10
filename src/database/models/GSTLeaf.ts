@@ -7,8 +7,8 @@ export interface IGSTLeaf {
 }
   
 export interface IGSTLeaves extends Document {
-  epoch: number
-  GSTLeaves: Array<IGSTLeaf>
+    epoch: number
+    GSTLeaves: Array<IGSTLeaf>
 }
 
 const GSTLeavesSchema: Schema = new Schema({

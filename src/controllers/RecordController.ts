@@ -34,5 +34,5 @@ const getRecords = async (epks: string[]) => {
 }
 
 export default {
-  getRecords,
+    getRecords,
 }

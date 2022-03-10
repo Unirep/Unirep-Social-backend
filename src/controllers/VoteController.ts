@@ -2,13 +2,13 @@ import { formatProofForSnarkjsVerification } from '@unirep/circuits';
 import { ReputationProof } from '@unirep/contracts';
 import { ethers } from 'ethers'
 import {
-  UNIREP,
-  UNIREP_SOCIAL_ABI,
-  UNIREP_ABI,
-  UNIREP_SOCIAL,
-  DEFAULT_ETH_PROVIDER,
-  ActionType,
-  UNIREP_SOCIAL_ATTESTER_ID
+    UNIREP,
+    UNIREP_SOCIAL_ABI,
+    UNIREP_ABI,
+    UNIREP_SOCIAL,
+    DEFAULT_ETH_PROVIDER,
+    ActionType,
+    UNIREP_SOCIAL_ATTESTER_ID
 } from '../constants';
 import { IVote } from '../database/models/vote';
 import Proof from '../database/models/proof';
@@ -36,11 +36,11 @@ const vote = async (req: any, res: any) => {
     if (isPost) {
         const post = await Post.findOne({ transactionHash: dataId })
         if (!post) {
-          throw new Error('Post not found')
+            throw new Error('Post not found')
         }
         if (post.epoch !== currentEpoch) {
             res.status(400).json({
-              info: 'The epoch key is expired'
+                info: 'The epoch key is expired'
             })
             return
         }
@@ -48,7 +48,7 @@ const vote = async (req: any, res: any) => {
         const validProof = await Proof.findOne({ index: post.proofIndex, epoch: currentEpoch, valid: true })
         if (!validProof) {
             res.status(400).json({
-              info: 'Voting for invalid post'
+                info: 'Voting for invalid post'
             })
             return
         }
@@ -57,13 +57,13 @@ const vote = async (req: any, res: any) => {
         const comment = await Comment.findOne({ transactionHash: dataId });
         if (!comment) {
             res.status(404).json({
-              info: 'Comment not found'
+                info: 'Comment not found'
             })
             return
         }
         if (comment.epoch !== currentEpoch) {
             res.status(400).json({
-              info: 'Epoch key is expired'
+                info: 'Epoch key is expired'
             })
             return
         }
@@ -71,7 +71,7 @@ const vote = async (req: any, res: any) => {
         const validProof = await Proof.findOne({ index: comment.proofIndex, epoch: currentEpoch, valid: true })
         if (!validProof) {
             res.status(400).json({
-              info: 'Voting for invalid comment'
+                info: 'Voting for invalid comment'
             })
             return
         }
@@ -80,7 +80,7 @@ const vote = async (req: any, res: any) => {
 
     if (Number(postProofIndex) === 0) {
         res.status(400).json({
-          info: 'Cannot find post proof index'
+            info: 'Cannot find post proof index'
         })
         return
     }
@@ -101,20 +101,20 @@ const vote = async (req: any, res: any) => {
 
     const attestingFee = await unirepContract.attestingFee()
     const calldata = unirepSocialContract.interface.encodeFunctionData('vote', [
-      req.body.upvote,
-      req.body.downvote,
-      receiver,
-      postProofIndex,
-      reputationProof,
+        req.body.upvote,
+        req.body.downvote,
+        receiver,
+        postProofIndex,
+        reputationProof,
     ])
     const hash = await TransactionManager.queueTransaction(
-      unirepSocialContract.address,
-      {
-        data: calldata,
-        // TODO: make this more clear?
-        // 2 attestation calls into unirep: https://github.com/Unirep/Unirep-Social/blob/alpha/contracts/UnirepSocial.sol#L200
-        value: attestingFee.mul(2),
-      }
+        unirepSocialContract.address,
+        {
+            data: calldata,
+            // TODO: make this more clear?
+            // 2 attestation calls into unirep: https://github.com/Unirep/Unirep-Social/blob/alpha/contracts/UnirepSocial.sol#L200
+            value: attestingFee.mul(2),
+        }
     )
     // save to db data
     const newVote: IVote = {
@@ -165,9 +165,9 @@ const vote = async (req: any, res: any) => {
             );
         }
     }
-  res.json({
-    transaction: hash
-  })
+    res.json({
+        transaction: hash
+    })
 }
 
 export default {

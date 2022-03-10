@@ -1487,12 +1487,8 @@ const updateDBFromEpochEndedEvent = async (
     })
 
     try {
-        const res = await newEpochTreeLeaves.save()
-        console.log(res)
-    } catch(e) {
-        console.log(e)
-    }
-    global.nextEpochTransition = Date.now() + global.epochPeriod + 30000; // delay 30 seconds
+        await newEpochTreeLeaves.save()
+    } catch(_) { }
 }
 
 const writeRecord = async (to: string, from: string, posRep: number, negRep: number, epoch: number, action: string, txHash: string, data: string) => {

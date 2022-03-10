@@ -8,7 +8,7 @@ import {
     UNIREP,
     UNIREP_ABI,
     UNIREP_SOCIAL_ABI,
-  } from '../constants';
+} from '../constants';
 import { verifyAirdropProof } from './utils';
 import { ethers } from 'ethers'
 import TransactionManager from '../daemons/TransactionManager'
