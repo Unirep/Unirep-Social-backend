@@ -54,20 +54,15 @@ const getPostsWithEpks = async (epks: string[]) => {
 }
 
 const getPostWithId = async (postId: string) => {
-    const post = Post.findOne({ transactionHash: postId }).then(async (p) => {
-        if (p !== null) {
-            if (p.comments.length > 0) {
-                const comments = await Comment.find({ transactionHash: {$in: p.comments} });
-                return {...(p.toObject()), comments};
-            } else {
-                return p.toObject();
-            }
-        } else {
-            return p;
-        }
-    });
-
-    return post;
+    const post = await Post.findOne({ transactionHash: postId })
+    if (!post) return null
+    const comments = await Comment.find({
+      postId,
+    })
+    return {
+      ...post.toObject(),
+      comments,
+    }
 }
 
 const getPostWithQuery = async (query: string, lastRead: string, epks: string[]) => {

@@ -12,13 +12,12 @@ export interface IPost extends Document {
     proofIndex: number
     proveMinRep: boolean
     minRep: number
-    comments: [ string ]
     posRep: number
     negRep: number
     votes: [ IVote ]
     status: number // 0: pending, 1: on-chain, 2: disabled
   }
-  
+
   const PostSchema: Schema = new Schema({
     transactionHash: { type: String },
     title: { type: String },
@@ -30,13 +29,12 @@ export interface IPost extends Document {
     proofIndex: { type: Number },
     proveMinRep: { type: Boolean },
     minRep: { type: Number },
-    comments: { type: [ ]},
     posRep: { type: Number, required: true },
     negRep: { type: Number, required: true },
     votes: { type: [ ] },
     status: { type: Number, required: true },
-  }, { 
+  }, {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
   });
-  
+
   export default mongoose.model<IPost>('Post', PostSchema);

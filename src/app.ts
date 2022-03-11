@@ -7,9 +7,10 @@ dotenv.config();
 import MasterRouter from './routers/MasterRouter';
 import EpochManager from './daemons/EpochManager'
 import TransactionManager from './daemons/TransactionManager'
+import Synchronizer from './daemons/Synchronizer'
 
 import { MONGO_URL, DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER, } from './constants';
-import { startEventListeners } from './daemons/listener'
+// import { startEventListeners } from './daemons/listener'
 
 main()
   .catch(err => {
@@ -25,12 +26,13 @@ async function main() {
       .on('error', console.error.bind(console, 'MongoDB connection error:'));
 
     // now start listening for eth events
-    await startEventListeners()
+    // await startEventListeners()
 
     // start watching for epoch transitions
     await EpochManager.updateWatch()
     TransactionManager.configure(DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER)
     await TransactionManager.start()
+    await Synchronizer.start()
 
     // now start the http server
     const app = express()

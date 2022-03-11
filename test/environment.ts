@@ -93,14 +93,14 @@ export async function startServer(contractOverrides = {}) {
   const MasterRouter = require('../src/routers/MasterRouter').default
   const constants = require('../src/constants')
   const appTxManager = require('../src/daemons/TransactionManager').default
-  const { startEventListeners } = require('../src/daemons/listener')
+  const Synchronizer = require('../src/daemons/Synchronizer').default
 
   appTxManager.configure(wallet.privateKey, provider)
   await appTxManager.start()
 
   global.adminSessionCode = 'ffff'
 
-  await startEventListeners()
+  await Synchronizer.start()
 
   const app = express()
   app.use(cors());

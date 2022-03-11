@@ -1,7 +1,8 @@
 import { Circuit, verifyProof } from '@unirep/circuits';
 import { ReputationProof, SignUpProof, UserTransitionProof } from '@unirep/contracts';
 import Record from '../database/models/record';
-import { epochTreeRootExists, GSTRootExists, nullifierExists } from '../database/utils';
+import { epochTreeRootExists, GSTRootExists } from '../database/utils';
+import Nullifier from '../database/models/nullifiers'
 
 const verifyReputationProof = async(
     reputationProof: ReputationProof,
@@ -43,11 +44,13 @@ const verifyReputationProof = async(
     }
 
     // check nullifiers
-    for (let nullifier of repNullifiers) {
-        const seenNullifier = await nullifierExists(nullifier)
-        if(seenNullifier) {
-            error = `Error: invalid reputation nullifier ${nullifier}`
-        }
+    const exists = await Nullifier.exists({
+      nullifier: {
+        $in: repNullifiers,
+      }
+    })
+    if (exists) {
+      error = `Error: invalid reputation nullifier`
     }
     return error
 }
@@ -154,12 +157,13 @@ const verifyUSTProof = async(results: any, currentEpoch: number): Promise<string
     }
 
     // check nullifiers
-    for (let nullifier of results.finalTransitionProof.epochKeyNullifiers) {
-        const seenNullifier = await nullifierExists(nullifier)
-        if(seenNullifier) {
-            error = `Error: invalid reputation nullifier ${nullifier}`
-            return error;
-        }
+    const exists = await Nullifier.exists({
+      nullifier: {
+        $in: results.finalTransitionProof.epochKeyNullifiers,
+      }
+    })
+    if (exists) {
+      error = `Error: invalid reputation nullifier`
     }
     return error;
 }
@@ -167,7 +171,6 @@ const verifyUSTProof = async(results: any, currentEpoch: number): Promise<string
 export {
     GSTRootExists,
     epochTreeRootExists,
-    nullifierExists,
     verifyReputationProof,
     verifyUSTProof,
     verifyAirdropProof,

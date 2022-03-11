@@ -45,6 +45,9 @@ export const DEFAULT_AIRDROPPED_KARMA = 30
 export const DEFAULT_QUERY_DEPTH = 5
 export const QUERY_DELAY_TIME = 300
 
+export const USER_STATE_TREE_DEPTH = 5
+export const GLOBAL_STATE_TREE_DEPTH = 5
+
 export const maxReputationBudget = 10
 
 export const loadPostCount = 10
