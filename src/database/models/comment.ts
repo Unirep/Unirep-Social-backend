@@ -15,15 +15,15 @@ export interface IComment extends Document {
     minRep: number
     posRep: number
     negRep: number
-    votes: [ IVote ]
+    votes: [IVote]
     status: number // 0: pending, 1: on-chain, 2: disabled
-  }
-  
-  const CommentSchema: Schema = new Schema({
+}
+
+const CommentSchema: Schema = new Schema({
     postId: { type: String, required: true },
     transactionHash: { type: String },
     content: { type: String },
-    hashedContent: {type: String},
+    hashedContent: { type: String },
     epoch: { type: Number, required: true },
     epochKey: { type: String, required: true },
     // epkProof: { type: [], required: true },
@@ -32,10 +32,11 @@ export interface IComment extends Document {
     minRep: { type: Number },
     posRep: { type: Number, required: true },
     negRep: { type: Number, required: true },
-    votes: { type: [ ] },
+    votes: { type: [] },
     status: { type: Number, required: true },
-  }, { 
+}, {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
-  });
-  
-  export default mongoose.model<IComment>('Comment', CommentSchema);
+}
+);
+
+export default mongoose.model<IComment>('Comment', CommentSchema);

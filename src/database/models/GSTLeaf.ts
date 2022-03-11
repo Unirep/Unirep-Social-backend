@@ -7,10 +7,10 @@ export interface IGSTLeaf {
 }
 
 export interface IGSTLeaf extends Document {
-  epoch: number
-  transactionHash: string
-  hash: string
-  index: number
+    epoch: number
+    transactionHash: string
+    hash: string
+    index: number
 }
 
 const GSTLeafSchema: Schema = new Schema({

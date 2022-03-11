@@ -5,7 +5,7 @@ import Nullifier from '../database/models/nullifiers'
 import Epoch from '../database/models/epoch'
 import GSTRoot from '../database/models/GSTRoots'
 
-const verifyReputationProof = async(
+const verifyReputationProof = async (
     reputationProof: ReputationProof,
     spendReputation: number,
     unirepSocialId: number,
@@ -18,17 +18,17 @@ const verifyReputationProof = async(
     const repNullifiersAmount = Number(reputationProof.proveReputationAmount)
 
     // check if epoch is correct
-    if(epoch !== Number(currentEpoch)) {
+    if (epoch !== Number(currentEpoch)) {
         return 'Error: epoch of the proof mismatches current epoch'
     }
 
     // check attester ID
-    if(Number(unirepSocialId) !== attesterId) {
+    if (Number(unirepSocialId) !== attesterId) {
         return 'Error: proof with wrong attester ID'
-      }
+    }
 
     // check reputation amount
-    if(repNullifiersAmount !== spendReputation) {
+    if (repNullifiersAmount !== spendReputation) {
         return 'Error: proof with wrong reputation amount'
     }
 
@@ -39,27 +39,27 @@ const verifyReputationProof = async(
 
     // check GST root
     {
-      const exists = await GSTRoot.exists({
-        epoch,
-        root: gstRoot,
-      })
-      if (!exists) {
-          return `Global state tree root ${gstRoot} is not in epoch ${epoch}`
-      }
+        const exists = await GSTRoot.exists({
+            epoch,
+            root: gstRoot,
+        })
+        if (!exists) {
+            return `Global state tree root ${gstRoot} is not in epoch ${epoch}`
+        }
     }
 
     // check nullifiers
     const exists = await Nullifier.exists({
-      nullifier: {
-        $in: repNullifiers,
-      }
+        nullifier: {
+            $in: repNullifiers,
+        }
     })
     if (exists) {
-      return `Error: duplicate reputation nullifier`
+        return `Error: duplicate reputation nullifier`
     }
 }
 
-const verifyAirdropProof = async(signUpProof: SignUpProof, unirepSocialId: number, currentEpoch: number): Promise<string | undefined> => {
+const verifyAirdropProof = async (signUpProof: SignUpProof, unirepSocialId: number, currentEpoch: number): Promise<string | undefined> => {
     const epoch = Number(signUpProof.epoch)
     const epk = signUpProof.epochKey.toString(16)
     const gstRoot = signUpProof.globalStateTree.toString()
@@ -67,17 +67,17 @@ const verifyAirdropProof = async(signUpProof: SignUpProof, unirepSocialId: numbe
     const userHasSignedUp = signUpProof.userHasSignedUp
 
     // check if epoch is correct
-    if(epoch !== Number(currentEpoch)) {
+    if (epoch !== Number(currentEpoch)) {
         return 'Error: epoch of the proof mismatches current epoch'
     }
 
     // check attester ID
-    if(Number(unirepSocialId) !== Number(attesterId)) {
+    if (Number(unirepSocialId) !== Number(attesterId)) {
         return 'Error: proof with wrong attester ID'
     }
 
     // Check if user has signed up in Unirep Social
-    if(Number(userHasSignedUp) === 0) {
+    if (Number(userHasSignedUp) === 0) {
         return 'Error: user has not signed up in Unirep Social'
     }
 
@@ -88,23 +88,23 @@ const verifyAirdropProof = async(signUpProof: SignUpProof, unirepSocialId: numbe
 
     // check GST root
     {
-      const exists = await GSTRoot.exists({
-        epoch,
-        root: gstRoot,
-      })
-      if (!exists) {
-          return `Global state tree root ${gstRoot} is not in epoch ${epoch}`
-      }
+        const exists = await GSTRoot.exists({
+            epoch,
+            root: gstRoot,
+        })
+        if (!exists) {
+            return `Global state tree root ${gstRoot} is not in epoch ${epoch}`
+        }
     }
 
     // Has been airdropped before
-    const findRecord = await Record.findOne({to: epk, from: "UnirepSocial"})
-    if(findRecord){
+    const findRecord = await Record.findOne({ to: epk, from: "UnirepSocial" })
+    if (findRecord) {
         return `Error: the epoch key has been airdropped`
     }
 }
 
-const verifyUSTProof = async(results: any, currentEpoch: number): Promise<string | undefined> => {
+const verifyUSTProof = async (results: any, currentEpoch: number): Promise<string | undefined> => {
     let error
     // Check if the fromEpoch is less than the current epoch
     if (Number(results.finalTransitionProof.transitionedFromEpoch) >= currentEpoch) {
@@ -152,34 +152,34 @@ const verifyUSTProof = async(results: any, currentEpoch: number): Promise<string
     const gstRoot = results?.finalTransitionProof?.fromGSTRoot
     const epochTreeRoot = results.finalTransitionProof.fromEpochTree
     {
-      const exists = await GSTRoot.exists({
-        epoch,
-        root: gstRoot,
-      })
-      if (!exists) {
-          error = `Global state tree root ${gstRoot} is not in epoch ${epoch}`
-          return error;
-      }
+        const exists = await GSTRoot.exists({
+            epoch,
+            root: gstRoot,
+        })
+        if (!exists) {
+            error = `Global state tree root ${gstRoot} is not in epoch ${epoch}`
+            return error;
+        }
     }
     {
-      const exists = await Epoch.exists({
-        epoch,
-        epochRoot: epochTreeRoot,
-      })
-      if (!exists){
-          error = `Epoch tree root ${epochTreeRoot} is not in epoch ${epoch}`
-          return error;
-      }
+        const exists = await Epoch.exists({
+            epoch,
+            epochRoot: epochTreeRoot,
+        })
+        if (!exists) {
+            error = `Epoch tree root ${epochTreeRoot} is not in epoch ${epoch}`
+            return error;
+        }
     }
 
     // check nullifiers
     const exists = await Nullifier.exists({
-      nullifier: {
-        $in: results.finalTransitionProof.epochKeyNullifiers,
-      }
+        nullifier: {
+            $in: results.finalTransitionProof.epochKeyNullifiers,
+        }
     })
     if (exists) {
-      error = `Error: invalid reputation nullifier`
+        error = `Error: invalid reputation nullifier`
     }
     return error;
 }

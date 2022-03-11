@@ -2,8 +2,8 @@ import * as mongoose from 'mongoose';
 import { Schema, Document } from 'mongoose';
 
 export interface IGSTRoot extends Document {
-  epoch: number
-  root: string
+    epoch: number
+    root: string
 }
 
 const GSTRootSchema: Schema = new Schema({

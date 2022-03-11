@@ -9,15 +9,15 @@ export interface IEpoch {
 
 const EpochSchema: Schema = new Schema({
     number: {
-      type: Number,
-      unique: true
+        type: Number,
+        unique: true
     },
     sealed: {
-      type: Boolean,
-      default: false,
+        type: Boolean,
+        default: false,
     },
     epochRoot: {
-      type: String,
+        type: String,
     }
 }, { collection: 'Epoch' })
 

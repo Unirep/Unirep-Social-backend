@@ -3,17 +3,17 @@ import { ReputationProof } from '@unirep/contracts';
 import { ethers } from 'ethers'
 
 import {
-  UNIREP_SOCIAL,
-  DEFAULT_ETH_PROVIDER,
-  DEFAULT_POST_KARMA,
-  QueryType,
-  UNIREP_SOCIAL_ATTESTER_ID,
-  loadPostCount,
-  titlePrefix,
-  titlePostfix,
-  UNIREP,
-  UNIREP_ABI,
-  UNIREP_SOCIAL_ABI,
+    UNIREP_SOCIAL,
+    DEFAULT_ETH_PROVIDER,
+    DEFAULT_POST_KARMA,
+    QueryType,
+    UNIREP_SOCIAL_ATTESTER_ID,
+    loadPostCount,
+    titlePrefix,
+    titlePostfix,
+    UNIREP,
+    UNIREP_ABI,
+    UNIREP_SOCIAL_ABI,
 } from '../constants';
 import Post, { IPost } from "../database/models/post";
 import Comment, { IComment } from "../database/models/comment";
@@ -24,7 +24,7 @@ import Nullifier from '../database/models/nullifiers'
 const filterOneComment = (comments: IComment[]) => {
     let score: number = 0;
     let ret: any = {};
-    for (var i = 0; i < comments.length; i ++) {
+    for (var i = 0; i < comments.length; i++) {
         const _score = comments[i].posRep * 1.5 + comments[i].negRep * 0.5;
         if (_score >= score) {
             score = _score;
@@ -35,14 +35,14 @@ const filterOneComment = (comments: IComment[]) => {
 }
 
 const commentIdToObject = (commentIds: string[]) => {
-    const comments = Comment.find({transactionHash: {$in: commentIds}});
+    const comments = Comment.find({ transactionHash: { $in: commentIds } });
     return comments;
 }
 
 const listAllPosts = () => {
-    const allPosts = Post.find({status: 1}).then(async(posts) => {
+    const allPosts = Post.find({ status: 1 }).then(async (posts) => {
         let ret: any[] = [];
-        for (var i = 0; i < posts.length; i ++) {
+        for (var i = 0; i < posts.length; i++) {
             ret = [...ret, posts[i].toObject()];
         }
         return ret;
@@ -51,18 +51,18 @@ const listAllPosts = () => {
 }
 
 const getPostsWithEpks = async (epks: string[]) => {
-  return Post.find({epochKey: {$in: epks}});
+    return Post.find({ epochKey: { $in: epks } });
 }
 
 const getPostWithId = async (postId: string) => {
     const post = await Post.findOne({ transactionHash: postId })
     if (!post) return null
     const comments = await Comment.find({
-      postId,
+        postId,
     })
     return {
-      ...post.toObject(),
-      comments,
+        ...post.toObject(),
+        comments,
     }
 }
 
@@ -70,21 +70,21 @@ const getPostWithQuery = async (query: string, lastRead: string, epks: string[])
     // get posts and sort
     let allPosts: any[] = [];
     if (epks.length === 0) {
-      allPosts = await listAllPosts();
+        allPosts = await listAllPosts();
     } else {
-      allPosts = await getPostsWithEpks(epks);
+        allPosts = await getPostsWithEpks(epks);
     }
-    allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
+    allPosts.sort((a, b) => a.created_at > b.created_at ? -1 : 1);
     if (query === QueryType.New) {
         // allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
     } else if (query === QueryType.Boost) {
-      allPosts.sort((a, b) => a.posRep > b.posRep? -1 : 1);
+        allPosts.sort((a, b) => a.posRep > b.posRep ? -1 : 1);
     } else if (query === QueryType.Comments) {
-      allPosts.sort((a, b) => a.comments.length > b.comments.length? -1 : 1);
+        allPosts.sort((a, b) => a.comments.length > b.comments.length ? -1 : 1);
     } else if (query === QueryType.Squash) {
-      allPosts.sort((a, b) => a.negRep > b.negRep? -1 : 1);
+        allPosts.sort((a, b) => a.negRep > b.negRep ? -1 : 1);
     } else if (query === QueryType.Rep) {
-      allPosts.sort((a, b) => (a.posRep - a.negRep) >= (b.posRep - b.negRep)? -1 : 1);
+        allPosts.sort((a, b) => (a.posRep - a.negRep) >= (b.posRep - b.negRep) ? -1 : 1);
     }
 
     // console.log(allPosts);
@@ -94,14 +94,14 @@ const getPostWithQuery = async (query: string, lastRead: string, epks: string[])
         return allPosts.slice(0, Math.min(loadPostCount, allPosts.length));
     } else {
         console.log('last read is : ' + lastRead);
-        let index : number = -1;
+        let index: number = -1;
         allPosts.forEach((p, i) => {
             if (p.transactionHash === lastRead) {
                 index = i;
             }
         });
         if (index > -1) {
-            return allPosts.slice(index+1, Math.min(allPosts.length, index + 1 + loadPostCount));
+            return allPosts.slice(index + 1, Math.min(allPosts.length, index + 1 + loadPostCount));
         } else {
             return allPosts.slice(0, loadPostCount);
         }
@@ -121,17 +121,17 @@ const publishPost = async (req: any, res: any) => { // should have content, epk,
     const minRep = Number(reputationProof.minRep)
 
     {
-      const exists = await Nullifier.exists({
-        nullifier: {
-          $in: reputationProof.repNullifiers.map(n => n.toString())
-        }
-      })
-      if (exists) {
-        res.status(400).json({
-          error: 'Duplicate nullifier',
+        const exists = await Nullifier.exists({
+            nullifier: {
+                $in: reputationProof.repNullifiers.map(n => n.toString())
+            }
         })
-        return
-      }
+        if (exists) {
+            res.status(400).json({
+                error: 'Duplicate nullifier',
+            })
+            return
+        }
     }
 
     const error = await verifyReputationProof(
@@ -149,16 +149,16 @@ const publishPost = async (req: any, res: any) => { // should have content, epk,
     const { title, content } = req.body
 
     const calldata = unirepSocialContract.interface.encodeFunctionData('publishPost', [
-      title !== undefined && title.length > 0? `${titlePrefix}${title}${titlePostfix}${content}` : content,
-      reputationProof,
+        title !== undefined && title.length > 0 ? `${titlePrefix}${title}${titlePostfix}${content}` : content,
+        reputationProof,
     ])
     const hash = await TransactionManager.queueTransaction(
-      unirepSocialContract.address,
-      {
-        data: calldata,
-        value: attestingFee,
-        gasLimit: 1000000, // don't estimate for now
-      })
+        unirepSocialContract.address,
+        {
+            data: calldata,
+            value: attestingFee,
+            gasLimit: 1000000, // don't estimate for now
+        })
 
     const newPost: IPost = new Post({
         content,
@@ -176,15 +176,15 @@ const publishPost = async (req: any, res: any) => { // should have content, epk,
 
     const post = await newPost.save()
     res.json({
-      transaction: hash,
-      currentEpoch: currentEpoch,
-      post,
+        transaction: hash,
+        currentEpoch: currentEpoch,
+        post,
     })
 }
 
 export default {
-  listAllPosts,
-  getPostWithQuery,
-  getPostWithId,
-  publishPost,
+    listAllPosts,
+    getPostWithQuery,
+    getPostWithId,
+    publishPost,
 }

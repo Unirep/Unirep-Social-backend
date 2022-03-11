@@ -6,8 +6,8 @@ import catchError from './catchError'
 const router = Router()
 
 router.get('/', catchError(async (req: Request, res: Response, next: NextFunction) => {
-  const nextTransition = await EpochManager.nextTransition()
-  res.json({ nextTransition });
+    const nextTransition = await EpochManager.nextTransition()
+    res.json({ nextTransition });
 }))
 
 router.post('/', catchError(EpochController.epochTransition))

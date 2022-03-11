@@ -2,10 +2,10 @@ import * as mongoose from 'mongoose';
 import { Schema, Document } from 'mongoose';
 
 export interface IEpochTreeLeaf extends Document {
-  epoch: number
-  epochKey: string
-  hashchain: string
-  index: number
+    epoch: number
+    epochKey: string
+    hashchain: string
+    index: number
 }
 
 const EpochGSTLeafSchema: Schema = new Schema({

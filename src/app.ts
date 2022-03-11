@@ -13,17 +13,17 @@ import { MONGO_URL, DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER, } from './constants
 // import { startEventListeners } from './daemons/listener'
 
 main()
-  .catch(err => {
-    console.log(`Uncaught error: ${err}`)
-    process.exit(1)
-  })
+    .catch(err => {
+        console.log(`Uncaught error: ${err}`)
+        process.exit(1)
+    })
 
 async function main() {
     // try database connection
     mongoose.connect(MONGO_URL);
     // Bind connection to error event (to get notification of connection errors)
     mongoose.connection
-      .on('error', console.error.bind(console, 'MongoDB connection error:'));
+        .on('error', console.error.bind(console, 'MongoDB connection error:'));
 
     // now start listening for eth events
     // await startEventListeners()

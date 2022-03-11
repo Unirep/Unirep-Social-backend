@@ -4,7 +4,7 @@ import { IRecord } from './record';
 
 export interface IEpkRecord extends Document {
     epk: string
-    records: [ IRecord ]
+    records: [IRecord]
     posRep: number
     negRep: number
     spent: number
@@ -16,10 +16,11 @@ const EpkRecordSchema: Schema = new Schema({
     records: { type: [], required: true },
     posRep: { type: Number, required: true },
     negRep: { type: Number, required: true },
-    spent: {type: Number, required: true},
-    epoch: { type: Number, required: true}
-  }, { 
+    spent: { type: Number, required: true },
+    epoch: { type: Number, required: true }
+}, {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
-  });
+}
+);
 
 export default mongoose.model<IEpkRecord>('EpkRecord', EpkRecordSchema);
