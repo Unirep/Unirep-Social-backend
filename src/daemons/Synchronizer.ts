@@ -165,37 +165,7 @@ export class Synchronizer {
 
   // start sychronizing events
   async start() {
-    // load the latest state
-    // const latestProcessed = await Epoch.findOne({
-    //   processed: true,
-    // }).sort({
-    //   currentEpoch: -1,
-    // })
-    // assume the GSTs are up to date to this block
-    // const startEpoch = await Epoch.findOne()
-    // if (startEpoch === null) {
-    //   const initEpoch = new Epoch({currentEpoch: 1})
-    //   await initEpoch.save()
-    // }
     this.startDaemon()
-    // let latestBlock = await this.provider.getBlockNumber()
-    // this.provider.on('block', (num) => {
-    //   latestBlock = num
-    // })
-    // let latestProcessed = 0
-    // for (;;) {
-    //   if (latestProcessed === latestBlock) {
-    //     await new Promise(r => setTimeout(r, 1000))
-    //   }
-    //   const newLatest = latestBlock
-    //   const allEvents = (await Promise.all([
-    //     this.unirepContract.queryFilter(this.unirepFilter, latestProcessed, newLatest),
-    //     this.unirepSocialContract.queryFilter(this.unirepSocialFilter, latestProcessed, newLatest)
-    //   ])).flat() as ethers.Event[]
-    //   // first process historical ones then listen
-    //   await this.processEvents(allEvents)
-    //   latestProcessed = newLatest
-    // }
   }
 
   async startDaemon() {
@@ -207,11 +177,12 @@ export class Synchronizer {
     for (;;) {
       if (latestProcessed === latestBlock) {
         await new Promise(r => setTimeout(r, 1000))
+        continue
       }
       const newLatest = latestBlock
       const allEvents = (await Promise.all([
-        this.unirepContract.queryFilter(this.unirepFilter, latestProcessed, newLatest),
-        this.unirepSocialContract.queryFilter(this.unirepSocialFilter, latestProcessed, newLatest)
+        this.unirepContract.queryFilter(this.unirepFilter, latestProcessed+1, newLatest),
+        this.unirepSocialContract.queryFilter(this.unirepSocialFilter, latestProcessed+1, newLatest)
       ])).flat() as ethers.Event[]
       // first process historical ones then listen
       await this.processEvents(allEvents)
@@ -317,36 +288,37 @@ export class Synchronizer {
     for (const event of events) {
       // no, i don't know what a switch statement is...
       if (event.topics[0] === this.allTopics.IndexedEpochKeyProof) {
-        console.log('b1')
+        console.log('IndexedEpochKeyProof')
         await this.epochKeyProofEvent(event)
       } else if (event.topics[0] === this.allTopics.IndexedReputationProof) {
-        console.log('b2')
+        console.log('IndexedReputationProof')
         await this.reputationProofEvent(event)
       } else if (event.topics[0] === this.allTopics.IndexedUserSignedUpProof) {
-        console.log('b3')
+        console.log('IndexedUserSignedUpProof')
         await this.userSignedUpProofEvent(event)
       } else if (event.topics[0] === this.allTopics.IndexedStartedTransitionProof) {
-        console.log('b4')
+        console.log('IndexedStartedTransitionProof')
         await this.startUSTProofEvent(event)
       } else if (event.topics[0] === this.allTopics.IndexedProcessedAttestationsProof) {
-        console.log('b5')
+        console.log('IndexedProcessedAttestationsProof')
         await this.processAttestationProofEvent(event)
       } else if (event.topics[0] === this.allTopics.IndexedUserStateTransitionProof) {
-        console.log('b6')
+        console.log('IndexedUserStateTransitionProof')
         await this.USTProofEvent(event)
       } else if (event.topics[0] === this.allTopics.UserSignedUp) {
-        console.log('b7')
+        console.log('UserSignedUp')
         await this.userSignedUpEvent(event)
       } else if (event.topics[0] === this.allTopics.UserStateTransitioned) {
-        console.log('b8')
+        console.log('UserStateTransitioned')
         await this.USTEvent(event)
       } else if (event.topics[0] === this.allTopics.AttestationSubmitted) {
-        console.log('b9')
+        console.log('AttestationSubmitted')
         await this.attestationEvent(event)
       } else if (event.topics[0] === this.allTopics.EpochEnded) {
-        console.log('b10')
+        console.log('EpochEnded')
         await this.epochEndedEvent(event)
       } else if (event.topics[0] === this.allTopics._UserSignedUp) {
+        console.log('Social: UserSignedUp')
         const _epoch = Number(event.topics[1])
         const _commitment = BigInt(event.topics[2]).toString()
         await UserSignUp.create({
@@ -355,12 +327,16 @@ export class Synchronizer {
           epoch: _epoch
         })
       } else if (event.topics[0] === this.allTopics._PostSubmitted) {
+        console.log('Social: PostSubmitted')
         await this.postSubmittedEvent(event)
       } else if (event.topics[0] === this.allTopics._CommentSubmitted) {
+        console.log('Social: CommentSubmitted')
         await this.commentSubmittedEvent(event)
       } else if (event.topics[0] === this.allTopics._VoteSubmitted) {
+        console.log('Social: VoteSubmitted')
         await this.voteSubmittedEvent(event)
       } else if (event.topics[0] === this.allTopics._AirdropSubmitted) {
+        console.log('Social: AirdropSubmitted')
         await this.airdropSubmittedEvent(event)
       } else {
         console.log(event)
@@ -803,6 +779,10 @@ export class Synchronizer {
       // console.log(event);
       // update Unirep state
       const epoch = Number(event?.topics[1])
+      this.epochTree[epoch] = await genNewSMT(
+          epochTreeDepth,
+          SMT_ONE_LEAF
+      )
       const epochTreeLeaves = [] as any[]
 
       // seal all epoch keys in current epoch
@@ -835,15 +815,6 @@ export class Synchronizer {
               leaf.epochKey,
               leaf.hashchainResult
           )
-      }
-      if (!this.epochTree[epoch]) {
-        const epochTree = await genNewSMT(epochTreeDepth, SMT_ONE_LEAF)
-
-        const leaves = this.epochTreeLeaves[epoch] ?? [];
-        for (const leaf of leaves) {
-            await epochTree.update(leaf.epochKey, leaf.hashchainResult)
-        }
-        this.epochTree[epoch] = epochTree
       }
       this.epochTreeLeaves[epoch] = epochTreeLeaves.slice()
       this.epochTreeRoot[epoch] = this.epochTree[epoch].getRootHash()
@@ -956,6 +927,11 @@ export class Synchronizer {
     }, {
       valid: true
     })
+    const epochKey = _epochKey.toString(16)
+    const attestations = this.epochKeyToAttestationsMap[epochKey]
+    if (!attestations) this.epochKeyToAttestationsMap[epochKey] = []
+    this.epochKeyToAttestationsMap[epochKey].push(attestation)
+    this.epochKeyInEpoch[_epoch].set(epochKey, true)
   }
 
   async USTEvent(event: ethers.Event) {

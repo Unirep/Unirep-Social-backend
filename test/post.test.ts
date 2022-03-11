@@ -79,7 +79,7 @@ test('should create a post', async (t: any) => {
   const nonceList = [] as any[]
   // find valid nonce starter
   // gen proof
-  const epkNonce = 0
+  const epkNonce = 1
   const proveAmount = 5
   let nonceStarter: number = -1
   for (let n = 0; n < Number(rep.posRep) - Number(rep.negRep); n++) {

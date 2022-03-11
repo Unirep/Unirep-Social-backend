@@ -13,6 +13,7 @@ import {
   loadPostCount
 } from '../constants';
 import Comment, { IComment } from "../database/models/comment";
+import Nullifier from '../database/models/nullifiers'
 import { verifyReputationProof } from "../controllers/utils"
 import TransactionManager from '../daemons/TransactionManager'
 
@@ -74,6 +75,20 @@ const leaveComment = async (req: any, res: any) => {
     const reputationProof = new ReputationProof(publicSignals, formatProofForSnarkjsVerification(proof))
     const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
     const minRep = Number(reputationProof.minRep)
+
+    {
+      const exists = await Nullifier.exists({
+        nullifier: {
+          $in: reputationProof.repNullifiers.map(n => n.toString())
+        }
+      })
+      if (exists) {
+        res.status(400).json({
+          error: 'Duplicate nullifier',
+        })
+        return
+      }
+    }
 
     const error = await verifyReputationProof(
         reputationProof,

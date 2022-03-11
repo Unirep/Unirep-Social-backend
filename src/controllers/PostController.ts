@@ -19,6 +19,7 @@ import Post, { IPost } from "../database/models/post";
 import Comment, { IComment } from "../database/models/comment";
 import { verifyReputationProof } from "../controllers/utils";
 import TransactionManager from '../daemons/TransactionManager'
+import Nullifier from '../database/models/nullifiers'
 
 const filterOneComment = (comments: IComment[]) => {
     let score: number = 0;
@@ -118,6 +119,20 @@ const publishPost = async (req: any, res: any) => { // should have content, epk,
     const reputationProof = new ReputationProof(publicSignals, formatProofForSnarkjsVerification(proof))
     const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
     const minRep = Number(reputationProof.minRep)
+
+    {
+      const exists = await Nullifier.exists({
+        nullifier: {
+          $in: reputationProof.repNullifiers.map(n => n.toString())
+        }
+      })
+      if (exists) {
+        res.status(400).json({
+          error: 'Duplicate nullifier',
+        })
+        return
+      }
+    }
 
     const error = await verifyReputationProof(
         reputationProof,

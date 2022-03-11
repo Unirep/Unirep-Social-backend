@@ -78,7 +78,7 @@ const createPost = async (t) => {
   const nonceList = [] as any[]
   // find valid nonce starter
   // gen proof
-  const epkNonce = 0
+  const epkNonce = 1
   const proveAmount = 5
   let nonceStarter: number = -1
   for (let n = 0; n < Number(rep.posRep) - Number(rep.negRep); n++) {
@@ -192,7 +192,7 @@ test('should create a comment', async (t: any) => {
   const nonceList = [] as any[]
   // find valid nonce starter
   // gen proof
-  const epkNonce = 0
+  const epkNonce = 1
   const proveAmount = 3
   let nonceStarter: number = -1
   for (let n = 0; n < Number(rep.posRep) - Number(rep.negRep); n++) {
@@ -228,7 +228,6 @@ test('should create a comment', async (t: any) => {
     nonceList,
   )
 
-  console.log(post.transaction)
   const r = await fetch(`${t.context.url}/api/comment`, {
     method: 'POST',
     headers: {
