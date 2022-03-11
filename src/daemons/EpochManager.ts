@@ -20,7 +20,7 @@ export class EpochManager {
         }
         // load the last transition time
         const nextTransition = await this.nextTransition()
-        const waitTime = Math.max((nextTransition - +(new Date())/1000) * 1000, 0)
+        const waitTime = Math.max((nextTransition - +(new Date()) / 1000) * 1000, 0)
         console.log(`Next epoch transition in ${waitTime / (60 * 60 * 1000)} hours`)
         this.timer = setTimeout(() => {
             this.timer = null
@@ -30,11 +30,11 @@ export class EpochManager {
     }
 
     async nextTransition() {
-      const [ lastTransition, epochLength ] = await Promise.all([
-          this.unirepContract.latestEpochTransitionTime(),
-          this.unirepContract.epochLength(),
-      ])
-      return lastTransition.toNumber() + epochLength.toNumber()
+        const [lastTransition, epochLength] = await Promise.all([
+            this.unirepContract.latestEpochTransitionTime(),
+            this.unirepContract.epochLength(),
+        ])
+        return lastTransition.toNumber() + epochLength.toNumber()
     }
 
     async tryTransition() {
@@ -52,13 +52,14 @@ export class EpochManager {
         const currentEpoch = await this.unirepContract.currentEpoch()
         const calldata = (this.unirepContract as any).interface.encodeFunctionData('beginEpochTransition', [])
         const hash = await TransactionManager.queueTransaction(
-               this.unirepContract.address,
-               {
-                    data: calldata
-                }
+            this.unirepContract.address,
+            {
+                data: calldata
+            }
         )
         console.log('Transaction hash:', hash)
         console.log('End of epoch:', currentEpoch.toString())
+        await TransactionManager.wait(hash)
     }
 }
 

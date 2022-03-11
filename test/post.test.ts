@@ -1,11 +1,11 @@
 import test from 'ava'
 import { startServer } from './environment'
 
-import { 
-    createPost, 
-    queryPost, 
-    signIn, 
-    signUp 
+import {
+    createPost,
+    queryPost,
+    signIn,
+    signUp
 } from './utils'
 
 test.before(async (t) => {

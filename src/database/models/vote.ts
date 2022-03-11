@@ -15,7 +15,7 @@ export interface IVotes extends Document {
     epochKey: string
     attestations: Array<IVote>
 }
-  
+
 const AttestationsSchema: Schema = new Schema({
     epochKey: { type: String, unique: true },
     attestations: { type: Array },

@@ -3,12 +3,12 @@ import {
     computeStartTransitionProofHash,
 } from '@unirep/contracts';
 import { ethers } from 'ethers'
-import { 
-    UNIREP, 
-    UNIREP_ABI, 
-    UNIREP_SOCIAL_ABI, 
-    UNIREP_SOCIAL, 
-    DEFAULT_ETH_PROVIDER, 
+import {
+    UNIREP,
+    UNIREP_ABI,
+    UNIREP_SOCIAL_ABI,
+    UNIREP_SOCIAL,
+    DEFAULT_ETH_PROVIDER,
 } from '../constants';
 import { formatProofForVerifierContract } from '@unirep/circuits'
 import { verifyUSTProof } from './utils';
@@ -92,7 +92,7 @@ const userStateTransition = async (req: any, res: any) => {
         results.finalTransitionProof.proof
     )
     const calldata = unirepSocialContract.interface.encodeFunctionData(
-      'updateUserStateRoot', [ USTProof, proofIndexes ]
+        'updateUserStateRoot', [USTProof, proofIndexes]
     )
     const hash = await TransactionManager.queueTransaction(unirepSocialContract.address, calldata)
     res.json({
@@ -101,5 +101,5 @@ const userStateTransition = async (req: any, res: any) => {
 }
 
 export default {
-  userStateTransition,
+    userStateTransition,
 }

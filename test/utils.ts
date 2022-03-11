@@ -1,16 +1,16 @@
 import fetch from 'node-fetch'
-import { 
-    Circuit, 
-    formatProofForVerifierContract, 
-    verifyProof 
+import {
+    Circuit,
+    formatProofForVerifierContract,
+    verifyProof
 } from "@unirep/circuits"
-import { 
-    genIdentity, 
-    genIdentityCommitment 
+import {
+    genIdentity,
+    genIdentityCommitment
 } from "@unirep/crypto"
-import { 
-    genEpochKey, 
-    genUserStateFromContract 
+import {
+    genEpochKey,
+    genUserStateFromContract
 } from "@unirep/unirep"
 
 import Users from '../src/database/models/userSignUp'
@@ -38,20 +38,20 @@ export const signUp = async (t) => {
     t.assert(/^0x[0-9a-fA-F]{64}$/.test(data.transaction))
     t.is(currentEpoch.toString(), data.epoch.toString())
     t.is(r.status, 200)
-    
+
     for (let x = 0; x < 100; x++) {
         await new Promise(r => setTimeout(r, 1000))
         try {
             const findUser = await Users.findOne({
-                transactionHash: data.transaction, 
+                transactionHash: data.transaction,
                 commitment: genIdentityCommitment(iden).toString(10)
             })
             if (findUser === null) throw new Error('User not found')
             t.not(findUser, null)
             break
-        } catch (_) {}
+        } catch (_) { }
     }
-    
+
     return { iden, commitment }
 }
 
@@ -106,7 +106,7 @@ export const getSpent = async (t) => {
     const r = await fetch(`${t.context.url}/api/records/${paramStr}?spentonly=true`)
     const data = await r.json()
     let spent = 0
-    for (var i = 0; i < data.length; i ++) {
+    for (var i = 0; i < data.length; i++) {
         spent = spent + data[i].spent;
     }
     return spent
@@ -125,11 +125,11 @@ const genReputationProof = async (t) => {
     const epkNonce = 0
     const proveAmount = t.context.proveAmount
     const nonceStarter: number = await getSpent(t)
-    
+
     for (let i = 0; i < proveAmount; i++) {
-        nonceList.push( BigInt(nonceStarter + i) )
+        nonceList.push(BigInt(nonceStarter + i))
     }
-    for (let i = proveAmount ; i < t.context.constants.maxReputationBudget ; i++) {
+    for (let i = proveAmount; i < t.context.constants.maxReputationBudget; i++) {
         nonceList.push(BigInt(-1))
     }
     const { proof, publicSignals } = await userState.genProveReputationProof(
@@ -146,7 +146,6 @@ const genReputationProof = async (t) => {
 }
 
 export const createPost = async (t) => {
-    const prevSpent = await getSpent(t)
     const proveAmount = t.context.constants.DEFAULT_POST_KARMA
     Object.assign(t.context, { ...t.context, proveAmount })
     const { proof, publicSignals } = await genReputationProof(t)
@@ -165,6 +164,7 @@ export const createPost = async (t) => {
     })
 
     const data = await r.json()
+    const prevSpent = await getSpent(t)
     await t.context.provider.waitForTransaction(data.transaction)
 
     for (let x = 0; x < 50; x++) {
@@ -174,7 +174,7 @@ export const createPost = async (t) => {
             if (prevSpent + proveAmount !== currentSpent) throw new Error('Spent reputation mismatch')
             t.is(prevSpent + proveAmount, currentSpent)
             break
-        } catch (_) {}
+        } catch (_) { }
     }
     return data
 }
@@ -187,13 +187,12 @@ export const queryPost = async (t) => {
             if (r.status === 404) throw new Error('Post not found')
             t.is(r.status, 200)
             return true
-        } catch (_) {}
+        } catch (_) { }
     }
     return false
 }
 
 export const createComment = async (t) => {
-    const prevSpent = await getSpent(t)
     const proveAmount = t.context.constants.DEFAULT_COMMENT_KARMA
     Object.assign(t.context, { ...t.context, proveAmount })
     const { proof, publicSignals } = await genReputationProof(t)
@@ -211,6 +210,7 @@ export const createComment = async (t) => {
         })
     })
     const data = await r.json()
+    const prevSpent = await getSpent(t)
     await t.context.provider.waitForTransaction(data.transaction)
 
     for (let x = 0; x < 50; x++) {
@@ -220,13 +220,12 @@ export const createComment = async (t) => {
             if (prevSpent + proveAmount !== currentSpent) throw new Error('Spent reputation mismatch')
             t.is(prevSpent + proveAmount, currentSpent)
             break
-        } catch (_) {}
+        } catch (_) { }
     }
     return data
 }
 
 export const vote = async (t) => {
-    const prevSpent = await getSpent(t)
     const proveAmount = t.context.upvote + t.context.downvote
     Object.assign(t.context, { ...t.context, proveAmount })
     const { proof, publicSignals } = await genReputationProof(t)
@@ -247,6 +246,7 @@ export const vote = async (t) => {
         })
     })
     const data = await r.json()
+    const prevSpent = await getSpent(t)
     await t.context.provider.waitForTransaction(data.transaction)
 
     for (let x = 0; x < 50; x++) {
@@ -255,9 +255,11 @@ export const vote = async (t) => {
             const currentSpent = await getSpent(t)
             if (prevSpent + proveAmount !== currentSpent) throw new Error('Spent reputation mismatch')
             t.is(prevSpent + proveAmount, currentSpent)
-            break
-        } catch (_) {}
+            t.pass()
+            return
+        } catch (_) { }
     }
+    t.fail()
 }
 
 export const epochTransition = async (t) => {
@@ -276,10 +278,10 @@ export const userStateTransition = async (t) => {
         t.context.unirep.address,
         t.context.iden,
     )
-    
+
     const results = await userState.genUserStateTransitionProofs()
     const fromEpoch = userState.latestTransitionedEpoch
-    
+
     const r = await fetch(`${t.context.url}/api/userStateTransition`, {
         method: 'POST',
         body: JSON.stringify({
@@ -287,7 +289,7 @@ export const userStateTransition = async (t) => {
             fromEpoch,
         }),
         headers: {
-          'content-type': 'application/json',
+            'content-type': 'application/json',
         }
     })
     const data = await r.json()

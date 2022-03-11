@@ -1,10 +1,10 @@
 import test from 'ava'
 import { startServer } from './environment'
 
-import { 
-    epochTransition, 
-    signUp, 
-    userStateTransition 
+import {
+    epochTransition,
+    signUp,
+    userStateTransition
 } from './utils'
 
 const EPOCH_LENGTH = 20000

@@ -2,11 +2,11 @@ import test from 'ava'
 import { startServer } from './environment'
 import fetch from 'node-fetch'
 
-import { 
-    airdrop, 
-    getInvitationCode, 
-    signIn, 
-    signUp 
+import {
+    airdrop,
+    getInvitationCode,
+    signIn,
+    signUp
 } from './utils'
 
 test.before(async (t) => {

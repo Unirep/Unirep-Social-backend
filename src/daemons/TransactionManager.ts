@@ -31,7 +31,7 @@ export class TransactionManager {
     }
 
     async startDaemon() {
-        for (;;) {
+        for (; ;) {
             const nextTx = await this.AccountTransaction.findOne({}).sort({
                 nonce: 1,
             })
@@ -83,7 +83,7 @@ export class TransactionManager {
         return this.wallet?.provider.waitForTransaction(hash)
     }
 
-    async queueTransaction(to: string, data: string|any = {}) {
+    async queueTransaction(to: string, data: string | any = {}) {
         const args = {} as any
         if (typeof data === 'string') {
             // assume it's input data
@@ -92,15 +92,21 @@ export class TransactionManager {
             Object.assign(args, data)
         }
         if (!this.wallet) throw new Error('Not initialized')
-        const gasLimit = await this.wallet.provider.estimateGas({
-            to,
-            from: this.wallet.address,
-            ...args,
-        })
+        if (!args.gasLimit) {
+            // don't estimate, use this for unpredictable gas limit tx's
+            // transactions may revert with this
+            const gasLimit = await this.wallet.provider.estimateGas({
+                to,
+                from: this.wallet.address,
+                ...args,
+            })
+            Object.assign(args, {
+                gasLimit: gasLimit.add(50000)
+            })
+        }
         const nonce = await this.getNonce(this.wallet.address)
         const signedData = await this.wallet.signTransaction({
             nonce,
-            gasLimit,
             to,
             gasPrice: 10000,
             ...args,

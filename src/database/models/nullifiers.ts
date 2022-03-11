@@ -1,6 +1,6 @@
 import * as mongoose from 'mongoose';
 import { Schema, Document } from 'mongoose';
-  
+
 export interface INullifier extends Document {
     epoch: number
     nullifier: string

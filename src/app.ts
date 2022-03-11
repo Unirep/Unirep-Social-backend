@@ -1,40 +1,38 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+// load the environment variables from the .env file before constants file
+dotenv.config();
+import MasterRouter from './routers/MasterRouter';
 import EpochManager from './daemons/EpochManager'
 import TransactionManager from './daemons/TransactionManager'
+import Synchronizer from './daemons/Synchronizer'
 
-import MasterRouter from './routers/MasterRouter';
-import dotenv from 'dotenv';
-
-// load the environment variables from the .env file
-dotenv.config();
-
-import { DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER, } from './constants';
-import { startEventListeners } from './daemons/listener'
+import { MONGO_URL, DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER, } from './constants';
+// import { startEventListeners } from './daemons/listener'
 
 main()
-  .catch(err => {
-    console.log(`Uncaught error: ${err}`)
-    process.exit(1)
-  })
+    .catch(err => {
+        console.log(`Uncaught error: ${err}`)
+        process.exit(1)
+    })
 
 async function main() {
     // try database connection
-    const mongoDB = 'mongodb://127.0.0.1:27017/unirep_social';
-    mongoose.connect(mongoDB);
+    mongoose.connect(MONGO_URL);
     // Bind connection to error event (to get notification of connection errors)
     mongoose.connection
-      .on('error', console.error.bind(console, 'MongoDB connection error:'));
+        .on('error', console.error.bind(console, 'MongoDB connection error:'));
 
     // now start listening for eth events
-    await startEventListeners()
+    // await startEventListeners()
 
     // start watching for epoch transitions
     await EpochManager.updateWatch()
-
     TransactionManager.configure(DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER)
     await TransactionManager.start()
+    await Synchronizer.start()
 
     // now start the http server
     const app = express()

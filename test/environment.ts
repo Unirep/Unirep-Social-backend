@@ -18,7 +18,7 @@ async function waitForGanache() {
             const provider = new ethers.providers.JsonRpcProvider(GANACHE_URL)
             await provider.getNetwork()
             break
-        } catch (_) {}
+        } catch (_) { }
     }
 }
 
@@ -30,10 +30,10 @@ async function deploy(wallet: ethers.Wallet, overrides = {}) {
         userStateTreeDepth: 5,
         epochTreeDepth,
     },
-    {
-        ...settings,
-        ...overrides,
-    })
+        {
+            ...settings,
+            ...overrides,
+        })
     const UnirepSocialF = new ethers.ContractFactory(UnirepSocial.abi, UnirepSocial.bytecode, wallet)
     const postReputation = 5
     const commentReputation = 3
@@ -92,14 +92,14 @@ export async function startServer(contractOverrides = {}) {
     const MasterRouter = require('../src/routers/MasterRouter').default
     const constants = require('../src/constants')
     const appTxManager = require('../src/daemons/TransactionManager').default
-    const { startEventListeners } = require('../src/daemons/listener')
+    const Synchronizer = require('../src/daemons/Synchronizer').default
 
     appTxManager.configure(wallet.privateKey, provider)
     await appTxManager.start()
 
     global.adminSessionCode = 'ffff'
 
-    await startEventListeners()
+    await Synchronizer.start()
 
     const app = express()
     app.use(cors());

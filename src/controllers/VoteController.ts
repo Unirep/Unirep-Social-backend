@@ -17,6 +17,7 @@ import Comment from '../database/models/comment';
 import { verifyReputationProof } from "../controllers/utils"
 import { writeRecord } from '../database/utils';
 import TransactionManager from '../daemons/TransactionManager'
+import Nullifier from '../database/models/nullifiers'
 
 const vote = async (req: any, res: any) => {
 
@@ -30,6 +31,19 @@ const vote = async (req: any, res: any) => {
     const reputationProof = new ReputationProof(publicSignals, formatProofForSnarkjsVerification(proof))
     const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
     const receiver = parseInt(req.body.receiver, 16)
+    {
+        const exists = await Nullifier.exists({
+            nullifier: {
+                $in: reputationProof.repNullifiers.map(n => n.toString())
+            }
+        })
+        if (exists) {
+            res.status(400).json({
+                error: 'Duplicate nullifier',
+            })
+            return
+        }
+    }
 
     const { isPost, dataId } = req.body
     let postProofIndex: number = 0
@@ -130,8 +144,10 @@ const vote = async (req: any, res: any) => {
     if (isPost) {
         await Post.findOneAndUpdate(
             { transactionHash: dataId },
-            { "$push": { "votes": newVote },
-              "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
+            {
+                "$push": { "votes": newVote },
+                "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep }
+            },
             { "new": true, "upsert": false }
         )
 
@@ -148,8 +164,10 @@ const vote = async (req: any, res: any) => {
     } else {
         const comment = await Comment.findOneAndUpdate(
             { transactionHash: dataId },
-            { "$push": { "votes": newVote },
-            "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep } },
+            {
+                "$push": { "votes": newVote },
+                "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep }
+            },
             { "new": true, "upsert": false }
         )
         if (comment !== undefined && comment !== null) {
@@ -171,5 +189,5 @@ const vote = async (req: any, res: any) => {
 }
 
 export default {
-  vote,
+    vote,
 }
