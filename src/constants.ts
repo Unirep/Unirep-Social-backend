@@ -14,8 +14,6 @@ Object.assign(process.env, {
     ...process.env
 })
 
-global.adminSessionCode = process.env.ADMIN_SESSION_CODE
-console.log(`Admin session code is "${global.adminSessionCode}"`)
 
 export const {
     DEPLOYER_PRIV_KEY,
@@ -23,7 +21,10 @@ export const {
     UNIREP_SOCIAL,
     DEFAULT_ETH_PROVIDER_URL,
     MONGO_URL,
+    ADMIN_SESSION_CODE,
 } = process.env as any
+
+console.log(`Admin session code is "${ADMIN_SESSION_CODE}"`)
 
 if (!DEPLOYER_PRIV_KEY) {
     console.error('No DEPLOYER_PRIV_KEY specified')
