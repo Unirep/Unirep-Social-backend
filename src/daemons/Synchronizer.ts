@@ -6,7 +6,6 @@ import {
   DEFAULT_ETH_PROVIDER,
   UNIREP_ABI,
   UNIREP_SOCIAL_ABI,
-  GLOBAL_STATE_TREE_DEPTH,
   DEFAULT_AIRDROPPED_KARMA,
   ActionType,
   titlePostfix,
@@ -27,15 +26,17 @@ import {
   computeInitUserStateRoot,
   genNewSMT,
   SMT_ONE_LEAF,
-  circuitUserStateTreeDepth,
-  epochTreeDepth,
-  globalStateTreeDepth,
 } from '@unirep/unirep'
 import {
   Circuit,
   formatProofForSnarkjsVerification,
   verifyProof
 } from '@unirep/circuits';
+import {
+  circuitGlobalStateTreeDepth,
+  circuitUserStateTreeDepth,
+  circuitEpochTreeDepth
+} from '@unirep/circuits/config'
 import {
   getUnirepContract,
   EpochKeyProof,
@@ -156,7 +157,7 @@ export class Synchronizer {
     this.defaultGSTLeaf = hashLeftRight(BigInt(0), emptyUserStateRoot)
     this.GSTLeaves[this.currentEpoch] = []
     this.globalStateTree[this.currentEpoch] = new IncrementalQuinTree(
-        GLOBAL_STATE_TREE_DEPTH,
+        circuitGlobalStateTreeDepth,
         this.defaultGSTLeaf,
         2,
     )
@@ -171,7 +172,10 @@ export class Synchronizer {
   async startDaemon() {
     let latestBlock = await this.provider.getBlockNumber()
     this.provider.on('block', (num) => {
-      latestBlock = num
+      // optimism node has a delay before events are available
+      setTimeout(() => {
+        latestBlock = num
+      }, 10000)
     })
     let latestProcessed = 0
     for (;;) {
@@ -499,7 +503,6 @@ export class Synchronizer {
   async postSubmittedEvent(event: ethers.Event) {
     const postId = event.transactionHash
     const findPost = await Post.findOne({ transactionHash: postId })
-    if (!findPost) throw new Error('Unable to find post')
 
     const decodedData = this.unirepSocialContract.interface.decodeEventLog(
       "PostSubmitted",
@@ -780,7 +783,7 @@ export class Synchronizer {
       // update Unirep state
       const epoch = Number(event?.topics[1])
       this.epochTree[epoch] = await genNewSMT(
-          epochTreeDepth,
+          circuitEpochTreeDepth,
           SMT_ONE_LEAF
       )
       const epochTreeLeaves = [] as any[]
@@ -802,7 +805,7 @@ export class Synchronizer {
               hashChain
           )
           const epochTreeLeaf = {
-              epochKey: BigInt(epochKey),
+              epochKey: BigInt(parseInt(epochKey, 16)),
               hashchainResult: sealedHashChainResult
           }
           epochTreeLeaves.push(epochTreeLeaf)
@@ -822,7 +825,7 @@ export class Synchronizer {
       this.GSTLeaves[this.currentEpoch] = []
       this.epochKeyInEpoch[this.currentEpoch] = new Map()
       this.globalStateTree[this.currentEpoch] = new IncrementalQuinTree(
-          globalStateTreeDepth,
+          circuitGlobalStateTreeDepth,
           this.defaultGSTLeaf,
           2,
       )
@@ -965,7 +968,7 @@ export class Synchronizer {
       console.log('Start transition proof is not valid', startTransitionProof.proofIndexRecords[0])
       return
     }
-    const { proofIndexRecords } = startTransitionProof
+    const { proofIndexRecords } = transitionProof
     if (
       startTransitionProof.blindedUserState !== transitionProof.blindedUserState ||
       startTransitionProof.globalStateTree !== transitionProof.globalStateTree
@@ -1158,6 +1161,11 @@ export class Synchronizer {
     const formattedProof = args.proof.map(n => BigInt(n))
     const proof = encodeBigIntArray(formattedProof)
     const publicSignals = encodeBigIntArray(formatPublicSignals)
+    const isValid = await verifyProof(
+        Circuit.userStateTransition,
+        formatProofForSnarkjsVerification(formattedProof),
+        formatPublicSignals
+    )
 
     await Proof.create({
       index: _proofIndex,
@@ -1168,6 +1176,7 @@ export class Synchronizer {
       proofIndexRecords: proofIndexRecords,
       transactionHash: event.transactionHash,
       event: "IndexedUserStateTransitionProof",
+      valid: isValid,
     })
   }
 
