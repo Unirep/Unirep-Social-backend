@@ -1,6 +1,5 @@
 import { formatProofForSnarkjsVerification } from '@unirep/circuits';
 import { SignUpProof } from '@unirep/contracts'
-
 import {
     UNIREP_SOCIAL,
     DEFAULT_ETH_PROVIDER,
@@ -12,7 +11,6 @@ import {
 import { verifyAirdropProof } from './utils';
 import { ethers } from 'ethers'
 import TransactionManager from '../daemons/TransactionManager'
-
 
 export const getAirdrop = async (req, res) => {
     // Unirep Social contract
