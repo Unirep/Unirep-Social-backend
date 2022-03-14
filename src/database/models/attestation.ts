@@ -1,7 +1,11 @@
 import * as mongoose from 'mongoose';
 import { Schema, Document } from 'mongoose';
 
-export interface IAttestation {
+export interface IAttestation extends Document {
+    epoch: number
+    epochKey: string
+    epochKeyToHashchainMap: string
+    // attestation info
     index: number
     transactionHash: string
     attester: string
@@ -12,21 +16,24 @@ export interface IAttestation {
     graffiti: string
     signUp: boolean
     hash: string
+    valid: boolean
 }
 
-export interface IAttestations extends Document {
-    epoch: number
-    epochKey: string
-    epochKeyToHashchainMap: string
-    attestations: Array<IAttestation>
-}
-  
-const AttestationsSchema: Schema = new Schema({
+const AttestationSchema: Schema = new Schema({
     epoch: { type: Number },
-    epochKey: { type: String, unique: true },
+    epochKey: { type: String },
     epochKeyToHashchainMap: { type: String },
-    attestations: { type: Array },
-}, { collection: 'Attestations' });
+    index: { type: Number },
+    transactionHash: { type: String },
+    attester: { type: String },
+    proofIndex: { type: Number },
+    attesterId: { type: Number },
+    posRep: { type: Number },
+    negRep: { type: Number },
+    graffiti: { type: String },
+    signUp: { type: Boolean },
+    hash: { type: String, required: true, },
+    valid: { type: Boolean },
+}, { collection: 'Attestation' });
 
-
-export default mongoose.model<IAttestations>('Attestations', AttestationsSchema);
+export default mongoose.model<IAttestation>('Attestation', AttestationSchema);

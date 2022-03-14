@@ -6,7 +6,7 @@ const genCode = async () => {
     console.log('random output: ' + randomOutput);
 
     const newCode: IInvitationCode = new InvitationCode({
-      code: randomOutput
+        code: randomOutput
     });
     await newCode.save();
 
@@ -14,5 +14,5 @@ const genCode = async () => {
 }
 
 export default {
-  genCode,
+    genCode,
 }

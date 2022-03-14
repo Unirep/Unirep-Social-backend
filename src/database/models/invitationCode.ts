@@ -7,7 +7,7 @@ export interface IInvitationCode extends Document {
 
 const InvitationCodeSchema: Schema = new Schema({
     code: { type: String, required: true },
-    }, { 
+}, {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
 });
 

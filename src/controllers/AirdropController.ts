@@ -8,7 +8,7 @@ import {
     UNIREP,
     UNIREP_ABI,
     UNIREP_SOCIAL_ABI,
-  } from '../constants';
+} from '../constants';
 import { verifyAirdropProof } from './utils';
 import { ethers } from 'ethers'
 import TransactionManager from '../daemons/TransactionManager'
@@ -30,19 +30,19 @@ export const getAirdrop = async (req, res) => {
     // Verify proof
     const error = await verifyAirdropProof(signUpProof, Number(unirepSocialId), currentEpoch)
     if (error !== undefined) {
-      res.json({error: error, transaction: undefined})
-      return
+        res.json({ error: error, transaction: undefined })
+        return
     }
 
     // submit epoch key to unirep social contract
     const calldata = unirepSocialContract.interface.encodeFunctionData('airdrop', [signUpProof])
     const hash = await TransactionManager.queueTransaction(unirepSocialContract.address, {
-      data: calldata,
-      value: attestingFee,
+        data: calldata,
+        value: attestingFee,
     })
     res.json({ transaction: hash })
 }
 
 export default {
-  getAirdrop,
+    getAirdrop,
 }
