@@ -11,7 +11,7 @@ router.get('/:epks', async (req: Request, res: Response, next: NextFunction) => 
     if (req.query.spentonly !== undefined && req.query.spentonly.toString() === 'true') {
         EpkRecord.find({ epk: { $in: epks } }, (err, records) => {
             // console.log(records);
-            console.log('find epk record error: ' + err);
+            // console.log('find epk record error: ' + err);
             res.status(200).json(records);
         });
     } else {

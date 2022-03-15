@@ -1,10 +1,11 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import GenInvitationCodeController from '../controllers/GenInvitationCodeController';
 import InvitationCode, { IInvitationCode } from '../database/models/invitationCode';
+import { ADMIN_SESSION_CODE } from '../constants'
 
 const router = Router()
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
-    if (req.query.code !== undefined && req.query.code.toString() === global.adminSessionCode) {
+    if (req.query.code !== undefined && req.query.code.toString() === ADMIN_SESSION_CODE) {
         try {
             const ret = await GenInvitationCodeController.genCode();
             res.status(200).json(ret);
@@ -19,7 +20,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 })
 
 router.get('/:ic', async (req: Request, res: Response, next: NextFunction) => {
-    if (req.params.ic === global.adminSessionCode) {
+    if (req.params.ic === ADMIN_SESSION_CODE) {
         res.status(204).end()
         return
     }

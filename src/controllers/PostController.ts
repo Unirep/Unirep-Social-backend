@@ -20,33 +20,24 @@ import { verifyReputationProof } from "../controllers/utils";
 import TransactionManager from '../daemons/TransactionManager'
 import Nullifier from '../database/models/nullifiers'
 
-const filterOneComment = (comments: IComment[]) => {
-    let score: number = 0;
-    let ret: any = {};
-    for (var i = 0; i < comments.length; i++) {
-        const _score = comments[i].posRep * 1.5 + comments[i].negRep * 0.5;
-        if (_score >= score) {
-            score = _score;
-            ret = comments[i];
-        }
+const listAllPosts = async () => {
+  const allPosts = await Post.find({ status: 1 }).lean()
+  const comments = await Comment.find({
+    postId: {
+      $in: allPosts.map(p => p.transactionHash),
     }
-    return ret;
-}
+  }).lean()
+  const commentsByPostId = comments.reduce((acc, c) => {
+    return {
+      [c.postId]: [...(acc[c.postId] ?? []), c],
+      ...acc,
+    }
+  }, {})
 
-const commentIdToObject = (commentIds: string[]) => {
-    const comments = Comment.find({ transactionHash: { $in: commentIds } });
-    return comments;
-}
-
-const listAllPosts = () => {
-    const allPosts = Post.find({ status: 1 }).then(async (posts) => {
-        let ret: any[] = [];
-        for (var i = 0; i < posts.length; i++) {
-            ret = [...ret, posts[i].toObject()];
-        }
-        return ret;
-    });
-    return allPosts;
+  return allPosts.map(p => ({
+    ...p,
+    comments: commentsByPostId[p.transactionHash] ?? [],
+  }));
 }
 
 const getPostsWithEpks = async (epks: string[]) => {
@@ -159,7 +150,7 @@ const publishPost = async (req: any, res: any) => { // should have content, epk,
             gasLimit: 1000000, // don't estimate for now
         })
 
-    const newPost: IPost = new Post({
+    const post = await Post.create({
         content,
         title,
         epochKey: epochKey,
@@ -168,12 +159,10 @@ const publishPost = async (req: any, res: any) => { // should have content, epk,
         minRep: Number(minRep),
         posRep: 0,
         negRep: 0,
-        comments: [],
         status: 0,
         transactionHash: hash
     });
 
-    const post = await newPost.save()
     res.json({
         transaction: hash,
         currentEpoch: currentEpoch,

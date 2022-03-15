@@ -14,16 +14,16 @@ Object.assign(process.env, {
     ...process.env
 })
 
-global.adminSessionCode = process.env.ADMIN_SESSION_CODE
-console.log(`Admin session code is "${global.adminSessionCode}"`)
-
 export const {
     DEPLOYER_PRIV_KEY,
     UNIREP,
     UNIREP_SOCIAL,
     DEFAULT_ETH_PROVIDER_URL,
     MONGO_URL,
+    ADMIN_SESSION_CODE,
 } = process.env as any
+
+console.log(`Admin session code is "${ADMIN_SESSION_CODE}"`)
 
 if (!DEPLOYER_PRIV_KEY) {
     console.error('No DEPLOYER_PRIV_KEY specified')
@@ -46,9 +46,6 @@ export const DEFAULT_AIRDROPPED_KARMA = 30
 export const DEFAULT_QUERY_DEPTH = 5
 export const QUERY_DELAY_TIME = 300
 export const EPOCH_KEY_NONCE_PER_EPOCH = numEpochKeyNoncePerEpoch
-
-export const USER_STATE_TREE_DEPTH = 5
-export const GLOBAL_STATE_TREE_DEPTH = 5
 
 export const maxReputationBudget = 10
 

@@ -86,6 +86,7 @@ export async function startServer(contractOverrides = {}) {
         UNIREP_SOCIAL: unirepSocial.address,
         DEPLOYER_PRIV_KEY: wallet.privateKey,
         DEFAULT_ETH_PROVIDER_URL: GANACHE_URL,
+        ADMIN_SESSION_CODE: 'ffff',
         ...process.env,
     })
 
@@ -96,8 +97,6 @@ export async function startServer(contractOverrides = {}) {
 
     appTxManager.configure(wallet.privateKey, provider)
     await appTxManager.start()
-
-    global.adminSessionCode = 'ffff'
 
     await Synchronizer.start()
 
