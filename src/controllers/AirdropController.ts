@@ -26,7 +26,11 @@ export const getAirdrop = async (req, res) => {
     const attestingFee = await unirepContract.attestingFee()
 
     // Verify proof
-    const error = await verifyAirdropProof(signUpProof, Number(unirepSocialId), currentEpoch)
+    const error = await verifyAirdropProof(
+        signUpProof, 
+        Number(unirepSocialId), 
+        currentEpoch,
+    )
     if (error !== undefined) {
         res.json({ error: error, transaction: undefined })
         return

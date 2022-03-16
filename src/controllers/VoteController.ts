@@ -103,7 +103,7 @@ const vote = async (req: any, res: any) => {
         reputationProof,
         req.body.upvote + req.body.downvote,
         unirepSocialId,
-        currentEpoch
+        currentEpoch,
     )
     if (error !== undefined) {
         throw error

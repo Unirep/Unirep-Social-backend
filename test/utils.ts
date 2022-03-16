@@ -35,6 +35,7 @@ export const signUp = async (t) => {
     const r = await fetch(`${t.context.url}/api/signup?${params}`)
     const data = await r.json()
     await t.context.provider.waitForTransaction(data.transaction)
+    const txBlock = await t.context.provider.getBlockNumber(data.transaction)
     t.assert(/^0x[0-9a-fA-F]{64}$/.test(data.transaction))
     t.is(currentEpoch.toString(), data.epoch.toString())
     t.is(r.status, 200)
@@ -48,7 +49,10 @@ export const signUp = async (t) => {
             })
             if (findUser === null) throw new Error('User not found')
             t.not(findUser, null)
-            break
+
+            const r = await fetch(`${t.context.url}/api/block`)
+            const processedBlock = await r.json()
+            if (processedBlock >= txBlock) break
         } catch (_) { }
     }
 
@@ -77,6 +81,16 @@ export const airdrop = async (t) => {
     })
     const data = await r.json()
     await t.context.provider.waitForTransaction(data.transaction)
+    const txBlock = await t.context.provider.getBlockNumber(data.transaction)
+
+    for (let x = 0; x < 100; x++) {
+        await new Promise(r => setTimeout(r, 1000))
+        try {
+            const r = await fetch(`${t.context.url}/api/block`)
+            const processedBlock = await r.json()
+            if (processedBlock >= txBlock) break
+        } catch (_) { }
+    }
 }
 
 export const signIn = async (t) => {
@@ -166,6 +180,7 @@ export const createPost = async (t) => {
     const data = await r.json()
     const prevSpent = await getSpent(t)
     await t.context.provider.waitForTransaction(data.transaction)
+    const txBlock = await t.context.provider.getBlockNumber(data.transaction)
 
     for (let x = 0; x < 50; x++) {
         await new Promise(r => setTimeout(r, 1000))
@@ -173,7 +188,10 @@ export const createPost = async (t) => {
             const currentSpent = await getSpent(t)
             if (prevSpent + proveAmount !== currentSpent) throw new Error('Spent reputation mismatch')
             t.is(prevSpent + proveAmount, currentSpent)
-            break
+
+            const r = await fetch(`${t.context.url}/api/block`)
+            const processedBlock = await r.json()
+            if (processedBlock >= txBlock) break
         } catch (_) { }
     }
     return data
@@ -212,6 +230,7 @@ export const createComment = async (t) => {
     const data = await r.json()
     const prevSpent = await getSpent(t)
     await t.context.provider.waitForTransaction(data.transaction)
+    const txBlock = await t.context.provider.getBlockNumber(data.transaction)
 
     for (let x = 0; x < 50; x++) {
         await new Promise(r => setTimeout(r, 1000))
@@ -219,7 +238,10 @@ export const createComment = async (t) => {
             const currentSpent = await getSpent(t)
             if (prevSpent + proveAmount !== currentSpent) throw new Error('Spent reputation mismatch')
             t.is(prevSpent + proveAmount, currentSpent)
-            break
+
+            const r = await fetch(`${t.context.url}/api/block`)
+            const processedBlock = await r.json()
+            if (processedBlock >= txBlock) break
         } catch (_) { }
     }
     return data
@@ -248,6 +270,7 @@ export const vote = async (t) => {
     const data = await r.json()
     const prevSpent = await getSpent(t)
     await t.context.provider.waitForTransaction(data.transaction)
+    const txBlock = await t.context.provider.getBlockNumber(data.transaction)
 
     for (let x = 0; x < 50; x++) {
         await new Promise(r => setTimeout(r, 1000))
@@ -255,8 +278,13 @@ export const vote = async (t) => {
             const currentSpent = await getSpent(t)
             if (prevSpent + proveAmount !== currentSpent) throw new Error('Spent reputation mismatch')
             t.is(prevSpent + proveAmount, currentSpent)
-            t.pass()
-            return
+
+            const r = await fetch(`${t.context.url}/api/block`)
+            const processedBlock = await r.json()
+            if (processedBlock >= txBlock) {
+                t.pass()
+                return
+            }
         } catch (_) { }
     }
     t.fail()
@@ -294,4 +322,17 @@ export const userStateTransition = async (t) => {
     })
     const data = await r.json()
     await t.context.provider.waitForTransaction(data.transaction)
+    const txBlock = await t.context.provider.getBlockNumber(data.transaction)
+
+    for (let x = 0; x < 50; x++) {
+        await new Promise(r => setTimeout(r, 1000))
+        try {
+            const r = await fetch(`${t.context.url}/api/block`)
+            const processedBlock = await r.json()
+            if (processedBlock >= txBlock) {
+                t.pass()
+                return
+            }
+        } catch (_) { }
+    }
 }

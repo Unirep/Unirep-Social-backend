@@ -59,7 +59,11 @@ const verifyReputationProof = async (
     }
 }
 
-const verifyAirdropProof = async (signUpProof: SignUpProof, unirepSocialId: number, currentEpoch: number): Promise<string | undefined> => {
+const verifyAirdropProof = async (
+    signUpProof: SignUpProof, 
+    unirepSocialId: number, 
+    currentEpoch: number,
+): Promise<string | undefined> => {
     const epoch = Number(signUpProof.epoch)
     const epk = signUpProof.epochKey.toString(16)
     const gstRoot = signUpProof.globalStateTree.toString()
@@ -104,7 +108,10 @@ const verifyAirdropProof = async (signUpProof: SignUpProof, unirepSocialId: numb
     }
 }
 
-const verifyUSTProof = async (results: any, currentEpoch: number): Promise<string | undefined> => {
+const verifyUSTProof = async (
+    results: any, 
+    currentEpoch: number
+): Promise<string | undefined> => {
     let error
     // Check if the fromEpoch is less than the current epoch
     if (Number(results.finalTransitionProof.transitionedFromEpoch) >= currentEpoch) {

@@ -128,7 +128,7 @@ const publishPost = async (req: any, res: any) => { // should have content, epk,
         reputationProof,
         DEFAULT_POST_KARMA,
         unirepSocialId,
-        currentEpoch
+        currentEpoch,
     )
     if (error !== undefined) {
         throw error
