@@ -1,6 +1,10 @@
-import { Circuit, verifyProof } from '@unirep/circuits';
-import { ReputationProof, SignUpProof, UserTransitionProof } from '@unirep/contracts';
-import Record from '../database/models/record';
+import { Circuit, verifyProof } from '@unirep/circuits'
+import {
+    ReputationProof,
+    SignUpProof,
+    UserTransitionProof,
+} from '@unirep/contracts'
+import Record from '../database/models/record'
 import Nullifier from '../database/models/nullifiers'
 import Epoch from '../database/models/epoch'
 import GSTRoot from '../database/models/GSTRoots'
@@ -11,7 +15,7 @@ const verifyReputationProof = async (
     unirepSocialId: number,
     currentEpoch: number
 ): Promise<string | undefined> => {
-    const repNullifiers = reputationProof.repNullifiers.map(n => n.toString())
+    const repNullifiers = reputationProof.repNullifiers.map((n) => n.toString())
     const epoch = Number(reputationProof.epoch)
     const gstRoot = reputationProof.globalStateTree.toString()
     const attesterId = Number(reputationProof.attesterId)
@@ -52,14 +56,18 @@ const verifyReputationProof = async (
     const exists = await Nullifier.exists({
         nullifier: {
             $in: repNullifiers,
-        }
+        },
     })
     if (exists) {
         return `Error: duplicate reputation nullifier`
     }
 }
 
-const verifyAirdropProof = async (signUpProof: SignUpProof, unirepSocialId: number, currentEpoch: number): Promise<string | undefined> => {
+const verifyAirdropProof = async (
+    signUpProof: SignUpProof,
+    unirepSocialId: number,
+    currentEpoch: number
+): Promise<string | undefined> => {
     const epoch = Number(signUpProof.epoch)
     const epk = signUpProof.epochKey.toString(16)
     const gstRoot = signUpProof.globalStateTree.toString()
@@ -98,18 +106,24 @@ const verifyAirdropProof = async (signUpProof: SignUpProof, unirepSocialId: numb
     }
 
     // Has been airdropped before
-    const findRecord = await Record.findOne({ to: epk, from: "UnirepSocial" })
+    const findRecord = await Record.findOne({ to: epk, from: 'UnirepSocial' })
     if (findRecord) {
         return `Error: the epoch key has been airdropped`
     }
 }
 
-const verifyUSTProof = async (results: any, currentEpoch: number): Promise<string | undefined> => {
+const verifyUSTProof = async (
+    results: any,
+    currentEpoch: number
+): Promise<string | undefined> => {
     let error
     // Check if the fromEpoch is less than the current epoch
-    if (Number(results.finalTransitionProof.transitionedFromEpoch) >= currentEpoch) {
-        error = 'Error: user transitions from an invalid epoch';
-        return error;
+    if (
+        Number(results.finalTransitionProof.transitionedFromEpoch) >=
+        currentEpoch
+    ) {
+        error = 'Error: user transitions from an invalid epoch'
+        return error
     }
 
     // Start user state transition proof
@@ -120,7 +134,7 @@ const verifyUSTProof = async (results: any, currentEpoch: number): Promise<strin
     )
     if (!isValid) {
         error = 'Error: start state transition proof generated is not valid!'
-        return error;
+        return error
     }
 
     // Process attestations proofs
@@ -132,7 +146,7 @@ const verifyUSTProof = async (results: any, currentEpoch: number): Promise<strin
         )
         if (!isValid) {
             error = 'Error: process attestations proof generated is not valid!'
-            return error;
+            return error
         }
     }
 
@@ -144,7 +158,7 @@ const verifyUSTProof = async (results: any, currentEpoch: number): Promise<strin
     isValid = await USTProof.verify()
     if (!isValid) {
         error = 'Error: user state transition proof generated is not valid!'
-        return error;
+        return error
     }
 
     // Check epoch tree root
@@ -158,7 +172,7 @@ const verifyUSTProof = async (results: any, currentEpoch: number): Promise<strin
         })
         if (!exists) {
             error = `Global state tree root ${gstRoot} is not in epoch ${epoch}`
-            return error;
+            return error
         }
     }
     {
@@ -168,7 +182,7 @@ const verifyUSTProof = async (results: any, currentEpoch: number): Promise<strin
         })
         if (!exists) {
             error = `Epoch tree root ${epochTreeRoot} is not in epoch ${epoch}`
-            return error;
+            return error
         }
     }
 
@@ -176,16 +190,12 @@ const verifyUSTProof = async (results: any, currentEpoch: number): Promise<strin
     const exists = await Nullifier.exists({
         nullifier: {
             $in: results.finalTransitionProof.epochKeyNullifiers,
-        }
+        },
     })
     if (exists) {
         error = `Error: invalid reputation nullifier`
     }
-    return error;
+    return error
 }
 
-export {
-    verifyReputationProof,
-    verifyUSTProof,
-    verifyAirdropProof,
-}
+export { verifyReputationProof, verifyUSTProof, verifyAirdropProof }

@@ -1,14 +1,14 @@
 import test from 'ava'
 import { startServer } from './environment'
 
-import { 
-    createComment, 
-    createPost, 
-    queryPost, 
-    signIn, 
-    signUp, 
-    vote 
-} from './utils';
+import {
+    createComment,
+    createPost,
+    queryPost,
+    signIn,
+    signUp,
+    vote,
+} from './utils'
 
 test.before(async (t) => {
     const context = await startServer()
@@ -31,23 +31,23 @@ test('should vote on a post', async (t: any) => {
     const user2 = await signUp(t)
     Object.assign(t.context, { ...t.context, iden: user2.iden })
     await signIn(t)
-    
+
     // upvote the post
     {
         const upvote = 5
         const downvote = 0
         const dataId = transaction
         const receiver = post.epochKey.toString(16)
-        Object.assign(t.context, { ...t.context, 
+        Object.assign(t.context, {
+            ...t.context,
             upvote,
             downvote,
             dataId,
             receiver,
-            isPost: true
+            isPost: true,
         })
         await vote(t)
     }
-  
 
     // downvote the post
     {
@@ -55,12 +55,13 @@ test('should vote on a post', async (t: any) => {
         const downvote = 2
         const dataId = transaction
         const receiver = post.epochKey.toString(16)
-        Object.assign(t.context, { ...t.context, 
+        Object.assign(t.context, {
+            ...t.context,
             upvote,
             downvote,
             dataId,
             receiver,
-            isPost: true
+            isPost: true,
         })
         await vote(t)
     }
@@ -87,23 +88,23 @@ test('should vote on comment', async (t: any) => {
     const user2 = await signUp(t)
     Object.assign(t.context, { ...t.context, iden: user2.iden })
     await signIn(t)
-    
+
     // upvote the comment
     {
         const upvote = 4
         const downvote = 0
         const dataId = transaction
         const receiver = comment.epochKey.toString(16)
-        Object.assign(t.context, { ...t.context, 
+        Object.assign(t.context, {
+            ...t.context,
             upvote,
             downvote,
             dataId,
             receiver,
-            isPost: false
+            isPost: false,
         })
         await vote(t)
     }
-  
 
     // downvote the comment
     {
@@ -111,12 +112,13 @@ test('should vote on comment', async (t: any) => {
         const downvote = 1
         const dataId = transaction
         const receiver = comment.epochKey.toString(16)
-        Object.assign(t.context, { ...t.context, 
+        Object.assign(t.context, {
+            ...t.context,
             upvote,
             downvote,
             dataId,
             receiver,
-            isPost: false
+            isPost: false,
         })
         await vote(t)
     }

@@ -1,5 +1,5 @@
-import { formatProofForSnarkjsVerification } from '@unirep/circuits';
-import { ReputationProof } from '@unirep/contracts';
+import { formatProofForSnarkjsVerification } from '@unirep/circuits'
+import { ReputationProof } from '@unirep/contracts'
 import { ethers } from 'ethers'
 import {
     UNIREP,
@@ -8,34 +8,43 @@ import {
     UNIREP_SOCIAL,
     DEFAULT_ETH_PROVIDER,
     ActionType,
-    UNIREP_SOCIAL_ATTESTER_ID
-} from '../constants';
-import { IVote } from '../database/models/vote';
-import Proof from '../database/models/proof';
-import Post from '../database/models/post';
-import Comment from '../database/models/comment';
-import { verifyReputationProof } from "../controllers/utils"
-import { writeRecord } from '../database/utils';
+    UNIREP_SOCIAL_ATTESTER_ID,
+} from '../constants'
+import { IVote } from '../database/models/vote'
+import Proof from '../database/models/proof'
+import Post from '../database/models/post'
+import Comment from '../database/models/comment'
+import { verifyReputationProof } from '../controllers/utils'
+import { writeRecord } from '../database/utils'
 import TransactionManager from '../daemons/TransactionManager'
 import Nullifier from '../database/models/nullifiers'
 
 const vote = async (req: any, res: any) => {
-
-    const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
-    const unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER)
+    const unirepContract = new ethers.Contract(
+        UNIREP,
+        UNIREP_ABI,
+        DEFAULT_ETH_PROVIDER
+    )
+    const unirepSocialContract = new ethers.Contract(
+        UNIREP_SOCIAL,
+        UNIREP_SOCIAL_ABI,
+        DEFAULT_ETH_PROVIDER
+    )
     const unirepSocialId = UNIREP_SOCIAL_ATTESTER_ID
     const currentEpoch = Number(await unirepContract.currentEpoch())
 
-
     const { publicSignals, proof } = req.body
-    const reputationProof = new ReputationProof(publicSignals, formatProofForSnarkjsVerification(proof))
+    const reputationProof = new ReputationProof(
+        publicSignals,
+        formatProofForSnarkjsVerification(proof)
+    )
     const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
     const receiver = parseInt(req.body.receiver, 16)
     {
         const exists = await Nullifier.exists({
             nullifier: {
-                $in: reputationProof.repNullifiers.map(n => n.toString())
-            }
+                $in: reputationProof.repNullifiers.map((n) => n.toString()),
+            },
         })
         if (exists) {
             res.status(400).json({
@@ -54,47 +63,55 @@ const vote = async (req: any, res: any) => {
         }
         if (post.epoch !== currentEpoch) {
             res.status(400).json({
-                info: 'The epoch key is expired'
+                info: 'The epoch key is expired',
             })
             return
         }
-        console.log('find post proof index: ' + post.proofIndex);
-        const validProof = await Proof.findOne({ index: post.proofIndex, epoch: currentEpoch, valid: true })
+        console.log('find post proof index: ' + post.proofIndex)
+        const validProof = await Proof.findOne({
+            index: post.proofIndex,
+            epoch: currentEpoch,
+            valid: true,
+        })
         if (!validProof) {
             res.status(400).json({
-                info: 'Voting for invalid post'
+                info: 'Voting for invalid post',
             })
             return
         }
-        postProofIndex = post.proofIndex;
+        postProofIndex = post.proofIndex
     } else {
-        const comment = await Comment.findOne({ transactionHash: dataId });
+        const comment = await Comment.findOne({ transactionHash: dataId })
         if (!comment) {
             res.status(404).json({
-                info: 'Comment not found'
+                info: 'Comment not found',
             })
             return
         }
         if (comment.epoch !== currentEpoch) {
             res.status(400).json({
-                info: 'Epoch key is expired'
+                info: 'Epoch key is expired',
             })
             return
         }
-        console.log('find comment proof index: ' + comment.proofIndex);
-        const validProof = await Proof.findOne({ index: comment.proofIndex, epoch: currentEpoch, valid: true })
+        console.log('find comment proof index: ' + comment.proofIndex)
+        const validProof = await Proof.findOne({
+            index: comment.proofIndex,
+            epoch: currentEpoch,
+            valid: true,
+        })
         if (!validProof) {
             res.status(400).json({
-                info: 'Voting for invalid comment'
+                info: 'Voting for invalid comment',
             })
             return
         }
-        postProofIndex = comment.proofIndex;
+        postProofIndex = comment.proofIndex
     }
 
     if (Number(postProofIndex) === 0) {
         res.status(400).json({
-            info: 'Cannot find post proof index'
+            info: 'Cannot find post proof index',
         })
         return
     }
@@ -109,7 +126,9 @@ const vote = async (req: any, res: any) => {
         throw error
     }
 
-    console.log(`Attesting to epoch key ${req.body.receiver} with pos rep ${req.body.upvote}, neg rep ${req.body.downvote}`)
+    console.log(
+        `Attesting to epoch key ${req.body.receiver} with pos rep ${req.body.upvote}, neg rep ${req.body.downvote}`
+    )
 
     console.log('post proof index', postProofIndex)
 
@@ -137,18 +156,18 @@ const vote = async (req: any, res: any) => {
         voter: epochKey,
         posRep: req.body.upvote,
         negRep: req.body.downvote,
-        graffiti: "0",
+        graffiti: '0',
         overwriteGraffiti: false,
-    };
+    }
 
     if (isPost) {
         await Post.findOneAndUpdate(
             { transactionHash: dataId },
             {
-                "$push": { "votes": newVote },
-                "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep }
+                $push: { votes: newVote },
+                $inc: { posRep: newVote.posRep, negRep: newVote.negRep },
             },
-            { "new": true, "upsert": false }
+            { new: true, upsert: false }
         )
 
         await writeRecord(
@@ -160,15 +179,15 @@ const vote = async (req: any, res: any) => {
             ActionType.Vote,
             hash,
             dataId
-        );
+        )
     } else {
         const comment = await Comment.findOneAndUpdate(
             { transactionHash: dataId },
             {
-                "$push": { "votes": newVote },
-                "$inc": { "posRep": newVote.posRep, "negRep": newVote.negRep }
+                $push: { votes: newVote },
+                $inc: { posRep: newVote.posRep, negRep: newVote.negRep },
             },
-            { "new": true, "upsert": false }
+            { new: true, upsert: false }
         )
         if (comment !== undefined && comment !== null) {
             await writeRecord(
@@ -180,11 +199,11 @@ const vote = async (req: any, res: any) => {
                 ActionType.Vote,
                 hash,
                 dataId
-            );
+            )
         }
     }
     res.json({
-        transaction: hash
+        transaction: hash,
     })
 }
 

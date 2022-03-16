@@ -1,6 +1,12 @@
 import mongoose from 'mongoose'
-import AccountNonce, { IAccountNonce, AccountNonceSchema } from '../database/models/accountNonce'
-import AccountTransaction, { IAccountTransaction, AccountTransactionSchema } from '../database/models/accountTransaction'
+import AccountNonce, {
+    IAccountNonce,
+    AccountNonceSchema,
+} from '../database/models/accountNonce'
+import AccountTransaction, {
+    IAccountTransaction,
+    AccountTransactionSchema,
+} from '../database/models/accountTransaction'
 import { ethers } from 'ethers'
 
 export class TransactionManager {
@@ -15,28 +21,36 @@ export class TransactionManager {
     async start(connection?: any) {
         if (!this.wallet) throw new Error('Not initialized')
         const latestNonce = await this.wallet.getTransactionCount()
-        this.AccountNonce = (connection ? mongoose.createConnection(connection) : mongoose).model('AccountNonce', AccountNonceSchema)
-        this.AccountTransaction = (connection ? mongoose.createConnection(connection) : mongoose).model('AccountTransaction', AccountTransactionSchema)
-        await this.AccountNonce.findOneAndUpdate({
-            address: this.wallet.address,
-        }, {
-            address: this.wallet.address,
-            $setOnInsert: {
-                nonce: latestNonce,
+        this.AccountNonce = (
+            connection ? mongoose.createConnection(connection) : mongoose
+        ).model('AccountNonce', AccountNonceSchema)
+        this.AccountTransaction = (
+            connection ? mongoose.createConnection(connection) : mongoose
+        ).model('AccountTransaction', AccountTransactionSchema)
+        await this.AccountNonce.findOneAndUpdate(
+            {
+                address: this.wallet.address,
+            },
+            {
+                address: this.wallet.address,
+                $setOnInsert: {
+                    nonce: latestNonce,
+                },
+            },
+            {
+                upsert: true,
             }
-        }, {
-            upsert: true,
-        })
+        )
         this.startDaemon()
     }
 
     async startDaemon() {
-        for (; ;) {
+        for (;;) {
             const nextTx = await this.AccountTransaction.findOne({}).sort({
                 nonce: 1,
             })
             if (!nextTx) {
-                await new Promise(r => setTimeout(r, 5000))
+                await new Promise((r) => setTimeout(r, 5000))
                 continue
             }
             const sent = await this.tryBroadcastTransaction(nextTx.signedData)
@@ -45,7 +59,7 @@ export class TransactionManager {
                     signedData: nextTx.signedData,
                 })
             } else {
-                await new Promise(r => setTimeout(r, 2000))
+                await new Promise((r) => setTimeout(r, 2000))
             }
         }
     }
@@ -57,7 +71,11 @@ export class TransactionManager {
             await this.wallet.provider.sendTransaction(signedData)
             return true
         } catch (err: any) {
-            if (err.toString().indexOf('VM Exception while processing transaction') !== -1) {
+            if (
+                err
+                    .toString()
+                    .indexOf('VM Exception while processing transaction') !== -1
+            ) {
                 // if the transaction is reverted the nonce is still used, so we return true
                 return true
             } else {
@@ -68,13 +86,16 @@ export class TransactionManager {
     }
 
     async getNonce(address: string) {
-        const doc = await this.AccountNonce.findOneAndUpdate({
-            address,
-        }, {
-            $inc: {
-                nonce: 1,
+        const doc = await this.AccountNonce.findOneAndUpdate(
+            {
+                address,
+            },
+            {
+                $inc: {
+                    nonce: 1,
+                },
             }
-        })
+        )
         if (!doc) throw new Error('No initial nonce')
         return doc.nonce
     }
@@ -101,7 +122,7 @@ export class TransactionManager {
                 ...args,
             })
             Object.assign(args, {
-                gasLimit: gasLimit.add(50000)
+                gasLimit: gasLimit.add(50000),
             })
         }
         const nonce = await this.getNonce(this.wallet.address)

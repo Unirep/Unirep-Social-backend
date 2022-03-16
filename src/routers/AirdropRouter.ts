@@ -1,5 +1,5 @@
-import { Router } from 'express';
-import AirdropController from '../controllers/AirdropController';
+import { Router } from 'express'
+import AirdropController from '../controllers/AirdropController'
 import catchError from './catchError'
 
 const router = Router()

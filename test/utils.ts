@@ -2,16 +2,10 @@ import fetch from 'node-fetch'
 import {
     Circuit,
     formatProofForVerifierContract,
-    verifyProof
-} from "@unirep/circuits"
-import {
-    genIdentity,
-    genIdentityCommitment
-} from "@unirep/crypto"
-import {
-    genEpochKey,
-    genUserStateFromContract
-} from "@unirep/unirep"
+    verifyProof,
+} from '@unirep/circuits'
+import { genIdentity, genIdentityCommitment } from '@unirep/crypto'
+import { genEpochKey, genUserStateFromContract } from '@unirep/unirep'
 
 import Users from '../src/database/models/userSignUp'
 
@@ -40,16 +34,16 @@ export const signUp = async (t) => {
     t.is(r.status, 200)
 
     for (let x = 0; x < 100; x++) {
-        await new Promise(r => setTimeout(r, 1000))
+        await new Promise((r) => setTimeout(r, 1000))
         try {
             const findUser = await Users.findOne({
                 transactionHash: data.transaction,
-                commitment: genIdentityCommitment(iden).toString(10)
+                commitment: genIdentityCommitment(iden).toString(10),
             })
             if (findUser === null) throw new Error('User not found')
             t.not(findUser, null)
             break
-        } catch (_) { }
+        } catch (_) {}
     }
 
     return { iden, commitment }
@@ -59,10 +53,16 @@ export const airdrop = async (t) => {
     const userState = await genUserStateFromContract(
         t.context.unirepSocial.provider,
         t.context.unirep.address,
-        t.context.iden,
+        t.context.iden
     )
-    const { proof, publicSignals } = await userState.genUserSignUpProof(t.context.attesterId)
-    const isValid = await verifyProof(Circuit.proveUserSignUp, proof, publicSignals)
+    const { proof, publicSignals } = await userState.genUserSignUpProof(
+        t.context.attesterId
+    )
+    const isValid = await verifyProof(
+        Circuit.proveUserSignUp,
+        proof,
+        publicSignals
+    )
     t.true(isValid)
 
     const r = await fetch(`${t.context.url}/api/airdrop`, {
@@ -73,7 +73,7 @@ export const airdrop = async (t) => {
         body: JSON.stringify({
             proof: formatProofForVerifierContract(proof),
             publicSignals,
-        })
+        }),
     })
     const data = await r.json()
     await t.context.provider.waitForTransaction(data.transaction)
@@ -83,7 +83,7 @@ export const signIn = async (t) => {
     // now try signing in using this identity
     const commitment = t.context.commitment
     const params = new URLSearchParams({
-        commitment
+        commitment,
     })
     const r = await fetch(`${t.context.url}/api/signin?${params}`)
     t.is(r.status, 200)
@@ -102,12 +102,14 @@ export const getSpent = async (t) => {
             ).toString(16)
         )
     }
-    const paramStr = epks.join('_');
-    const r = await fetch(`${t.context.url}/api/records/${paramStr}?spentonly=true`)
+    const paramStr = epks.join('_')
+    const r = await fetch(
+        `${t.context.url}/api/records/${paramStr}?spentonly=true`
+    )
     const data = await r.json()
     let spent = 0
     for (var i = 0; i < data.length; i++) {
-        spent = spent + data[i].spent;
+        spent = spent + data[i].spent
     }
     return spent
 }
@@ -116,7 +118,7 @@ const genReputationProof = async (t) => {
     const userState = await genUserStateFromContract(
         t.context.unirepSocial.provider,
         t.context.unirep.address,
-        t.context.iden,
+        t.context.iden
     )
 
     // find valid nonce starter
@@ -129,7 +131,11 @@ const genReputationProof = async (t) => {
     for (let i = 0; i < proveAmount; i++) {
         nonceList.push(BigInt(nonceStarter + i))
     }
-    for (let i = proveAmount; i < t.context.constants.maxReputationBudget; i++) {
+    for (
+        let i = proveAmount;
+        i < t.context.constants.maxReputationBudget;
+        i++
+    ) {
         nonceList.push(BigInt(-1))
     }
     const { proof, publicSignals } = await userState.genProveReputationProof(
@@ -138,10 +144,14 @@ const genReputationProof = async (t) => {
         proveAmount,
         BigInt(0),
         BigInt(0),
-        nonceList,
+        nonceList
     )
-    const isValid = await verifyProof(Circuit.proveReputation, proof, publicSignals)
-    t.true(isValid);
+    const isValid = await verifyProof(
+        Circuit.proveReputation,
+        proof,
+        publicSignals
+    )
+    t.true(isValid)
     return { proof: formatProofForVerifierContract(proof), publicSignals }
 }
 
@@ -160,7 +170,7 @@ export const createPost = async (t) => {
             content: 'some content!',
             publicSignals,
             proof,
-        })
+        }),
     })
 
     const data = await r.json()
@@ -168,26 +178,29 @@ export const createPost = async (t) => {
     await t.context.provider.waitForTransaction(data.transaction)
 
     for (let x = 0; x < 50; x++) {
-        await new Promise(r => setTimeout(r, 1000))
+        await new Promise((r) => setTimeout(r, 1000))
         try {
             const currentSpent = await getSpent(t)
-            if (prevSpent + proveAmount !== currentSpent) throw new Error('Spent reputation mismatch')
+            if (prevSpent + proveAmount !== currentSpent)
+                throw new Error('Spent reputation mismatch')
             t.is(prevSpent + proveAmount, currentSpent)
             break
-        } catch (_) { }
+        } catch (_) {}
     }
     return data
 }
 
 export const queryPost = async (t) => {
     for (let x = 0; x < 50; x++) {
-        await new Promise(r => setTimeout(r, 1000))
+        await new Promise((r) => setTimeout(r, 1000))
         try {
-            const r = await fetch(`${t.context.url}/api/post/${t.context.transaction}`)
+            const r = await fetch(
+                `${t.context.url}/api/post/${t.context.transaction}`
+            )
             if (r.status === 404) throw new Error('Post not found')
             t.is(r.status, 200)
             return true
-        } catch (_) { }
+        } catch (_) {}
     }
     return false
 }
@@ -207,20 +220,21 @@ export const createComment = async (t) => {
             content: 'this is a comment!',
             publicSignals,
             proof,
-        })
+        }),
     })
     const data = await r.json()
     const prevSpent = await getSpent(t)
     await t.context.provider.waitForTransaction(data.transaction)
 
     for (let x = 0; x < 50; x++) {
-        await new Promise(r => setTimeout(r, 1000))
+        await new Promise((r) => setTimeout(r, 1000))
         try {
             const currentSpent = await getSpent(t)
-            if (prevSpent + proveAmount !== currentSpent) throw new Error('Spent reputation mismatch')
+            if (prevSpent + proveAmount !== currentSpent)
+                throw new Error('Spent reputation mismatch')
             t.is(prevSpent + proveAmount, currentSpent)
             break
-        } catch (_) { }
+        } catch (_) {}
     }
     return data
 }
@@ -243,21 +257,22 @@ export const vote = async (t) => {
             upvote: t.context.upvote,
             downvote: t.context.downvote,
             receiver: t.context.receiver,
-        })
+        }),
     })
     const data = await r.json()
     const prevSpent = await getSpent(t)
     await t.context.provider.waitForTransaction(data.transaction)
 
     for (let x = 0; x < 50; x++) {
-        await new Promise(r => setTimeout(r, 1000))
+        await new Promise((r) => setTimeout(r, 1000))
         try {
             const currentSpent = await getSpent(t)
-            if (prevSpent + proveAmount !== currentSpent) throw new Error('Spent reputation mismatch')
+            if (prevSpent + proveAmount !== currentSpent)
+                throw new Error('Spent reputation mismatch')
             t.is(prevSpent + proveAmount, currentSpent)
             t.pass()
             return
-        } catch (_) { }
+        } catch (_) {}
     }
     t.fail()
 }
@@ -267,7 +282,7 @@ export const epochTransition = async (t) => {
         method: 'POST',
         headers: {
             authorization: 'NLmKDUnJUpc6VzuPc7Wm',
-        }
+        },
     })
     t.is(r.status, 204)
 }
@@ -276,7 +291,7 @@ export const userStateTransition = async (t) => {
     const userState = await genUserStateFromContract(
         t.context.unirepSocial.provider,
         t.context.unirep.address,
-        t.context.iden,
+        t.context.iden
     )
 
     const results = await userState.genUserStateTransitionProofs()
@@ -290,7 +305,7 @@ export const userStateTransition = async (t) => {
         }),
         headers: {
             'content-type': 'application/json',
-        }
+        },
     })
     const data = await r.json()
     await t.context.provider.waitForTransaction(data.transaction)
