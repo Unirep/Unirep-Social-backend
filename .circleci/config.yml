@@ -2,21 +2,24 @@ version: 2.1
 workflows:
     test_app:
         jobs:
-            # - lint
+            - lint
             - test
 
 jobs:
-    # lint:
-    #   machine:
-    #     image: ubuntu-2004:202111-01
-    #   steps:
-    #     - checkout
-    #     - run:
-    #         name: Install
-    #         command: npm ci
-    #     - run:
-    #         name: Lint
-    #         command: npm run lint:check
+    lint:
+        machine:
+            image: ubuntu-2004:202111-01
+        steps:
+            - checkout
+            - run:
+                  name: Install Yarn
+                  command: curl -o- -L https://yarnpkg.com/install.sh | bash
+            - run:
+                  name: Install
+                  command: yarn
+            - run:
+                  name: Lint
+                  command: yarn lint --check
     test:
         machine:
             image: ubuntu-2004:202111-01
