@@ -181,8 +181,8 @@ export class Synchronizer {
             }, 10000)
         })
         let latestProcessed = 0
-        await BlockNumber.create({ number: latestProcessed})
-        for (; ;) {
+        await BlockNumber.create({ number: latestProcessed })
+        for (;;) {
             if (latestProcessed === latestBlock) {
                 await new Promise((r) => setTimeout(r, 1000))
                 continue
@@ -360,10 +360,13 @@ export class Synchronizer {
         let currentBlockNumber: number = -1
         for (const event of events) {
             // init current block number
-            if (currentBlockNumber === -1) currentBlockNumber = event.blockNumber
+            if (currentBlockNumber === -1)
+                currentBlockNumber = event.blockNumber
             // update db when the transactions of current block are all processed
-            if ((currentBlockNumber !== event.blockNumber) &&
-                (currentBlockNumber !== -1)) {
+            if (
+                currentBlockNumber !== event.blockNumber &&
+                currentBlockNumber !== -1
+            ) {
                 await BlockNumber.updateOne({}, { number: currentBlockNumber })
                 currentBlockNumber = event.blockNumber
             }
@@ -1173,9 +1176,9 @@ export class Synchronizer {
         const { proofIndexRecords } = transitionProof
         if (
             startTransitionProof.blindedUserState !==
-            transitionProof.blindedUserState ||
+                transitionProof.blindedUserState ||
             startTransitionProof.globalStateTree !==
-            transitionProof.globalStateTree
+                transitionProof.globalStateTree
         ) {
             console.log(
                 'Start Transition Proof index: ',

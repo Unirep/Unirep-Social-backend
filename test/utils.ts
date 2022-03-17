@@ -26,15 +26,19 @@ export const signUp = async (t) => {
     })
     const r = await fetch(`${t.context.url}/api/signup?${params}`)
     const data = await r.json()
-    const receipt = await t.context.provider.waitForTransaction(data.transaction)
+    const receipt = await t.context.provider.waitForTransaction(
+        data.transaction
+    )
 
     t.assert(/^0x[0-9a-fA-F]{64}$/.test(data.transaction))
     t.is(currentEpoch.toString(), data.epoch.toString())
     t.is(r.status, 200)
 
-    for (; ;) {
-        await new Promise(r => setTimeout(r, 1000))
-        const latestBlock = await fetch(`${t.context.url}/api/block`).then(r => r.json())
+    for (;;) {
+        await new Promise((r) => setTimeout(r, 1000))
+        const latestBlock = await fetch(`${t.context.url}/api/block`).then(
+            (r) => r.json()
+        )
         if (latestBlock < receipt.blockNumber) continue
         // sign in should success
         await signIn(t)
@@ -71,11 +75,15 @@ export const airdrop = async (t) => {
         }),
     })
     const data = await r.json()
-    const receipt = await t.context.provider.waitForTransaction(data.transaction)
+    const receipt = await t.context.provider.waitForTransaction(
+        data.transaction
+    )
 
-    for (; ;) {
-        await new Promise(r => setTimeout(r, 1000))
-        const latestBlock = await fetch(`${t.context.url}/api/block`).then(r => r.json())
+    for (;;) {
+        await new Promise((r) => setTimeout(r, 1000))
+        const latestBlock = await fetch(`${t.context.url}/api/block`).then(
+            (r) => r.json()
+        )
         if (latestBlock < receipt.blockNumber) continue
         else break
     }
@@ -178,15 +186,19 @@ export const createPost = async (t) => {
 
     const data = await r.json()
     const prevSpent = await getSpent(t)
-    const receipt = await t.context.provider.waitForTransaction(data.transaction)
+    const receipt = await t.context.provider.waitForTransaction(
+        data.transaction
+    )
 
-    for (; ;) {
-        await new Promise(r => setTimeout(r, 1000))
+    for (;;) {
+        await new Promise((r) => setTimeout(r, 1000))
         const currentSpent = await getSpent(t)
         if (prevSpent + proveAmount !== currentSpent) continue
         t.is(prevSpent + proveAmount, currentSpent)
 
-        const latestBlock = await fetch(`${t.context.url}/api/block`).then(r => r.json())
+        const latestBlock = await fetch(`${t.context.url}/api/block`).then(
+            (r) => r.json()
+        )
         if (latestBlock < receipt.blockNumber) continue
         else break
     }
@@ -195,8 +207,10 @@ export const createPost = async (t) => {
 
 export const queryPost = async (t) => {
     for (;;) {
-        await new Promise(r => setTimeout(r, 1000))
-        const r = await fetch(`${t.context.url}/api/post/${t.context.transaction}`)
+        await new Promise((r) => setTimeout(r, 1000))
+        const r = await fetch(
+            `${t.context.url}/api/post/${t.context.transaction}`
+        )
         if (r.status === 404) continue
         t.is(r.status, 200)
         return true
@@ -222,15 +236,19 @@ export const createComment = async (t) => {
     })
     const data = await r.json()
     const prevSpent = await getSpent(t)
-    const receipt = await t.context.provider.waitForTransaction(data.transaction)
+    const receipt = await t.context.provider.waitForTransaction(
+        data.transaction
+    )
 
-    for (; ;) {
-        await new Promise(r => setTimeout(r, 1000))
+    for (;;) {
+        await new Promise((r) => setTimeout(r, 1000))
         const currentSpent = await getSpent(t)
         if (prevSpent + proveAmount !== currentSpent) continue
         t.is(prevSpent + proveAmount, currentSpent)
 
-        const latestBlock = await fetch(`${t.context.url}/api/block`).then(r => r.json())
+        const latestBlock = await fetch(`${t.context.url}/api/block`).then(
+            (r) => r.json()
+        )
         if (latestBlock < receipt.blockNumber) continue
         else break
     }
@@ -259,15 +277,19 @@ export const vote = async (t) => {
     })
     const data = await r.json()
     const prevSpent = await getSpent(t)
-    const receipt = await t.context.provider.waitForTransaction(data.transaction)
+    const receipt = await t.context.provider.waitForTransaction(
+        data.transaction
+    )
 
-    for (; ;) {
-        await new Promise(r => setTimeout(r, 1000))
+    for (;;) {
+        await new Promise((r) => setTimeout(r, 1000))
         const currentSpent = await getSpent(t)
         if (prevSpent + proveAmount !== currentSpent) continue
         t.is(prevSpent + proveAmount, currentSpent)
 
-        const latestBlock = await fetch(`${t.context.url}/api/block`).then(r => r.json())
+        const latestBlock = await fetch(`${t.context.url}/api/block`).then(
+            (r) => r.json()
+        )
         if (latestBlock < receipt.blockNumber) continue
         else break
     }
@@ -305,11 +327,15 @@ export const userStateTransition = async (t) => {
         },
     })
     const data = await r.json()
-    const receipt = await t.context.provider.waitForTransaction(data.transaction)
+    const receipt = await t.context.provider.waitForTransaction(
+        data.transaction
+    )
 
-    for (; ;) {
-        await new Promise(r => setTimeout(r, 1000))
-        const latestBlock = await fetch(`${t.context.url}/api/block`).then(r => r.json())
+    for (;;) {
+        await new Promise((r) => setTimeout(r, 1000))
+        const latestBlock = await fetch(`${t.context.url}/api/block`).then(
+            (r) => r.json()
+        )
         if (latestBlock < receipt.blockNumber) continue
         else break
     }
