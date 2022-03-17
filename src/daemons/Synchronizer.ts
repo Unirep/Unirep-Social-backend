@@ -295,6 +295,12 @@ export class Synchronizer {
     for (const event of events) {
       // init current block number
       if (currentBlockNumber === -1) currentBlockNumber = event.blockNumber
+      // update db when the transactions of current block are all processed
+      if ((currentBlockNumber !== event.blockNumber) && 
+          (currentBlockNumber !== -1)) {
+        await BlockNumber.updateOne({}, { number: currentBlockNumber})
+        currentBlockNumber = event.blockNumber
+      }
 
       // no, i don't know what a switch statement is...
       if (event.topics[0] === this.allTopics.IndexedEpochKeyProof) {
@@ -351,12 +357,6 @@ export class Synchronizer {
       } else {
         console.log(event)
         throw new Error(`Unrecognized event topic "${event.topics[0]}"`)
-      }
-      // update db when the transactions of current block are all processed
-      if ((currentBlockNumber !== event.blockNumber) && 
-          (currentBlockNumber !== -1)) {
-        await BlockNumber.updateOne({}, { number: currentBlockNumber})
-        currentBlockNumber = event.blockNumber
       }
     }
     // update db when all transactions are processed

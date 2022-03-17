@@ -13,8 +13,6 @@ import {
     genUserStateFromContract
 } from "@unirep/unirep"
 
-import Users from '../src/database/models/userSignUp'
-
 export const getInvitationCode = async (t) => {
     const r = await fetch(`${t.context.url}/api/genInvitationCode?code=ffff`)
     t.is(r.status, 200)
@@ -34,26 +32,19 @@ export const signUp = async (t) => {
     })
     const r = await fetch(`${t.context.url}/api/signup?${params}`)
     const data = await r.json()
-    await t.context.provider.waitForTransaction(data.transaction)
-    const txBlock = await t.context.provider.getBlockNumber(data.transaction)
+    const receipt = await t.context.provider.waitForTransaction(data.transaction)
+
     t.assert(/^0x[0-9a-fA-F]{64}$/.test(data.transaction))
     t.is(currentEpoch.toString(), data.epoch.toString())
     t.is(r.status, 200)
 
-    for (let x = 0; x < 100; x++) {
+    for (; ;) {
         await new Promise(r => setTimeout(r, 1000))
-        try {
-            const findUser = await Users.findOne({
-                transactionHash: data.transaction,
-                commitment: genIdentityCommitment(iden).toString(10)
-            })
-            if (findUser === null) throw new Error('User not found')
-            t.not(findUser, null)
-
-            const r = await fetch(`${t.context.url}/api/block`)
-            const processedBlock = await r.json()
-            if (processedBlock >= txBlock) break
-        } catch (_) { }
+        const latestBlock = await fetch(`${t.context.url}/api/block`).then(r => r.json())
+        if (latestBlock < receipt.blockNumber) continue
+        // sign in should success
+        await signIn(t)
+        break
     }
 
     return { iden, commitment }
@@ -80,17 +71,15 @@ export const airdrop = async (t) => {
         })
     })
     const data = await r.json()
-    await t.context.provider.waitForTransaction(data.transaction)
-    const txBlock = await t.context.provider.getBlockNumber(data.transaction)
+    const receipt = await t.context.provider.waitForTransaction(data.transaction)
 
-    for (let x = 0; x < 100; x++) {
+    for (; ;) {
         await new Promise(r => setTimeout(r, 1000))
-        try {
-            const r = await fetch(`${t.context.url}/api/block`)
-            const processedBlock = await r.json()
-            if (processedBlock >= txBlock) break
-        } catch (_) { }
+        const latestBlock = await fetch(`${t.context.url}/api/block`).then(r => r.json())
+        if (latestBlock < receipt.blockNumber) continue
+        else break
     }
+    t.pass()
 }
 
 export const signIn = async (t) => {
@@ -179,35 +168,29 @@ export const createPost = async (t) => {
 
     const data = await r.json()
     const prevSpent = await getSpent(t)
-    await t.context.provider.waitForTransaction(data.transaction)
-    const txBlock = await t.context.provider.getBlockNumber(data.transaction)
+    const receipt = await t.context.provider.waitForTransaction(data.transaction)
 
-    for (let x = 0; x < 50; x++) {
+    for (; ;) {
         await new Promise(r => setTimeout(r, 1000))
-        try {
-            const currentSpent = await getSpent(t)
-            if (prevSpent + proveAmount !== currentSpent) throw new Error('Spent reputation mismatch')
-            t.is(prevSpent + proveAmount, currentSpent)
+        const currentSpent = await getSpent(t)
+        if (prevSpent + proveAmount !== currentSpent) continue
+        t.is(prevSpent + proveAmount, currentSpent)
 
-            const r = await fetch(`${t.context.url}/api/block`)
-            const processedBlock = await r.json()
-            if (processedBlock >= txBlock) break
-        } catch (_) { }
+        const latestBlock = await fetch(`${t.context.url}/api/block`).then(r => r.json())
+        if (latestBlock < receipt.blockNumber) continue
+        else break
     }
     return data
 }
 
 export const queryPost = async (t) => {
-    for (let x = 0; x < 50; x++) {
+    for (;;) {
         await new Promise(r => setTimeout(r, 1000))
-        try {
-            const r = await fetch(`${t.context.url}/api/post/${t.context.transaction}`)
-            if (r.status === 404) throw new Error('Post not found')
-            t.is(r.status, 200)
-            return true
-        } catch (_) { }
+        const r = await fetch(`${t.context.url}/api/post/${t.context.transaction}`)
+        if (r.status === 404) continue
+        t.is(r.status, 200)
+        return true
     }
-    return false
 }
 
 export const createComment = async (t) => {
@@ -229,20 +212,17 @@ export const createComment = async (t) => {
     })
     const data = await r.json()
     const prevSpent = await getSpent(t)
-    await t.context.provider.waitForTransaction(data.transaction)
-    const txBlock = await t.context.provider.getBlockNumber(data.transaction)
+    const receipt = await t.context.provider.waitForTransaction(data.transaction)
 
-    for (let x = 0; x < 50; x++) {
+    for (; ;) {
         await new Promise(r => setTimeout(r, 1000))
-        try {
-            const currentSpent = await getSpent(t)
-            if (prevSpent + proveAmount !== currentSpent) throw new Error('Spent reputation mismatch')
-            t.is(prevSpent + proveAmount, currentSpent)
+        const currentSpent = await getSpent(t)
+        if (prevSpent + proveAmount !== currentSpent) continue
+        t.is(prevSpent + proveAmount, currentSpent)
 
-            const r = await fetch(`${t.context.url}/api/block`)
-            const processedBlock = await r.json()
-            if (processedBlock >= txBlock) break
-        } catch (_) { }
+        const latestBlock = await fetch(`${t.context.url}/api/block`).then(r => r.json())
+        if (latestBlock < receipt.blockNumber) continue
+        else break
     }
     return data
 }
@@ -269,25 +249,19 @@ export const vote = async (t) => {
     })
     const data = await r.json()
     const prevSpent = await getSpent(t)
-    await t.context.provider.waitForTransaction(data.transaction)
-    const txBlock = await t.context.provider.getBlockNumber(data.transaction)
+    const receipt = await t.context.provider.waitForTransaction(data.transaction)
 
-    for (let x = 0; x < 50; x++) {
+    for (; ;) {
         await new Promise(r => setTimeout(r, 1000))
-        try {
-            const currentSpent = await getSpent(t)
-            if (prevSpent + proveAmount !== currentSpent) throw new Error('Spent reputation mismatch')
-            t.is(prevSpent + proveAmount, currentSpent)
+        const currentSpent = await getSpent(t)
+        if (prevSpent + proveAmount !== currentSpent) continue
+        t.is(prevSpent + proveAmount, currentSpent)
 
-            const r = await fetch(`${t.context.url}/api/block`)
-            const processedBlock = await r.json()
-            if (processedBlock >= txBlock) {
-                t.pass()
-                return
-            }
-        } catch (_) { }
+        const latestBlock = await fetch(`${t.context.url}/api/block`).then(r => r.json())
+        if (latestBlock < receipt.blockNumber) continue
+        else break
     }
-    t.fail()
+    t.pass()
 }
 
 export const epochTransition = async (t) => {
@@ -321,18 +295,13 @@ export const userStateTransition = async (t) => {
         }
     })
     const data = await r.json()
-    await t.context.provider.waitForTransaction(data.transaction)
-    const txBlock = await t.context.provider.getBlockNumber(data.transaction)
+    const receipt = await t.context.provider.waitForTransaction(data.transaction)
 
-    for (let x = 0; x < 50; x++) {
+    for (; ;) {
         await new Promise(r => setTimeout(r, 1000))
-        try {
-            const r = await fetch(`${t.context.url}/api/block`)
-            const processedBlock = await r.json()
-            if (processedBlock >= txBlock) {
-                t.pass()
-                return
-            }
-        } catch (_) { }
+        const latestBlock = await fetch(`${t.context.url}/api/block`).then(r => r.json())
+        if (latestBlock < receipt.blockNumber) continue
+        else break
     }
+    t.pass()
 }
