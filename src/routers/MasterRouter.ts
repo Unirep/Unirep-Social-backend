@@ -11,6 +11,7 @@ import USTRouter from './USTRouter'
 import RecordRouter from './RecordRouter'
 import ReportRouter from './ReportRouter'
 import AdminRouter from './AdminRouter'
+import BlockRouter from './BlockRouter'
 
 const router = Router()
 router.use('/signup', SignUpRouter)
@@ -25,5 +26,6 @@ router.use('/userStateTransition', USTRouter)
 router.use('/records', RecordRouter)
 router.use('/report', ReportRouter)
 router.use('/admin', AdminRouter)
+router.use('/block', BlockRouter)
 
 export default router

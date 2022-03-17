@@ -117,7 +117,7 @@ const leaveComment = async (req: any, res: any) => {
         reputationProof,
         DEFAULT_COMMENT_KARMA,
         unirepSocialId,
-        currentEpoch
+        currentEpoch,
     )
     if (error !== undefined) {
         throw error

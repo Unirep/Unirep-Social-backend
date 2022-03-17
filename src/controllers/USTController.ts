@@ -28,7 +28,10 @@ const userStateTransition = async (req: any, res: any) => {
     const currentEpoch = Number(await unirepContract.currentEpoch())
     const { results } = req.body
 
-    const error = await verifyUSTProof(results, currentEpoch)
+    const error = await verifyUSTProof(
+        results, 
+        currentEpoch,
+    )
     if (error !== undefined) throw error
 
     // submit user state transition proofs

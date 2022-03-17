@@ -55,6 +55,7 @@ import Record from '../database/models/record'
 import EpkRecord from '../database/models/epkRecord'
 import Post from '../database/models/post'
 import Comment from '../database/models/comment'
+import BlockNumber from '../database/models/blockNumber'
 
 const encodeBigIntArray = (arr: BigInt[]): string => {
     return JSON.stringify(stringifyBigInts(arr))
@@ -180,7 +181,8 @@ export class Synchronizer {
             }, 10000)
         })
         let latestProcessed = 0
-        for (;;) {
+        await BlockNumber.create({ number: latestProcessed})
+        for (; ;) {
             if (latestProcessed === latestBlock) {
                 await new Promise((r) => setTimeout(r, 1000))
                 continue
@@ -355,7 +357,16 @@ export class Synchronizer {
             return a.logIndex - b.logIndex
         })
 
+        let currentBlockNumber: number = -1
         for (const event of events) {
+            // init current block number
+            if (currentBlockNumber === -1) currentBlockNumber = event.blockNumber
+            // update db when the transactions of current block are all processed
+            if ((currentBlockNumber !== event.blockNumber) &&
+                (currentBlockNumber !== -1)) {
+                await BlockNumber.updateOne({}, { number: currentBlockNumber })
+                currentBlockNumber = event.blockNumber
+            }
             // no, i don't know what a switch statement is...
             if (event.topics[0] === this.allTopics.IndexedEpochKeyProof) {
                 console.log('IndexedEpochKeyProof')
@@ -428,6 +439,10 @@ export class Synchronizer {
                 console.log(event)
                 throw new Error(`Unrecognized event topic "${event.topics[0]}"`)
             }
+        }
+        // update db when all transactions are processed
+        if (currentBlockNumber !== -1) {
+            await BlockNumber.updateOne({}, { number: currentBlockNumber })
         }
     }
 
@@ -1158,9 +1173,9 @@ export class Synchronizer {
         const { proofIndexRecords } = transitionProof
         if (
             startTransitionProof.blindedUserState !==
-                transitionProof.blindedUserState ||
+            transitionProof.blindedUserState ||
             startTransitionProof.globalStateTree !==
-                transitionProof.globalStateTree
+            transitionProof.globalStateTree
         ) {
             console.log(
                 'Start Transition Proof index: ',
