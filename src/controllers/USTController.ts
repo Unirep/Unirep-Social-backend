@@ -1,7 +1,7 @@
 import {
     UserTransitionProof,
     computeStartTransitionProofHash,
-} from '@unirep/contracts';
+} from '@unirep/contracts'
 import { ethers } from 'ethers'
 import {
     UNIREP,
@@ -9,35 +9,45 @@ import {
     UNIREP_SOCIAL_ABI,
     UNIREP_SOCIAL,
     DEFAULT_ETH_PROVIDER,
-} from '../constants';
+} from '../constants'
 import { formatProofForVerifierContract } from '@unirep/circuits'
-import { verifyUSTProof } from './utils';
+import { verifyUSTProof } from './utils'
 import TransactionManager from '../daemons/TransactionManager'
 
 const userStateTransition = async (req: any, res: any) => {
-    const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
-    const unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER)
+    const unirepContract = new ethers.Contract(
+        UNIREP,
+        UNIREP_ABI,
+        DEFAULT_ETH_PROVIDER
+    )
+    const unirepSocialContract = new ethers.Contract(
+        UNIREP_SOCIAL,
+        UNIREP_SOCIAL_ABI,
+        DEFAULT_ETH_PROVIDER
+    )
     const currentEpoch = Number(await unirepContract.currentEpoch())
-    const { results } = req.body;
+    const { results } = req.body
 
     const error = await verifyUSTProof(results, currentEpoch)
     if (error !== undefined) throw error
 
     // submit user state transition proofs
-    const {
-        blindedUserState,
-        blindedHashChain,
-        globalStateTreeRoot,
-        proof
-    } = results.startTransitionProof
+    const { blindedUserState, blindedHashChain, globalStateTreeRoot, proof } =
+        results.startTransitionProof
     {
-        const calldata = unirepSocialContract.interface.encodeFunctionData('startUserStateTransition', [
-            blindedUserState,
-            blindedHashChain,
-            globalStateTreeRoot,
-            formatProofForVerifierContract(proof)
-        ])
-        const hash = await TransactionManager.queueTransaction(unirepSocialContract.address, calldata)
+        const calldata = unirepSocialContract.interface.encodeFunctionData(
+            'startUserStateTransition',
+            [
+                blindedUserState,
+                blindedHashChain,
+                globalStateTreeRoot,
+                formatProofForVerifierContract(proof),
+            ]
+        )
+        const hash = await TransactionManager.queueTransaction(
+            unirepSocialContract.address,
+            calldata
+        )
         await TransactionManager.wait(hash)
     }
 
@@ -49,13 +59,19 @@ const userStateTransition = async (req: any, res: any) => {
             inputBlindedUserState,
             proof,
         } = results.processAttestationProofs[i]
-        const calldata = unirepSocialContract.interface.encodeFunctionData('processAttestations', [
-            outputBlindedUserState,
-            outputBlindedHashChain,
-            inputBlindedUserState,
-            formatProofForVerifierContract(proof),
-        ])
-        const hash = await TransactionManager.queueTransaction(unirepSocialContract.address, calldata)
+        const calldata = unirepSocialContract.interface.encodeFunctionData(
+            'processAttestations',
+            [
+                outputBlindedUserState,
+                outputBlindedHashChain,
+                inputBlindedUserState,
+                formatProofForVerifierContract(proof),
+            ]
+        )
+        const hash = await TransactionManager.queueTransaction(
+            unirepSocialContract.address,
+            calldata
+        )
         txPromises.push(TransactionManager.wait(hash))
     }
     await Promise.all(txPromises)
@@ -82,7 +98,7 @@ const userStateTransition = async (req: any, res: any) => {
             outputBlindedUserState,
             outputBlindedHashChain,
             inputBlindedUserState,
-            formatProofForVerifierContract(proof),
+            formatProofForVerifierContract(proof)
         )
         const proofIndex = await unirepContract.getProofIndex(proofNullifier)
         proofIndexes.push(Number(proofIndex))
@@ -92,11 +108,15 @@ const userStateTransition = async (req: any, res: any) => {
         results.finalTransitionProof.proof
     )
     const calldata = unirepSocialContract.interface.encodeFunctionData(
-        'updateUserStateRoot', [USTProof, proofIndexes]
+        'updateUserStateRoot',
+        [USTProof, proofIndexes]
     )
-    const hash = await TransactionManager.queueTransaction(unirepSocialContract.address, calldata)
+    const hash = await TransactionManager.queueTransaction(
+        unirepSocialContract.address,
+        calldata
+    )
     res.json({
-        transaction: hash
+        transaction: hash,
     })
 }
 

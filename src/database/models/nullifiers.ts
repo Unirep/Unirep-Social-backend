@@ -1,5 +1,5 @@
-import * as mongoose from 'mongoose';
-import { Schema, Document } from 'mongoose';
+import * as mongoose from 'mongoose'
+import { Schema, Document } from 'mongoose'
 
 export interface INullifier extends Document {
     epoch: number
@@ -7,10 +7,13 @@ export interface INullifier extends Document {
     transactionHash: string
 }
 
-const NullifierSchema: Schema = new Schema({
-    epoch: { type: Number },
-    nullifier: { type: String, unique: true },
-    transactionHash: { type: String },
-}, { collection: 'Nullifiers' })
+const NullifierSchema: Schema = new Schema(
+    {
+        epoch: { type: Number },
+        nullifier: { type: String, unique: true },
+        transactionHash: { type: String },
+    },
+    { collection: 'Nullifiers' }
+)
 
-export default mongoose.model<INullifier>('Nullifier', NullifierSchema);
+export default mongoose.model<INullifier>('Nullifier', NullifierSchema)

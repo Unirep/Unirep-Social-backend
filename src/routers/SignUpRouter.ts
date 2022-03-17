@@ -1,5 +1,5 @@
-import { Router } from 'express';
-import SignUpController from '../controllers/SignUpController';
+import { Router } from 'express'
+import SignUpController from '../controllers/SignUpController'
 import catchError from './catchError'
 
 const router = Router()

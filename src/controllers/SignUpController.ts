@@ -5,30 +5,44 @@ import {
     DEFAULT_ETH_PROVIDER,
     UNIREP_SOCIAL,
     UNIREP_SOCIAL_ABI,
-} from '../constants';
+} from '../constants'
 import TransactionManager from '../daemons/TransactionManager'
 
 const signUp = async (req: any, res: any) => {
     const uploadedCommitment = req.query.commitment!.toString()
-    const unirepContract = new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER)
-    const unirepSocialContract = new ethers.Contract(UNIREP_SOCIAL, UNIREP_SOCIAL_ABI, DEFAULT_ETH_PROVIDER)
+    const unirepContract = new ethers.Contract(
+        UNIREP,
+        UNIREP_ABI,
+        DEFAULT_ETH_PROVIDER
+    )
+    const unirepSocialContract = new ethers.Contract(
+        UNIREP_SOCIAL,
+        UNIREP_SOCIAL_ABI,
+        DEFAULT_ETH_PROVIDER
+    )
 
     if (!/^(0x)?[0-9a-fA-F]{64}$/.test(uploadedCommitment)) {
-        return { error: 'Commitment must be exactly 64 hex characters with an optional 0x prefix' }
+        return {
+            error: 'Commitment must be exactly 64 hex characters with an optional 0x prefix',
+        }
     }
     const commitment = `0x${uploadedCommitment.replace('0x', '')}`
 
-    const calldata = unirepSocialContract.interface.encodeFunctionData('userSignUp', [
-        commitment,
-    ])
-    const hash = await TransactionManager.queueTransaction(unirepSocialContract.address, calldata)
+    const calldata = unirepSocialContract.interface.encodeFunctionData(
+        'userSignUp',
+        [commitment]
+    )
+    const hash = await TransactionManager.queueTransaction(
+        unirepSocialContract.address,
+        calldata
+    )
 
-    const epoch = await unirepContract.currentEpoch();
-    console.log('transaction: ' + hash + ', sign up epoch: ' + epoch.toString());
+    const epoch = await unirepContract.currentEpoch()
+    console.log('transaction: ' + hash + ', sign up epoch: ' + epoch.toString())
 
     res.json({
         transaction: hash,
-        epoch: epoch.toNumber()
+        epoch: epoch.toNumber(),
     })
 }
 

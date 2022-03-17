@@ -1,6 +1,5 @@
-import * as mongoose from 'mongoose';
-import { Schema, Document } from 'mongoose';
-
+import * as mongoose from 'mongoose'
+import { Schema, Document } from 'mongoose'
 
 export interface IUserSignUp extends Document {
     transactionHash: string
@@ -8,10 +7,16 @@ export interface IUserSignUp extends Document {
     epoch: number
 }
 
-const UserSignUpSchema: Schema = new Schema({
-    transactionHash: { type: String },
-    commitment: { type: String },
-    epoch: { type: Number },
-}, { collection: 'Users', timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }, })
+const UserSignUpSchema: Schema = new Schema(
+    {
+        transactionHash: { type: String },
+        commitment: { type: String },
+        epoch: { type: Number },
+    },
+    {
+        collection: 'Users',
+        timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+    }
+)
 
-export default mongoose.model<IUserSignUp>('UserSignUp', UserSignUpSchema);
+export default mongoose.model<IUserSignUp>('UserSignUp', UserSignUpSchema)
