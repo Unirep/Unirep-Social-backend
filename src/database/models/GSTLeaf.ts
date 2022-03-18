@@ -1,19 +1,26 @@
-import * as mongoose from 'mongoose';
-import { Schema, Document } from 'mongoose';
+import * as mongoose from 'mongoose'
+import { Schema, Document } from 'mongoose'
 
 export interface IGSTLeaf {
     transactionHash: string
     hashedLeaf: string
 }
-  
-export interface IGSTLeaves extends Document {
-  epoch: number
-  GSTLeaves: Array<IGSTLeaf>
+
+export interface IGSTLeaf extends Document {
+    epoch: number
+    transactionHash: string
+    hash: string
+    index: number
 }
 
-const GSTLeavesSchema: Schema = new Schema({
-    epoch: { type: Number, unique: true },
-    GSTLeaves: { type: Array },
-}, { collection: 'GSTLeaves' })
+const GSTLeafSchema: Schema = new Schema(
+    {
+        epoch: { type: Number },
+        transactionHash: { type: String },
+        hash: { type: String },
+        index: { type: Number },
+    },
+    { collection: 'GSTLeaf' }
+)
 
-export default mongoose.model<IGSTLeaves>('GSTLeaves', GSTLeavesSchema);
+export default mongoose.model<IGSTLeaf>('GSTLeaf', GSTLeafSchema)

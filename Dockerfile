@@ -1,13 +1,12 @@
-FROM node:16.13.2-buster
+FROM alpine:3.15
 
-WORKDIR /web
+RUN apk add --no-cache git nodejs npm && \
+    npm install -g yarn
 
-COPY package.json package.json
-COPY yarn.lock yarn.lock
+COPY . /src
+WORKDIR /src
 
-RUN npm install -g link-module-alias
-RUN yarn install
-
-COPY . .
+RUN yarn
 EXPOSE 3001
-CMD ["yarn", "start"]
+
+CMD ["yarn", "start:daemon"]

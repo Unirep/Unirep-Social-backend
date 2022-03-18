@@ -1,21 +1,24 @@
-import * as mongoose from 'mongoose';
-import { Schema, Document } from 'mongoose';
+import * as mongoose from 'mongoose'
+import { Schema, Document } from 'mongoose'
 
-export interface IEpochTreeLeaf {
-  epochKey: string;
-  hashchainResult: string;
-}
-  
-export interface IEpochTreeLeaves extends Document {
-  epoch: number
-  epochTreeLeaves: Array<IEpochTreeLeaf>
-  epochTreeRoot: string
+export interface IEpochTreeLeaf extends Document {
+    epoch: number
+    epochKey: string
+    hashchain: string
+    index: number
 }
 
-const EpochGSTLeavesSchema: Schema = new Schema({
-    epoch: { type: Number, unique: true },
-    epochTreeLeaves: { type: Array },
-    epochTreeRoot: { type: String },
-}, { collection: 'EpochTreeLeaves' })
+const EpochGSTLeafSchema: Schema = new Schema(
+    {
+        epoch: { type: Number, unique: true },
+        epochKey: { type: String },
+        hashchain: { type: String },
+        hash: { type: String, required: true },
+    },
+    { collection: 'EpochTreeLeaf' }
+)
 
-export default mongoose.model<IEpochTreeLeaves>('EpochGSTLeaves', EpochGSTLeavesSchema);
+export default mongoose.model<IEpochTreeLeaf>(
+    'EpochTreeLeaf',
+    EpochGSTLeafSchema
+)

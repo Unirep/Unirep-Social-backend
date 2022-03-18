@@ -7,5 +7,5 @@
         "resolveJsonModule": true,
         "noImplicitAny": false,
         "outDir": "./build"
-    },
+    }
 }

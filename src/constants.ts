@@ -1,19 +1,42 @@
-import dotenv from 'dotenv';
-import UnirepSocial from "../node_modules/@unirep/unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json"
-import Unirep from "../node_modules/@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json"
-import { ethers } from 'ethers';
+import UnirepSocial from '@unirep/unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json'
+import Unirep from '@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json'
+import { ethers } from 'ethers'
+import randomstring from 'randomstring'
+import { numEpochKeyNoncePerEpoch } from '@unirep/unirep'
 
-dotenv.config({
-    path: '.env'
-});
+// Provide default values for process.env
+Object.assign(process.env, {
+    UNIREP: '0x28Ca92e6672FBe94267F46CA5fe9936D1e0aeb28',
+    UNIREP_SOCIAL: '0xCB70cd28aa571BFf1e9e42959092359936632e95',
+    DEFAULT_ETH_PROVIDER_URL: 'https://kovan.optimism.io',
+    ADMIN_SESSION_CODE: randomstring.generate(20),
+    MONGO_URL: 'mongodb://mongo:27017/unirep_social',
+    ...process.env,
+})
 
-export const DEPLOYER_PRIV_KEY = process.env.BACKEND_PRIVATE_KEY!;
-export const UNIREP = '0x3DdC8069e7d740C86AFfB8bc10Fa66ad10181bd2';
-export const UNIREP_SOCIAL = '0x22251B1135379dA965614D83c9FC3D8F012B68CE';
-export const MONGODB = 'mongodb://mongo:27017'
-const DEFAULT_ETH_PROVIDER_URL = 'wss://eth-goerli.alchemyapi.io/v2/tYp-IJU_idg28iohx9gsLqhq6KRZxk7f'
-export const DEFAULT_ETH_PROVIDER = new ethers.providers.WebSocketProvider(DEFAULT_ETH_PROVIDER_URL);
-export const DEFAULT_START_BLOCK = 0;
+export const {
+    DEPLOYER_PRIV_KEY,
+    UNIREP,
+    UNIREP_SOCIAL,
+    DEFAULT_ETH_PROVIDER_URL,
+    MONGO_URL,
+    ADMIN_SESSION_CODE,
+} = process.env as any
+
+console.log(`Admin session code is "${ADMIN_SESSION_CODE}"`)
+
+if (!DEPLOYER_PRIV_KEY) {
+    console.error('No DEPLOYER_PRIV_KEY specified')
+    process.exit(1)
+}
+
+// export const UNIREP = '0xE7709F35fb195E1D117D486aEB24bA58CEccCD29';
+// export const UNIREP_SOCIAL = '0x0F50453236B2Ca88D5C1fBC8D7FA91001d93eC68';
+// const DEFAULT_ETH_PROVIDER_URL = 'wss://eth-goerli.alchemyapi.io/v2/tYp-IJU_idg28iohx9gsLqhq6KRZxk7f';
+export const DEFAULT_ETH_PROVIDER = DEFAULT_ETH_PROVIDER_URL.startsWith('http')
+    ? new ethers.providers.JsonRpcProvider(DEFAULT_ETH_PROVIDER_URL)
+    : new ethers.providers.WebSocketProvider(DEFAULT_ETH_PROVIDER_URL)
+export const DEFAULT_START_BLOCK = 0
 export const UNIREP_SOCIAL_ATTESTER_ID = 1
 
 export const DEFAULT_POST_KARMA = 5
@@ -22,34 +45,21 @@ export const MAX_KARMA_BUDGET = 10
 export const DEFAULT_AIRDROPPED_KARMA = 30
 export const DEFAULT_QUERY_DEPTH = 5
 export const QUERY_DELAY_TIME = 300
+export const EPOCH_KEY_NONCE_PER_EPOCH = numEpochKeyNoncePerEpoch
 
-export const identityPrefix = 'Unirep.identity.'
-export const identityCommitmentPrefix = 'Unirep.identityCommitment.'
-export const epkProofPrefix = 'Unirep.epk.proof.'
-export const epkPublicSignalsPrefix = 'Unirep.epk.publicSignals.'
-export const reputationProofPrefix = 'Unirep.reputation.proof.'
-export const reputationPublicSignalsPrefix = 'Unirep.reputation.publicSignals.'
-export const signUpProofPrefix = 'Unirep.signUp.proof.'
-export const signUpPublicSignalsPrefix = 'Unirep.signUp.publicSignals.'
-export const startUSTProofPrefix = 'Unirep.startUST.proof.'
-export const startUSTPublicSignalsPrefix = 'Unirep.startUST.publicSignals.'
-export const processUSTProofPrefix = 'Unirep.processUST.proof.'
-export const processUSTPublicSignalsPrefix = 'Unirep.processUST.publicSignals.'
-export const USTProofPrefix = 'Unirep.UST.proof.'
-export const USTPublicSignalsPrefix = 'Unirep.UST.publicSignals.'
 export const maxReputationBudget = 10
 
-export const loadPostCount = 10
+export const LOAD_POST_COUNT = 10
 
 export const UNIREP_ABI = Unirep.abi
 export const UNIREP_SOCIAL_ABI = UnirepSocial.abi
 
 export enum ActionType {
-    Post = "Post",
-    Comment = "Comment",
-    Vote = "Vote",
-    UST = "UST",
-    Signup = "Signup",
+    Post = 'Post',
+    Comment = 'Comment',
+    Vote = 'Vote',
+    UST = 'UST',
+    Signup = 'Signup',
 }
 
 export enum QueryType {
@@ -60,10 +70,10 @@ export enum QueryType {
     Rep = 'rep',
 }
 
-export const titlePrefix = '<t>';
-export const titlePostfix = '</t>';
+export const titlePrefix = '<t>'
+export const titlePostfix = '</t>'
 
 export const add0x = (str: string): string => {
-    str = str.padStart(64,"0")
+    str = str.padStart(64, '0')
     return str.startsWith('0x') ? str : '0x' + str
 }
