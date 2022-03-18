@@ -59,10 +59,10 @@ const getPostWithId = async (postId: string) => {
     const comments = await Comment.find({
         postId,
     })
-    return {
+    return [{
         ...post.toObject(),
         comments,
-    }
+    }]
 }
 
 const getPostWithQuery = async (query: string, lastRead: string, epks: string[]) => {
