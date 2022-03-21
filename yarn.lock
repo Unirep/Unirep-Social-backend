@@ -681,7 +681,7 @@
 
 "@unirep/contracts@git+https://github.com/Unirep/contracts.git":
   version "1.0.6"
-  resolved "git+https://github.com/Unirep/contracts.git#962d6ec066a9c49d93920be8acf1d278b015bc23"
+  resolved "git+https://github.com/Unirep/contracts.git#6966bdc9874aab7215ffba2bfbcd3f56cc8f6752"
   dependencies:
     "@openzeppelin/contracts" "^4.4.2"
     "@unirep/circuits" "git+https://github.com/Unirep/circuits.git"
@@ -701,7 +701,7 @@
 
 "@unirep/unirep-social@git+https://github.com/Unirep/unirep-social.git#alpha":
   version "1.0.0"
-  resolved "git+https://github.com/Unirep/unirep-social.git#0f26f96523287de5e0955e4a502bd329577b2167"
+  resolved "git+https://github.com/Unirep/unirep-social.git#73608fec3dc7d25aaaf1535dac9a0d040445d6ce"
   dependencies:
     "@unirep/circuits" "git+https://github.com/Unirep/circuits.git"
     "@unirep/contracts" "git+https://github.com/Unirep/contracts.git"
@@ -716,7 +716,7 @@
 
 "@unirep/unirep@git+https://github.com/Unirep/unirep.git":
   version "1.0.0"
-  resolved "git+https://github.com/Unirep/unirep.git#97cbc559a7528c969a6a090add93be1d65a668ab"
+  resolved "git+https://github.com/Unirep/unirep.git#60d7bad732b2b0580e6357b4cb290534dcb43297"
   dependencies:
     "@typechain/ethers-v5" "^9.0.0"
     "@typechain/hardhat" "^4.0.0"

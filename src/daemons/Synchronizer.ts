@@ -1192,14 +1192,13 @@ export class Synchronizer {
         let currentBlindedUserState = startTransitionProof.blindedUserState
         for (let i = 1; i < proofIndexRecords.length; i++) {
             const processAttestationsProof = await Proof.findOne({
-                epoch,
                 event: 'IndexedProcessedAttestationsProof',
-                index: proofIndexRecords[i],
+                index: Number(proofIndexRecords[i]),
             })
             if (!processAttestationsProof) {
                 return
             }
-            if (processAttestationsProof.valid) {
+            if (!processAttestationsProof.valid) {
                 console.log(
                     'Process Attestations Proof index: ',
                     proofIndexRecords[i],
@@ -1221,7 +1220,6 @@ export class Synchronizer {
             currentBlindedUserState =
                 processAttestationsProof.outputBlindedUserState
         }
-
         // verify blinded hash chain result
         const { publicSignals, proof } = transitionProof
         const publicSignals_ = decodeBigIntArray(publicSignals)
