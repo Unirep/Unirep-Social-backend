@@ -10,7 +10,7 @@ Object.assign(process.env, {
     UNIREP_SOCIAL: '0xCB70cd28aa571BFf1e9e42959092359936632e95',
     DEFAULT_ETH_PROVIDER_URL: 'https://kovan.optimism.io',
     ADMIN_SESSION_CODE: randomstring.generate(20),
-    MONGO_URL: 'mongodb://mongo:27017/unirep_social',
+    MONGO_URL: 'mongodb://mongo/unirep_social',
     ...process.env,
 })
 
