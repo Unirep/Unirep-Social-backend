@@ -22,11 +22,11 @@ const processNewEvents = async () => {
         await Promise.all([
             Synchronizer.unirepContract.queryFilter(
                 Synchronizer.unirepFilter,
-                blockNumber + 1,
+                blockNumber + 1
             ),
             Synchronizer.unirepSocialContract.queryFilter(
                 Synchronizer.unirepSocialFilter,
-                blockNumber + 1,
+                blockNumber + 1
             ),
         ])
     ).flat() as ethers.Event[]
@@ -54,10 +54,7 @@ const verifyGSTRoot = async (
     }
 }
 
-const verifyEpochTreeRoot = async (
-    epoch: number,
-    epochTreeRoot: string
-) => {
+const verifyEpochTreeRoot = async (epoch: number, epochTreeRoot: string) => {
     const exists = await Epoch.exists({
         epoch,
         epochRoot: epochTreeRoot,
