@@ -1,5 +1,5 @@
-import * as mongoose from 'mongoose';
-import { Schema, Document } from 'mongoose';
+import * as mongoose from 'mongoose'
+import { Schema, Document } from 'mongoose'
 
 export interface IVote {
     transactionHash: string
@@ -16,12 +16,14 @@ export interface IVotes extends Document {
     attestations: Array<IVote>
 }
 
-const AttestationsSchema: Schema = new Schema({
-    epochKey: { type: String, unique: true },
-    attestations: { type: Array },
-}, {
-    timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
-});
+const AttestationsSchema: Schema = new Schema(
+    {
+        epochKey: { type: String, unique: true },
+        attestations: { type: Array },
+    },
+    {
+        timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+    }
+)
 
-
-export default mongoose.model<IVotes>('Votes', AttestationsSchema);
+export default mongoose.model<IVotes>('Votes', AttestationsSchema)

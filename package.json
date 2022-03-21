@@ -6,6 +6,7 @@
         "start": "nodemon src/app.ts",
         "start:daemon": "ts-node src/app.ts",
         "build": "tsc",
+        "lint": "prettier .",
         "test": "sh scripts/pretest.sh && ava test/*.test.ts -T 5m --verbose"
     },
     "keywords": [],
@@ -21,6 +22,7 @@
         "get-port": "^5.1.1",
         "node-fetch": "2",
         "nodemon": "^2.0.12",
+        "prettier": "^2.6.0",
         "ts-node": "^10.1.0",
         "typescript": "^4.3.5"
     },
@@ -28,7 +30,7 @@
         "@unirep/circuits": "git+https://github.com/Unirep/circuits.git",
         "@unirep/crypto": "git+https://github.com/Unirep/crypto.git",
         "@unirep/unirep": "git+https://github.com/Unirep/unirep.git",
-        "@unirep/unirep-social": "git+https://github.com/Unirep/unirep-social.git#alpha",
+        "@unirep/unirep-social": "git+https://github.com/Unirep/unirep-social.git",
         "cors": "^2.8.5",
         "dotenv": "^10.0.0",
         "express": "^4.17.1",
@@ -44,5 +46,10 @@
             },
             "compile": "tsc"
         }
+    },
+    "prettier": {
+        "tabWidth": 4,
+        "singleQuote": true,
+        "semi": false
     }
 }

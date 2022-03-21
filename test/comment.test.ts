@@ -1,13 +1,7 @@
 import test from 'ava'
 import { startServer } from './environment'
 
-import {
-    createComment,
-    createPost,
-    queryPost,
-    signIn,
-    signUp
-} from './utils';
+import { createComment, createPost, queryPost, signIn, signUp } from './utils'
 
 test.before(async (t) => {
     const context = await startServer()
@@ -31,4 +25,3 @@ test('should create a comment', async (t: any) => {
     await createComment(t)
     t.pass()
 })
-

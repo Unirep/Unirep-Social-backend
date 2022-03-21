@@ -1,5 +1,5 @@
-import { Router } from 'express';
-import USTController from '../controllers/USTController';
+import { Router } from 'express'
+import USTController from '../controllers/USTController'
 import catchError from './catchError'
 
 const router = Router()

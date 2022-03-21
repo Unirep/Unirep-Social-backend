@@ -1,5 +1,5 @@
-import * as mongoose from 'mongoose';
-import { Schema, Document } from 'mongoose';
+import * as mongoose from 'mongoose'
+import { Schema, Document } from 'mongoose'
 
 export interface IGSTLeaf {
     transactionHash: string
@@ -13,11 +13,14 @@ export interface IGSTLeaf extends Document {
     index: number
 }
 
-const GSTLeafSchema: Schema = new Schema({
-    epoch: { type: Number, },
-    transactionHash: { type: String },
-    hash: { type: String },
-    index: { type: Number, },
-}, { collection: 'GSTLeaf' })
+const GSTLeafSchema: Schema = new Schema(
+    {
+        epoch: { type: Number },
+        transactionHash: { type: String },
+        hash: { type: String },
+        index: { type: Number },
+    },
+    { collection: 'GSTLeaf' }
+)
 
-export default mongoose.model<IGSTLeaf>('GSTLeaf', GSTLeafSchema);
+export default mongoose.model<IGSTLeaf>('GSTLeaf', GSTLeafSchema)
