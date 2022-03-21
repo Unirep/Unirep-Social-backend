@@ -1,3 +1,4 @@
+import { ethers } from 'ethers'
 import { Circuit, verifyProof } from '@unirep/circuits'
 import {
     ReputationProof,
@@ -8,6 +9,69 @@ import Record from '../database/models/record'
 import Nullifier from '../database/models/nullifiers'
 import Epoch from '../database/models/epoch'
 import GSTRoot from '../database/models/GSTRoots'
+import BlockNumber from '../database/models/blockNumber'
+import Synchronizer from '../daemons/Synchronizer'
+import { DEFAULT_ETH_PROVIDER } from '../constants'
+
+const processNewEvents = async () => {
+    const latestBlock = await DEFAULT_ETH_PROVIDER.getBlockNumber()
+    const latestProcessed = await BlockNumber.findOne()
+    const blockNumber = latestProcessed === null ? 0 : latestProcessed.number
+    if (latestBlock == blockNumber) return
+    const allEvents = (
+        await Promise.all([
+            Synchronizer.unirepContract.queryFilter(
+                Synchronizer.unirepFilter,
+                blockNumber + 1,
+            ),
+            Synchronizer.unirepSocialContract.queryFilter(
+                Synchronizer.unirepSocialFilter,
+                blockNumber + 1,
+            ),
+        ])
+    ).flat() as ethers.Event[]
+    // first process historical ones then listen
+    await Synchronizer.processEvents(allEvents)
+}
+
+const verifyGSTRoot = async (
+    epoch: number,
+    gstRoot: string
+): Promise<boolean> => {
+    const exists = await GSTRoot.exists({
+        epoch,
+        root: gstRoot,
+    })
+    if (exists) return exists
+    else {
+        await processNewEvents()
+        const exists = await GSTRoot.exists({
+            epoch,
+            root: gstRoot,
+        })
+        console.log(await GSTRoot.find())
+        return exists
+    }
+}
+
+const verifyEpochTreeRoot = async (
+    epoch: number,
+    epochTreeRoot: string
+) => {
+    const exists = await Epoch.exists({
+        epoch,
+        epochRoot: epochTreeRoot,
+    })
+    if (exists) return exists
+    else {
+        await processNewEvents()
+        const exists = await Epoch.exists({
+            epoch,
+            epochRoot: epochTreeRoot,
+        })
+        return exists
+    }
+}
 
 const verifyReputationProof = async (
     reputationProof: ReputationProof,
@@ -43,10 +107,7 @@ const verifyReputationProof = async (
 
     // check GST root
     {
-        const exists = await GSTRoot.exists({
-            epoch,
-            root: gstRoot,
-        })
+        const exists = await verifyGSTRoot(epoch, gstRoot)
         if (!exists) {
             return `Global state tree root ${gstRoot} is not in epoch ${epoch}`
         }
@@ -96,10 +157,7 @@ const verifyAirdropProof = async (
 
     // check GST root
     {
-        const exists = await GSTRoot.exists({
-            epoch,
-            root: gstRoot,
-        })
+        const exists = await verifyGSTRoot(epoch, gstRoot)
         if (!exists) {
             return `Global state tree root ${gstRoot} is not in epoch ${epoch}`
         }
@@ -166,20 +224,14 @@ const verifyUSTProof = async (
     const gstRoot = results?.finalTransitionProof?.fromGSTRoot
     const epochTreeRoot = results.finalTransitionProof.fromEpochTree
     {
-        const exists = await GSTRoot.exists({
-            epoch,
-            root: gstRoot,
-        })
+        const exists = await verifyGSTRoot(epoch, gstRoot)
         if (!exists) {
             error = `Global state tree root ${gstRoot} is not in epoch ${epoch}`
             return error
         }
     }
     {
-        const exists = await Epoch.exists({
-            epoch,
-            epochRoot: epochTreeRoot,
-        })
+        const exists = await verifyEpochTreeRoot(epoch, epochTreeRoot)
         if (!exists) {
             error = `Epoch tree root ${epochTreeRoot} is not in epoch ${epoch}`
             return error
