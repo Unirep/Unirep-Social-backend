@@ -95,7 +95,7 @@ export const signIn = async (t) => {
     })
     const r = await fetch(`${t.context.url}/api/signin?${params}`)
     if (!r.ok) {
-      throw new Error(`/signin error`)
+        throw new Error(`/signin error`)
     }
     t.is(r.status, 200)
 }
@@ -119,7 +119,7 @@ export const getSpent = async (t) => {
     )
     const data = await r.json()
     if (!r.ok) {
-      throw new Error(`/records error ${JSON.stringify(data)}`)
+        throw new Error(`/records error ${JSON.stringify(data)}`)
     }
     let spent = 0
     for (var i = 0; i < data.length; i++) {
@@ -135,9 +135,9 @@ const genReputationProof = async (t) => {
         t.context.iden
     )
     {
-      // this might be unnecessary, here for the `getSpent` call below
-      const blockNumber = await t.context.provider.getBlockNumber()
-      await waitForBackendBlock(t, blockNumber)
+        // this might be unnecessary, here for the `getSpent` call below
+        const blockNumber = await t.context.provider.getBlockNumber()
+        await waitForBackendBlock(t, blockNumber)
     }
 
     // find valid nonce starter
@@ -174,9 +174,9 @@ const genReputationProof = async (t) => {
     // we need to wait for the backend to process whatever block our provider is on
     const blockNumber = await t.context.provider.getBlockNumber()
     return {
-      proof: formatProofForVerifierContract(proof),
-      publicSignals,
-      blockNumber,
+        proof: formatProofForVerifierContract(proof),
+        publicSignals,
+        blockNumber,
     }
 }
 
@@ -202,7 +202,7 @@ export const createPost = async (t) => {
     const data = await r.json()
     const prevSpent = await getSpent(t)
     if (!r.ok) {
-      throw new Error(`/post error ${JSON.stringify(data)}`)
+        throw new Error(`/post error ${JSON.stringify(data)}`)
     }
     const receipt = await t.context.provider.waitForTransaction(
         data.transaction
@@ -256,7 +256,7 @@ export const createComment = async (t) => {
     const data = await r.json()
     const prevSpent = await getSpent(t)
     if (!r.ok) {
-      throw new Error(`/comment error ${JSON.stringify(data)}`)
+        throw new Error(`/comment error ${JSON.stringify(data)}`)
     }
     const receipt = await t.context.provider.waitForTransaction(
         data.transaction
@@ -301,7 +301,7 @@ export const vote = async (t) => {
     const data = await r.json()
     const prevSpent = await getSpent(t)
     if (!r.ok) {
-      throw new Error(`/vote error ${JSON.stringify(data)}`)
+        throw new Error(`/vote error ${JSON.stringify(data)}`)
     }
     const receipt = await t.context.provider.waitForTransaction(
         data.transaction
@@ -354,7 +354,7 @@ export const userStateTransition = async (t) => {
     })
     const data = await r.json()
     if (!r.ok) {
-      throw new Error(`/userStateTransition error ${JSON.stringify(data)}`)
+        throw new Error(`/userStateTransition error ${JSON.stringify(data)}`)
     }
     const receipt = await t.context.provider.waitForTransaction(
         data.transaction

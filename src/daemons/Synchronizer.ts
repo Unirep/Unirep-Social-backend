@@ -1,4 +1,4 @@
-import mongoose from  'mongoose'
+import mongoose from 'mongoose'
 import { ethers } from 'ethers'
 import {
     UNIREP,
@@ -174,14 +174,14 @@ export class Synchronizer extends EventEmitter {
 
     // start sychronizing events
     async start() {
-      const state = await SynchronizerState.findOne({})
-      if (!state) {
-        await SynchronizerState.create({
-          latestProcessedBlock: 0,
-          latestProcessedTransactionIndex: 0,
-          latestProcessedEventIndex: 0,
-        })
-      }
+        const state = await SynchronizerState.findOne({})
+        if (!state) {
+            await SynchronizerState.create({
+                latestProcessedBlock: 0,
+                latestProcessedTransactionIndex: 0,
+                latestProcessedEventIndex: 0,
+            })
+        }
         this.startDaemon()
     }
 
@@ -218,15 +218,23 @@ export class Synchronizer extends EventEmitter {
             const state = await SynchronizerState.findOne({})
             if (!state) throw new Error('State not initialized')
             // first process historical ones then listen
-            await this.processEvents(allEvents.filter(e => {
-              return e.blockNumber > state.latestProcessedBlock ||
-                e.transactionIndex > state.latestProcessedTransactionIndex ||
-                e.logIndex > state.latestProcessedEventIndex
-            }))
+            await this.processEvents(
+                allEvents.filter((e) => {
+                    return (
+                        e.blockNumber > state.latestProcessedBlock ||
+                        e.transactionIndex >
+                            state.latestProcessedTransactionIndex ||
+                        e.logIndex > state.latestProcessedEventIndex
+                    )
+                })
+            )
             latestProcessed = newLatest
-            await SynchronizerState.updateOne({}, {
-              latestCompleteBlock: newLatest,
-            })
+            await SynchronizerState.updateOne(
+                {},
+                {
+                    latestCompleteBlock: newLatest,
+                }
+            )
         }
     }
 
@@ -386,22 +394,26 @@ export class Synchronizer extends EventEmitter {
             this._session.startTransaction()
             try {
                 await this._processEvent(event)
-                await SynchronizerState.updateOne({}, {
-                  latestProcessedBlock: +event.blockNumber,
-                  latestProcessedTransactionIndex: +event.transactionIndex,
-                  latestProcessedEventIndex: +event.logIndex,
-                }, { session: this._session })
+                await SynchronizerState.updateOne(
+                    {},
+                    {
+                        latestProcessedBlock: +event.blockNumber,
+                        latestProcessedTransactionIndex:
+                            +event.transactionIndex,
+                        latestProcessedEventIndex: +event.logIndex,
+                    },
+                    { session: this._session }
+                )
                 await this._session.commitTransaction()
             } catch (err) {
-              console.log(`Error processing event:`, err)
-              console.log(event)
-              if (!this._session) break // the commit failed, no need to abort
-              await this._session.abortTransaction()
-              break
+                console.log(`Error processing event:`, err)
+                console.log(event)
+                if (!this._session) break // the commit failed, no need to abort
+                await this._session.abortTransaction()
+                break
             }
         }
-        if (this._session)
-          await this._session.endSession()
+        if (this._session) await this._session.endSession()
         await db.close()
         this._session = undefined
     }
@@ -411,9 +423,7 @@ export class Synchronizer extends EventEmitter {
         if (event.topics[0] === this.allTopics.IndexedEpochKeyProof) {
             console.log('IndexedEpochKeyProof')
             await this.epochKeyProofEvent(event)
-        } else if (
-            event.topics[0] === this.allTopics.IndexedReputationProof
-        ) {
+        } else if (event.topics[0] === this.allTopics.IndexedReputationProof) {
             console.log('IndexedReputationProof')
             await this.reputationProofEvent(event)
         } else if (
@@ -427,28 +437,22 @@ export class Synchronizer extends EventEmitter {
             console.log('IndexedStartedTransitionProof')
             await this.startUSTProofEvent(event)
         } else if (
-            event.topics[0] ===
-            this.allTopics.IndexedProcessedAttestationsProof
+            event.topics[0] === this.allTopics.IndexedProcessedAttestationsProof
         ) {
             console.log('IndexedProcessedAttestationsProof')
             await this.processAttestationProofEvent(event)
         } else if (
-            event.topics[0] ===
-            this.allTopics.IndexedUserStateTransitionProof
+            event.topics[0] === this.allTopics.IndexedUserStateTransitionProof
         ) {
             console.log('IndexedUserStateTransitionProof')
             await this.USTProofEvent(event)
         } else if (event.topics[0] === this.allTopics.UserSignedUp) {
             console.log('UserSignedUp')
             await this.userSignedUpEvent(event)
-        } else if (
-            event.topics[0] === this.allTopics.UserStateTransitioned
-        ) {
+        } else if (event.topics[0] === this.allTopics.UserStateTransitioned) {
             console.log('UserStateTransitioned')
             await this.USTEvent(event)
-        } else if (
-            event.topics[0] === this.allTopics.AttestationSubmitted
-        ) {
+        } else if (event.topics[0] === this.allTopics.AttestationSubmitted) {
             console.log('AttestationSubmitted')
             await this.attestationEvent(event)
         } else if (event.topics[0] === this.allTopics.EpochEnded) {
@@ -458,11 +462,16 @@ export class Synchronizer extends EventEmitter {
             console.log('Social: UserSignedUp')
             const _epoch = Number(event.topics[1])
             const _commitment = BigInt(event.topics[2]).toString()
-            await UserSignUp.create([{
-                transactionHash: event.transactionHash,
-                commitment: _commitment,
-                epoch: _epoch,
-            }], { session: this._session })
+            await UserSignUp.create(
+                [
+                    {
+                        transactionHash: event.transactionHash,
+                        commitment: _commitment,
+                        epoch: _epoch,
+                    },
+                ],
+                { session: this._session }
+            )
         } else if (event.topics[0] === this.allTopics._PostSubmitted) {
             console.log('Social: PostSubmitted')
             await this.postSubmittedEvent(event)
@@ -535,7 +544,7 @@ export class Synchronizer extends EventEmitter {
                 {
                     valid: false,
                 },
-                { session: this._session, }
+                { session: this._session }
             )
             return { isProofValid: false, proof: formedProof }
         }
@@ -605,11 +614,16 @@ export class Synchronizer extends EventEmitter {
             repNullifiers.map((nullifier) => ({
                 epoch: _epoch,
                 nullifier,
-            })), { session: this._session }
+            })),
+            { session: this._session }
         )
 
         if (findComment) {
-            findComment?.set('status', 1, { new: true, upsert: false, session: this._session })
+            findComment?.set('status', 1, {
+                new: true,
+                upsert: false,
+                session: this._session,
+            })
             findComment?.set('transactionHash', _transactionHash, {
                 new: true,
                 upsert: false,
@@ -640,16 +654,21 @@ export class Synchronizer extends EventEmitter {
             await newComment.save({ session: this._session })
         }
 
-        const [newRecord] = await Record.create([{
-            to: _epochKey,
-            from: _epochKey,
-            upvote: 0,
-            downvote: DEFAULT_COMMENT_KARMA,
-            epoch: _epoch,
-            action: ActionType.Comment,
-            data: _transactionHash,
-            transactionHash: _transactionHash,
-        }], { session: this._session })
+        const [newRecord] = await Record.create(
+            [
+                {
+                    to: _epochKey,
+                    from: _epochKey,
+                    upvote: 0,
+                    downvote: DEFAULT_COMMENT_KARMA,
+                    epoch: _epoch,
+                    action: ActionType.Comment,
+                    data: _transactionHash,
+                    transactionHash: _transactionHash,
+                },
+            ],
+            { session: this._session }
+        )
         await EpkRecord.findOneAndUpdate(
             {
                 epk: _epochKey,
@@ -665,7 +684,7 @@ export class Synchronizer extends EventEmitter {
                     spent: DEFAULT_COMMENT_KARMA,
                 },
             },
-            { new: true, upsert: true, session: this._session, }
+            { new: true, upsert: true, session: this._session }
         )
     }
 
@@ -730,11 +749,16 @@ export class Synchronizer extends EventEmitter {
             repNullifiers.map((nullifier) => ({
                 epoch: _epoch,
                 nullifier,
-            })), { session: this._session }
+            })),
+            { session: this._session }
         )
 
         if (findPost) {
-            findPost?.set('status', 1, { new: true, upsert: false, session: this._session })
+            findPost?.set('status', 1, {
+                new: true,
+                upsert: false,
+                session: this._session,
+            })
             findPost?.set('transactionHash', _transactionHash, {
                 new: true,
                 upsert: false,
@@ -745,7 +769,7 @@ export class Synchronizer extends EventEmitter {
                 upsert: false,
                 session: this._session,
             })
-            await findPost?.save( { session: this._session })
+            await findPost?.save({ session: this._session })
         } else {
             let content: string = ''
             let title: string = ''
@@ -786,16 +810,21 @@ export class Synchronizer extends EventEmitter {
             newpost.set({ new: true, upsert: false, session: this._session })
             await newpost.save({ session: this._session })
         }
-        const [newRecord] = await Record.create([{
-            to: _epochKey,
-            from: _epochKey,
-            upvote: 0,
-            downvote: DEFAULT_POST_KARMA,
-            epoch: _epoch,
-            action: ActionType.Post,
-            data: _transactionHash,
-            transactionHash: _transactionHash,
-        }], { session: this._session })
+        const [newRecord] = await Record.create(
+            [
+                {
+                    to: _epochKey,
+                    from: _epochKey,
+                    upvote: 0,
+                    downvote: DEFAULT_POST_KARMA,
+                    epoch: _epoch,
+                    action: ActionType.Post,
+                    data: _transactionHash,
+                    transactionHash: _transactionHash,
+                },
+            ],
+            { session: this._session }
+        )
         await EpkRecord.findOneAndUpdate(
             {
                 epk: _epochKey,
@@ -901,19 +930,25 @@ export class Synchronizer extends EventEmitter {
             repNullifiers.map((nullifier) => ({
                 epoch: _epoch,
                 nullifier,
-            }))
-        , { session: this._session })
+            })),
+            { session: this._session }
+        )
 
-        const [record] = await Record.create([{
-            to: _toEpochKey,
-            from: _fromEpochKey,
-            upvote: _posRep,
-            downvote: _negRep,
-            epoch: _epoch,
-            action: ActionType.Vote,
-            transactionHash: _transactionHash,
-            data: '',
-        }], { session: this._session })
+        const [record] = await Record.create(
+            [
+                {
+                    to: _toEpochKey,
+                    from: _fromEpochKey,
+                    upvote: _posRep,
+                    downvote: _negRep,
+                    epoch: _epoch,
+                    action: ActionType.Vote,
+                    transactionHash: _transactionHash,
+                    data: '',
+                },
+            ],
+            { session: this._session }
+        )
         await EpkRecord.findOneAndUpdate(
             {
                 epk: _fromEpochKey,
@@ -984,16 +1019,21 @@ export class Synchronizer extends EventEmitter {
             transactionHash: _transactionHash,
         })
         if (exists) return
-        await Record.create([{
-            to: _epochKey,
-            from: 'UnirepSocial',
-            upvote: DEFAULT_AIRDROPPED_KARMA,
-            downvote: 0,
-            epoch: _epoch,
-            action: 'UST',
-            data: '0',
-            transactionHash: event.transactionHash,
-        }], { session: this._session })
+        await Record.create(
+            [
+                {
+                    to: _epochKey,
+                    from: 'UnirepSocial',
+                    upvote: DEFAULT_AIRDROPPED_KARMA,
+                    downvote: 0,
+                    epoch: _epoch,
+                    action: 'UST',
+                    data: '0',
+                    transactionHash: event.transactionHash,
+                },
+            ],
+            { session: this._session }
+        )
     }
 
     async epochEndedEvent(event: ethers.Event) {
@@ -1061,7 +1101,7 @@ export class Synchronizer extends EventEmitter {
             },
             {
                 upsert: true,
-                session: this._session
+                session: this._session,
             }
         )
     }
@@ -1091,20 +1131,25 @@ export class Synchronizer extends EventEmitter {
             BigInt(decodedData._attestation.graffiti._hex),
             BigInt(decodedData._attestation.signUp)
         )
-        await Attestation.create([{
-            epoch: _epoch,
-            epochKey: _epochKey.toString(16),
-            index: attestIndex,
-            transactionHash: event.transactionHash,
-            attester: _attester,
-            proofIndex: toProofIndex,
-            attesterId: Number(decodedData._attestation.attesterId),
-            posRep: Number(decodedData._attestation.posRep),
-            negRep: Number(decodedData._attestation.negRep),
-            graffiti: decodedData._attestation.graffiti._hex,
-            signUp: Boolean(Number(decodedData._attestation?.signUp)),
-            hash: attestation.hash().toString(),
-        }], { session: this._session })
+        await Attestation.create(
+            [
+                {
+                    epoch: _epoch,
+                    epochKey: _epochKey.toString(16),
+                    index: attestIndex,
+                    transactionHash: event.transactionHash,
+                    attester: _attester,
+                    proofIndex: toProofIndex,
+                    attesterId: Number(decodedData._attestation.attesterId),
+                    posRep: Number(decodedData._attestation.posRep),
+                    negRep: Number(decodedData._attestation.negRep),
+                    graffiti: decodedData._attestation.graffiti._hex,
+                    signUp: Boolean(Number(decodedData._attestation?.signUp)),
+                    hash: attestation.hash().toString(),
+                },
+            ],
+            { session: this._session }
+        )
 
         const validProof = await Proof.findOne({
             epoch: _epoch,
@@ -1122,7 +1167,8 @@ export class Synchronizer extends EventEmitter {
                 },
                 {
                     valid: false,
-                }, { session: this._session }
+                },
+                { session: this._session }
             )
             return
         }
@@ -1143,7 +1189,8 @@ export class Synchronizer extends EventEmitter {
                     },
                     {
                         valid: false,
-                    }, { session: this._session }
+                    },
+                    { session: this._session }
                 )
                 return
             }
@@ -1154,7 +1201,8 @@ export class Synchronizer extends EventEmitter {
                 },
                 {
                     spent: true,
-                }, { session: this._session }
+                },
+                { session: this._session }
             )
         }
         await Attestation.findOneAndUpdate(
@@ -1165,7 +1213,8 @@ export class Synchronizer extends EventEmitter {
             },
             {
                 valid: true,
-            }, { session: this._session }
+            },
+            { session: this._session }
         )
         const epochKey = _epochKey.toString(16)
         const attestations = this.epochKeyToAttestationsMap[epochKey]
@@ -1340,7 +1389,8 @@ export class Synchronizer extends EventEmitter {
             epkNullifiers.map((nullifier) => ({
                 epoch,
                 nullifier,
-            })), { session: this._session }
+            })),
+            { session: this._session }
         )
 
         this.GSTLeaves[epoch].push(leaf)
@@ -1356,16 +1406,26 @@ export class Synchronizer extends EventEmitter {
         const leafIndexInEpoch = await GSTLeaf.count({
             epoch,
         })
-        await GSTLeaf.create([{
-            epoch,
-            transactionHash,
-            hash: leaf.toString(),
-            index: leafIndexInEpoch,
-        }], { session: this._session })
-        await GSTRoot.create([{
-            epoch,
-            root: this.globalStateTree[epoch].root.toString(),
-        }], { session: this._session })
+        await GSTLeaf.create(
+            [
+                {
+                    epoch,
+                    transactionHash,
+                    hash: leaf.toString(),
+                    index: leafIndexInEpoch,
+                },
+            ],
+            { session: this._session }
+        )
+        await GSTRoot.create(
+            [
+                {
+                    epoch,
+                    root: this.globalStateTree[epoch].root.toString(),
+                },
+            ],
+            { session: this._session }
+        )
     }
 
     async userSignedUpEvent(event: ethers.Event) {
@@ -1400,16 +1460,26 @@ export class Synchronizer extends EventEmitter {
         const leafIndexInEpoch = await GSTLeaf.count({
             epoch,
         })
-        await GSTLeaf.create([{
-            epoch,
-            transactionHash,
-            hash: newGSTLeaf.toString(),
-            index: leafIndexInEpoch,
-        }], { session: this._session })
-        await GSTRoot.create([{
-            epoch,
-            root: this.globalStateTree[epoch].root.toString(),
-        }], { session: this._session })
+        await GSTLeaf.create(
+            [
+                {
+                    epoch,
+                    transactionHash,
+                    hash: newGSTLeaf.toString(),
+                    index: leafIndexInEpoch,
+                },
+            ],
+            { session: this._session }
+        )
+        await GSTRoot.create(
+            [
+                {
+                    epoch,
+                    root: this.globalStateTree[epoch].root.toString(),
+                },
+            ],
+            { session: this._session }
+        )
     }
 
     async USTProofEvent(event: ethers.Event) {
@@ -1447,17 +1517,22 @@ export class Synchronizer extends EventEmitter {
             formatPublicSignals
         )
 
-        await Proof.create([{
-            index: _proofIndex,
-            proof: proof,
-            publicSignals: publicSignals,
-            blindedUserState: args.blindedUserStates[0],
-            globalStateTree: args.fromGlobalStateTree,
-            proofIndexRecords: proofIndexRecords,
-            transactionHash: event.transactionHash,
-            event: 'IndexedUserStateTransitionProof',
-            valid: isValid,
-        }], { session: this._session })
+        await Proof.create(
+            [
+                {
+                    index: _proofIndex,
+                    proof: proof,
+                    publicSignals: publicSignals,
+                    blindedUserState: args.blindedUserStates[0],
+                    globalStateTree: args.fromGlobalStateTree,
+                    proofIndexRecords: proofIndexRecords,
+                    transactionHash: event.transactionHash,
+                    event: 'IndexedUserStateTransitionProof',
+                    valid: isValid,
+                },
+            ],
+            { session: this._session }
+        )
     }
 
     async processAttestationProofEvent(event: ethers.Event) {
@@ -1491,16 +1566,21 @@ export class Synchronizer extends EventEmitter {
 
         const proof = encodeBigIntArray(formattedProof)
 
-        await Proof.create([{
-            index: _proofIndex,
-            outputBlindedUserState: _outputBlindedUserState.toString(),
-            outputBlindedHashChain: _outputBlindedHashChain.toString(),
-            inputBlindedUserState: _inputBlindedUserState.toString(),
-            proof: proof,
-            transactionHash: event.transactionHash,
-            event: 'IndexedProcessedAttestationsProof',
-            valid: isValid,
-        }], { session: this._session })
+        await Proof.create(
+            [
+                {
+                    index: _proofIndex,
+                    outputBlindedUserState: _outputBlindedUserState.toString(),
+                    outputBlindedHashChain: _outputBlindedHashChain.toString(),
+                    inputBlindedUserState: _inputBlindedUserState.toString(),
+                    proof: proof,
+                    transactionHash: event.transactionHash,
+                    event: 'IndexedProcessedAttestationsProof',
+                    valid: isValid,
+                },
+            ],
+            { session: this._session }
+        )
     }
 
     async startUSTProofEvent(event: ethers.Event) {
@@ -1529,16 +1609,21 @@ export class Synchronizer extends EventEmitter {
 
         const proof = encodeBigIntArray(formattedProof)
 
-        await Proof.create([{
-            index: _proofIndex,
-            blindedUserState: _blindedUserState.toString(),
-            blindedHashChain: _blindedHashChain.toString(),
-            globalStateTree: _globalStateTree.toString(),
-            proof: proof,
-            transactionHash: event.transactionHash,
-            event: 'IndexedStartedTransitionProof',
-            valid: isValid,
-        }], { session: this._session })
+        await Proof.create(
+            [
+                {
+                    index: _proofIndex,
+                    blindedUserState: _blindedUserState.toString(),
+                    blindedHashChain: _blindedHashChain.toString(),
+                    globalStateTree: _globalStateTree.toString(),
+                    proof: proof,
+                    transactionHash: event.transactionHash,
+                    event: 'IndexedStartedTransitionProof',
+                    valid: isValid,
+                },
+            ],
+            { session: this._session }
+        )
     }
 
     async userSignedUpProofEvent(event: ethers.Event) {
@@ -1573,15 +1658,20 @@ export class Synchronizer extends EventEmitter {
             formatPublicSignals
         )
 
-        await Proof.create([{
-            index: _proofIndex,
-            epoch: _epoch,
-            proof: proof,
-            publicSignals: publicSignals,
-            transactionHash: event.transactionHash,
-            event: 'IndexedUserSignedUpProof',
-            valid: isValid,
-        }], { session: this._session })
+        await Proof.create(
+            [
+                {
+                    index: _proofIndex,
+                    epoch: _epoch,
+                    proof: proof,
+                    publicSignals: publicSignals,
+                    transactionHash: event.transactionHash,
+                    event: 'IndexedUserSignedUpProof',
+                    valid: isValid,
+                },
+            ],
+            { session: this._session }
+        )
     }
 
     async reputationProofEvent(event: ethers.Event) {
@@ -1618,15 +1708,20 @@ export class Synchronizer extends EventEmitter {
             formatPublicSignals
         )
 
-        await Proof.create([{
-            index: _proofIndex,
-            epoch: _epoch,
-            proof: proof,
-            publicSignals: publicSignals,
-            transactionHash: event.transactionHash,
-            event: 'IndexedReputationProof',
-            valid: isValid,
-        }], { session: this._session })
+        await Proof.create(
+            [
+                {
+                    index: _proofIndex,
+                    epoch: _epoch,
+                    proof: proof,
+                    publicSignals: publicSignals,
+                    transactionHash: event.transactionHash,
+                    event: 'IndexedReputationProof',
+                    valid: isValid,
+                },
+            ],
+            { session: this._session }
+        )
     }
 
     async epochKeyProofEvent(event: ethers.Event) {
@@ -1654,15 +1749,20 @@ export class Synchronizer extends EventEmitter {
             formatPublicSignals
         )
 
-        await Proof.create([{
-            index: _proofIndex,
-            epoch: _epoch,
-            proof: proof,
-            publicSignals: publicSignals,
-            transactionHash: event.transactionHash,
-            event: 'IndexedEpochKeyProof',
-            valid: isValid,
-        }], { session: this._session })
+        await Proof.create(
+            [
+                {
+                    index: _proofIndex,
+                    epoch: _epoch,
+                    proof: proof,
+                    publicSignals: publicSignals,
+                    transactionHash: event.transactionHash,
+                    event: 'IndexedEpochKeyProof',
+                    valid: isValid,
+                },
+            ],
+            { session: this._session }
+        )
     }
 }
 
