@@ -9,14 +9,14 @@ import Record from '../database/models/record'
 import Nullifier from '../database/models/nullifiers'
 import Epoch from '../database/models/epoch'
 import GSTRoot from '../database/models/GSTRoots'
-import BlockNumber from '../database/models/blockNumber'
+import SynchronizerState from '../database/models/synchronizerState'
 import Synchronizer from '../daemons/Synchronizer'
 import { DEFAULT_ETH_PROVIDER } from '../constants'
 
 const processNewEvents = async () => {
     const latestBlock = await DEFAULT_ETH_PROVIDER.getBlockNumber()
-    const latestProcessed = await BlockNumber.findOne()
-    const blockNumber = latestProcessed === null ? 0 : latestProcessed.number
+    const latestProcessed = await SynchronizerState.findOne({})
+    const blockNumber = latestProcessed?.latestCompleteBlock ?? 0
     if (latestBlock == blockNumber) return
     const allEvents = (
         await Promise.all([
@@ -49,7 +49,6 @@ const verifyGSTRoot = async (
             epoch,
             root: gstRoot,
         })
-        // console.log(await GSTRoot.find())
         return !!exists
     }
 }
