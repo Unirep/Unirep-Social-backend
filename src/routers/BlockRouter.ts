@@ -1,12 +1,14 @@
 import { NextFunction, Request, Response, Router } from 'express'
-import BlockNumber from '../database/models/blockNumber'
+import SynchronizerState from '../database/models/synchronizerState'
 
 const router = Router()
 
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const blockNumber = await BlockNumber.findOne({})
-        res.status(200).json(blockNumber?.number)
+        const state = await SynchronizerState.findOne({})
+        res.json({
+          blockNumber: state?.latestCompleteBlock ?? 0,
+        })
     } catch (error) {
         console.log(error)
         next(error)
