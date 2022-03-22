@@ -16,12 +16,11 @@ export const getInvitationCode = async (t) => {
 
 export const waitForBackendBlock = async (t, blockNumber) => {
     for (;;) {
-        await new Promise((r) => setTimeout(r, 1000))
-        const latestBlock = await fetch(`${t.context.url}/api/block`).then(
+        const { blockNumber: latestBlock } = await fetch(`${t.context.url}/api/block`).then(
             (r) => r.json()
         )
-        if (latestBlock < blockNumber) continue
-        break
+        if (latestBlock >= +blockNumber) break
+        await new Promise((r) => setTimeout(r, 2000))
     }
 }
 
@@ -47,16 +46,16 @@ export const signUp = async (t) => {
 
     await waitForBackendBlock(t, receipt.blockNumber)
     // sign in should success
-    await signIn(t)
+    await signIn(t, commitment)
 
     return { iden, commitment }
 }
 
-export const airdrop = async (t) => {
+export const airdrop = async (t, iden) => {
     const userState = await genUserStateFromContract(
         t.context.unirepSocial.provider,
         t.context.unirep.address,
-        t.context.iden
+        iden
     )
     const { proof, publicSignals } = await userState.genUserSignUpProof(
         t.context.attesterId
@@ -82,14 +81,12 @@ export const airdrop = async (t) => {
     const receipt = await t.context.provider.waitForTransaction(
         data.transaction
     )
-
     await waitForBackendBlock(t, receipt.blockNumber)
     t.pass()
 }
 
-export const signIn = async (t) => {
+export const signIn = async (t, commitment) => {
     // now try signing in using this identity
-    const commitment = t.context.commitment
     const params = new URLSearchParams({
         commitment,
     })
@@ -100,13 +97,13 @@ export const signIn = async (t) => {
     t.is(r.status, 200)
 }
 
-export const getSpent = async (t) => {
+export const getSpent = async (t, iden) => {
     const currentEpoch = Number(await t.context.unirep.currentEpoch())
     const epks: string[] = []
     for (let i = 0; i < t.context.constants.EPOCH_KEY_NONCE_PER_EPOCH; i++) {
         epks.push(
             genEpochKey(
-                t.context.iden.identityNullifier,
+                iden.identityNullifier,
                 currentEpoch,
                 i,
                 t.context.epochTreeDepth
@@ -128,24 +125,17 @@ export const getSpent = async (t) => {
     return spent
 }
 
-const genReputationProof = async (t) => {
+const genReputationProof = async (t, iden, proveAmount) => {
     const userState = await genUserStateFromContract(
         t.context.unirepSocial.provider,
         t.context.unirep.address,
-        t.context.iden
+        iden
     )
-    {
-        // this might be unnecessary, here for the `getSpent` call below
-        const blockNumber = await t.context.provider.getBlockNumber()
-        await waitForBackendBlock(t, blockNumber)
-    }
-
     // find valid nonce starter
     // gen proof
     const nonceList = [] as any[]
     const epkNonce = 0
-    const proveAmount = t.context.proveAmount
-    const nonceStarter: number = await getSpent(t)
+    const nonceStarter: number = await getSpent(t, iden)
 
     for (let i = 0; i < proveAmount; i++) {
         nonceList.push(BigInt(nonceStarter + i))
@@ -180,10 +170,9 @@ const genReputationProof = async (t) => {
     }
 }
 
-export const createPost = async (t) => {
+export const createPost = async (t, iden) => {
     const proveAmount = t.context.constants.DEFAULT_POST_KARMA
-    Object.assign(t.context, { ...t.context, proveAmount })
-    const { blockNumber, proof, publicSignals } = await genReputationProof(t)
+    const { blockNumber, proof, publicSignals } = await genReputationProof(t, iden, proveAmount)
     await waitForBackendBlock(t, blockNumber)
 
     const r = await fetch(`${t.context.url}/api/post`, {
@@ -200,7 +189,7 @@ export const createPost = async (t) => {
     })
 
     const data = await r.json()
-    const prevSpent = await getSpent(t)
+    const prevSpent = await getSpent(t, iden)
     if (!r.ok) {
         throw new Error(`/post error ${JSON.stringify(data)}`)
     }
@@ -210,11 +199,11 @@ export const createPost = async (t) => {
 
     for (;;) {
         await new Promise((r) => setTimeout(r, 1000))
-        const currentSpent = await getSpent(t)
+        const currentSpent = await getSpent(t, iden)
         if (prevSpent + proveAmount !== currentSpent) continue
         t.is(prevSpent + proveAmount, currentSpent)
 
-        const latestBlock = await fetch(`${t.context.url}/api/block`).then(
+        const { blockNumber: latestBlock } = await fetch(`${t.context.url}/api/block`).then(
             (r) => r.json()
         )
         if (latestBlock < receipt.blockNumber) continue
@@ -223,11 +212,11 @@ export const createPost = async (t) => {
     return data
 }
 
-export const queryPost = async (t) => {
+export const queryPost = async (t, postId) => {
     for (;;) {
         await new Promise((r) => setTimeout(r, 1000))
         const r = await fetch(
-            `${t.context.url}/api/post/${t.context.transaction}`
+            `${t.context.url}/api/post/${postId}`
         )
         if (r.status === 404) continue
         t.is(r.status, 200)
@@ -235,10 +224,9 @@ export const queryPost = async (t) => {
     }
 }
 
-export const createComment = async (t) => {
+export const createComment = async (t, iden, postId) => {
     const proveAmount = t.context.constants.DEFAULT_COMMENT_KARMA
-    Object.assign(t.context, { ...t.context, proveAmount })
-    const { blockNumber, proof, publicSignals } = await genReputationProof(t)
+    const { blockNumber, proof, publicSignals } = await genReputationProof(t, iden, proveAmount)
     await waitForBackendBlock(t, blockNumber)
 
     const r = await fetch(`${t.context.url}/api/comment`, {
@@ -247,14 +235,14 @@ export const createComment = async (t) => {
             'content-type': 'application/json',
         },
         body: JSON.stringify({
-            postId: t.context.postId,
+            postId,
             content: 'this is a comment!',
             publicSignals,
             proof,
         }),
     })
     const data = await r.json()
-    const prevSpent = await getSpent(t)
+    const prevSpent = await getSpent(t, iden)
     if (!r.ok) {
         throw new Error(`/comment error ${JSON.stringify(data)}`)
     }
@@ -264,11 +252,11 @@ export const createComment = async (t) => {
 
     for (;;) {
         await new Promise((r) => setTimeout(r, 1000))
-        const currentSpent = await getSpent(t)
+        const currentSpent = await getSpent(t, iden)
         if (prevSpent + proveAmount !== currentSpent) continue
         t.is(prevSpent + proveAmount, currentSpent)
 
-        const latestBlock = await fetch(`${t.context.url}/api/block`).then(
+        const { blockNumber: latestBlock } = await fetch(`${t.context.url}/api/block`).then(
             (r) => r.json()
         )
         if (latestBlock < receipt.blockNumber) continue
@@ -277,10 +265,9 @@ export const createComment = async (t) => {
     return data
 }
 
-export const vote = async (t) => {
-    const proveAmount = t.context.upvote + t.context.downvote
-    Object.assign(t.context, { ...t.context, proveAmount })
-    const { blockNumber, proof, publicSignals } = await genReputationProof(t)
+export const vote = async (t, iden, receiver, dataId, isPost, upvote, downvote) => {
+    const proveAmount = upvote + downvote
+    const { blockNumber, proof, publicSignals } = await genReputationProof(t, iden, proveAmount)
     await waitForBackendBlock(t, blockNumber)
 
     const r = await fetch(`${t.context.url}/api/vote`, {
@@ -289,17 +276,17 @@ export const vote = async (t) => {
             'content-type': 'application/json',
         },
         body: JSON.stringify({
-            dataId: t.context.dataId,
-            isPost: t.context.isPost,
+            dataId,
+            isPost,
             publicSignals,
             proof,
-            upvote: t.context.upvote,
-            downvote: t.context.downvote,
-            receiver: t.context.receiver,
+            upvote,
+            downvote,
+            receiver,
         }),
     })
     const data = await r.json()
-    const prevSpent = await getSpent(t)
+    const prevSpent = await getSpent(t, iden)
     if (!r.ok) {
         throw new Error(`/vote error ${JSON.stringify(data)}`)
     }
@@ -309,11 +296,11 @@ export const vote = async (t) => {
 
     for (;;) {
         await new Promise((r) => setTimeout(r, 1000))
-        const currentSpent = await getSpent(t)
+        const currentSpent = await getSpent(t, iden)
         if (prevSpent + proveAmount !== currentSpent) continue
         t.is(prevSpent + proveAmount, currentSpent)
 
-        const latestBlock = await fetch(`${t.context.url}/api/block`).then(
+        const { blockNumber: latestBlock } = await fetch(`${t.context.url}/api/block`).then(
             (r) => r.json()
         )
         if (latestBlock < receipt.blockNumber) continue
@@ -332,11 +319,11 @@ export const epochTransition = async (t) => {
     t.is(r.status, 204)
 }
 
-export const userStateTransition = async (t) => {
+export const userStateTransition = async (t, iden) => {
     const userState = await genUserStateFromContract(
         t.context.unirepSocial.provider,
         t.context.unirep.address,
-        t.context.iden
+        iden
     )
 
     const results = await userState.genUserStateTransitionProofs()

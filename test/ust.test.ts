@@ -14,21 +14,18 @@ test.before(async (t) => {
 test('should do user state transition', async (t: any) => {
     // sign up user
     const { iden } = await signUp(t)
-    Object.assign(t.context, { ...t.context, iden })
 
     await new Promise((r) => setTimeout(r, EPOCH_LENGTH))
 
     // execute the epoch transition
     const prevEpoch = await t.context.unirep.currentEpoch()
     await epochTransition(t)
-    for (let x = 0; x < 50; x++) {
+    for (;;) {
         await new Promise((r) => setTimeout(r, 1000))
-        try {
-            const findEpoch = await Epoch.exists({ number: Number(prevEpoch) })
-            if (findEpoch) break
-        } catch (_) {}
+        const findEpoch = await Epoch.exists({ number: Number(prevEpoch) })
+        if (findEpoch) break
     }
     // user state transition
-    await userStateTransition(t)
+    await userStateTransition(t, iden)
     t.pass()
 })

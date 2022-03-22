@@ -10,12 +10,9 @@ test.before(async (t) => {
 
 test('should create a post', async (t: any) => {
     const { iden } = await signUp(t)
-    Object.assign(t.context, { ...t.context, iden })
-    await signIn(t)
+    await signIn(t, iden)
 
-    const { transaction } = await createPost(t)
-    Object.assign(t.context, { ...t.context, transaction })
-    const exist = await queryPost(t)
+    const { transaction } = await createPost(t, iden)
+    const exist = await queryPost(t, transaction)
     t.true(exist)
-    t.pass()
 })
