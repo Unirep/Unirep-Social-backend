@@ -1,7 +1,9 @@
 import { NextFunction, Request, Response, Router } from 'express'
 import EpkRecord from '../database/models/epkRecord'
+import Record from '../database/models/record'
 import userSignUp from '../database/models/userSignUp'
 import RecordController from '../controllers/RecordController'
+import { ActionType } from '../constants'
 
 const router = Router()
 
@@ -14,11 +16,32 @@ router.get(
             req.query.spentonly !== undefined &&
             req.query.spentonly.toString() === 'true'
         ) {
-            EpkRecord.find({ epk: { $in: epks } }, (err, records) => {
-                // console.log(records);
-                // console.log('find epk record error: ' + err);
-                res.status(200).json(records)
-            })
+            const records = await Record.find({
+              $or: [
+                {
+                  from: {
+                    $in: epks,
+                  }
+                },
+                {
+                  to: {
+                    $in: epks,
+                  },
+                  action: ActionType.Vote,
+                }
+              ]
+            }).lean()
+            const recordsByFrom = records.reduce((acc, val) => {
+              return {
+                [val.from]: [...(acc[val.from] || []), val],
+                ...acc,
+              }
+            }, {})
+            const epkRecords = await EpkRecord.find({ epk: { $in: epks } }).lean()
+            res.json(epkRecords.map(r => ({
+              ...r,
+              records: recordsByFrom[r.epk] || []
+            })))
         } else {
             try {
                 const ret = await RecordController.getRecords(epks)

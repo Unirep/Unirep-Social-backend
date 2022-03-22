@@ -18,6 +18,7 @@ import { verifyReputationProof } from '../controllers/utils'
 import { writeRecord } from '../database/utils'
 import TransactionManager from '../daemons/TransactionManager'
 import Nullifier from '../database/models/nullifiers'
+import Record from '../database/models/record'
 
 const vote = async (req: any, res: any) => {
     const unirepContract = new ethers.Contract(
@@ -202,6 +203,25 @@ const vote = async (req: any, res: any) => {
             )
         }
     }
+    await Nullifier.create(reputationProof.repNullifiers.filter(n => n.toString() !== '0').map((n) => ({
+      nullifier: n.toString(),
+      epoch: currentEpoch,
+      transactionHash: hash,
+      confirmed: false,
+    })))
+        await Record.create(
+                {
+                    to: req.body.receiver,
+                    from: epochKey,
+                    upvote: req.body.upvote,
+                    downvote: req.body.downvote,
+                    epoch: currentEpoch,
+                    action: ActionType.Vote,
+                    transactionHash: hash,
+                    data: '',
+                    confirmed: false,
+                },
+        )
     res.json({
         transaction: hash,
     })

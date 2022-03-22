@@ -603,13 +603,19 @@ export class Synchronizer extends EventEmitter {
             nullifier: {
                 $in: repNullifiers,
             },
+            confirmed: true,
         })
         if (existingNullifier) {
             console.log(`comment duplicated nullifier`, repNullifiers)
             return
         }
         // everything checks out, lets start mutating the db
-
+        await Nullifier.deleteMany({
+          nullfier: {
+            $in: repNullifiers,
+          },
+          confirmed: false,
+        }, { session: this._session })
         await Nullifier.insertMany(
             repNullifiers.map((nullifier) => ({
                 epoch: _epoch,
@@ -654,7 +660,12 @@ export class Synchronizer extends EventEmitter {
             await newComment.save({ session: this._session })
         }
 
-        const [newRecord] = await Record.create(
+        await Record.deleteMany({
+          transactionHash: _transactionHash,
+          confirmed: false,
+        }, { session: this._session })
+
+        await Record.create(
             [
                 {
                     to: _epochKey,
@@ -675,9 +686,6 @@ export class Synchronizer extends EventEmitter {
                 epoch: _epoch,
             },
             {
-                $push: {
-                    records: newRecord._id.toString(),
-                },
                 $inc: {
                     posRep: 0,
                     negRep: 0,
@@ -738,13 +746,19 @@ export class Synchronizer extends EventEmitter {
             nullifier: {
                 $in: repNullifiers,
             },
+            confirmed: true,
         })
         if (existingNullifier) {
             console.log(`post duplicated nullifier`, repNullifiers)
             return
         }
         // everything checks out, lets start mutating the db
-
+        await Nullifier.deleteMany({
+          nullfier: {
+            $in: repNullifiers,
+          },
+          confirmed: false,
+        }, { session: this._session })
         await Nullifier.insertMany(
             repNullifiers.map((nullifier) => ({
                 epoch: _epoch,
@@ -810,7 +824,11 @@ export class Synchronizer extends EventEmitter {
             newpost.set({ new: true, upsert: false, session: this._session })
             await newpost.save({ session: this._session })
         }
-        const [newRecord] = await Record.create(
+        await Record.deleteMany({
+          transactionHash: _transactionHash,
+          confirmed: false,
+        }, { session: this._session })
+        await Record.create(
             [
                 {
                     to: _epochKey,
@@ -831,9 +849,6 @@ export class Synchronizer extends EventEmitter {
                 epoch: _epoch,
             },
             {
-                $push: {
-                    records: newRecord._id.toString(),
-                },
                 $inc: {
                     posRep: 0,
                     negRep: 0,
@@ -919,13 +934,19 @@ export class Synchronizer extends EventEmitter {
             nullifier: {
                 $in: repNullifiers,
             },
+            confirmed: true,
         })
         if (existingNullifier) {
             console.log(`vote duplicated nullifier`, repNullifiers)
             return
         }
         // everything checks out, lets start mutating the db
-
+        await Nullifier.deleteMany({
+          nullfier: {
+            $in: repNullifiers,
+          },
+          confirmed: false,
+        }, { session: this._session })
         await Nullifier.insertMany(
             repNullifiers.map((nullifier) => ({
                 epoch: _epoch,
@@ -934,7 +955,11 @@ export class Synchronizer extends EventEmitter {
             { session: this._session }
         )
 
-        const [record] = await Record.create(
+        await Record.deleteMany({
+          transactionHash: _transactionHash,
+          confirmed: false,
+        }, { session: this._session })
+        await Record.create(
             [
                 {
                     to: _toEpochKey,
@@ -955,9 +980,6 @@ export class Synchronizer extends EventEmitter {
                 epoch: _epoch,
             },
             {
-                $push: {
-                    records: record._id.toString(),
-                },
                 $inc: {
                     posRep: 0,
                     negRep: 0,
@@ -973,9 +995,6 @@ export class Synchronizer extends EventEmitter {
                 epoch: _epoch,
             },
             {
-                $push: {
-                    records: record._id.toString(),
-                },
                 $inc: {
                     posRep: _posRep,
                     negRep: _negRep,
@@ -1015,10 +1034,10 @@ export class Synchronizer extends EventEmitter {
         )
         if (isProofValid === false) return
 
-        const exists = await Record.exists({
-            transactionHash: _transactionHash,
-        })
-        if (exists) return
+        await Record.deleteMany({
+          transactionHash: _transactionHash,
+          confirmed: false,
+        }, { session: this._session })
         await Record.create(
             [
                 {
@@ -1378,13 +1397,19 @@ export class Synchronizer extends EventEmitter {
             nullifier: {
                 $in: epkNullifiers,
             },
+            confirmed: true,
         })
         if (existingNullifier) {
             console.log(`duplicated nullifier`)
             return
         }
         // everything checks out, lets start mutating the db
-
+        await Nullifier.deleteMany({
+          nullfier: {
+            $in: epkNullifiers,
+          },
+          confirmed: false,
+        }, { session: this._session })
         await Nullifier.insertMany(
             epkNullifiers.map((nullifier) => ({
                 epoch,

@@ -13,12 +13,14 @@ import {
     UNIREP,
     UNIREP_ABI,
     UNIREP_SOCIAL_ABI,
+    ActionType,
 } from '../constants'
 import Post, { IPost } from '../database/models/post'
 import Comment, { IComment } from '../database/models/comment'
 import { verifyReputationProof } from '../controllers/utils'
 import TransactionManager from '../daemons/TransactionManager'
 import Nullifier from '../database/models/nullifiers'
+import Record from '../database/models/record'
 
 const listAllPosts = async () => {
     const allPosts = await Post.find({ status: 1 }).lean()
@@ -191,6 +193,25 @@ const publishPost = async (req: any, res: any) => {
         status: 0,
         transactionHash: hash,
     })
+    await Nullifier.create(reputationProof.repNullifiers.filter(n => n.toString() !== '0').map((n) => ({
+      nullifier: n.toString(),
+      epoch: currentEpoch,
+      transactionHash: hash,
+      confirmed: false,
+    })))
+        await Record.create(
+                {
+                    to: epochKey,
+                    from: epochKey,
+                    upvote: 0,
+                    downvote: DEFAULT_POST_KARMA,
+                    epoch: currentEpoch,
+                    action: ActionType.Post,
+                    data: hash,
+                    transactionHash: hash,
+                    confirmed: false,
+                },
+        )
 
     res.json({
         transaction: hash,

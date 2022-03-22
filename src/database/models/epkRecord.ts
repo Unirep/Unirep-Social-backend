@@ -1,10 +1,8 @@
 import * as mongoose from 'mongoose'
 import { Schema, Document } from 'mongoose'
-import { IRecord } from './record'
 
 export interface IEpkRecord extends Document {
     epk: string
-    records: [IRecord]
     posRep: number
     negRep: number
     spent: number
@@ -14,7 +12,6 @@ export interface IEpkRecord extends Document {
 const EpkRecordSchema: Schema = new Schema(
     {
         epk: { type: String, required: true },
-        records: { type: [], required: true },
         posRep: { type: Number, required: true },
         negRep: { type: Number, required: true },
         spent: { type: Number, required: true },
