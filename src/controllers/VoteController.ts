@@ -48,7 +48,7 @@ const vote = async (req: any, res: any) => {
             },
         })
         if (exists) {
-            res.status(400).json({
+            res.status(422).json({
                 error: 'Duplicate nullifier',
             })
             return
@@ -63,7 +63,7 @@ const vote = async (req: any, res: any) => {
             throw new Error('Post not found')
         }
         if (post.epoch !== currentEpoch) {
-            res.status(400).json({
+            res.status(422).json({
                 info: 'The epoch key is expired',
             })
             return
@@ -75,7 +75,7 @@ const vote = async (req: any, res: any) => {
             valid: true,
         })
         if (!validProof) {
-            res.status(400).json({
+            res.status(422).json({
                 info: 'Voting for invalid post',
             })
             return
@@ -90,7 +90,7 @@ const vote = async (req: any, res: any) => {
             return
         }
         if (comment.epoch !== currentEpoch) {
-            res.status(400).json({
+            res.status(422).json({
                 info: 'Epoch key is expired',
             })
             return
@@ -102,7 +102,7 @@ const vote = async (req: any, res: any) => {
             valid: true,
         })
         if (!validProof) {
-            res.status(400).json({
+            res.status(422).json({
                 info: 'Voting for invalid comment',
             })
             return
@@ -111,7 +111,7 @@ const vote = async (req: any, res: any) => {
     }
 
     if (Number(postProofIndex) === 0) {
-        res.status(400).json({
+        res.status(404).json({
             info: 'Cannot find post proof index',
         })
         return
@@ -124,7 +124,10 @@ const vote = async (req: any, res: any) => {
         currentEpoch
     )
     if (error !== undefined) {
-        throw error
+        res.status(422).json({
+            error,
+        })
+        return
     }
 
     console.log(

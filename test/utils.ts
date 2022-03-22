@@ -78,6 +78,9 @@ export const airdrop = async (t, iden) => {
         }),
     })
     const data = await r.json()
+    if (!r.ok) {
+        throw new Error(`/airdrop error ${JSON.stringify(data)}`)
+    }
     const receipt = await t.context.provider.waitForTransaction(
         data.transaction
     )

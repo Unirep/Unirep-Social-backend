@@ -142,7 +142,7 @@ const publishPost = async (req: any, res: any) => {
             },
         })
         if (exists) {
-            res.status(400).json({
+            res.status(422).json({
                 error: 'Duplicate nullifier',
             })
             return

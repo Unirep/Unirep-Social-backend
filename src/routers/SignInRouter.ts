@@ -1,18 +1,17 @@
 import { NextFunction, Request, Response, Router } from 'express'
 import SignInController from '../controllers/SignInController'
+import catchError from './catchError'
 
 const router = Router()
 
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
-    try {
+router.get(
+    '/',
+    catchError(async (req: Request, res: Response, next: NextFunction) => {
         const result = await SignInController.signIn(
             req.query.commitment!.toString()
         )
-        res.status(200).json(result)
-    } catch (error) {
-        console.log(error)
-        next(error)
-    }
-})
+        res.json(result)
+    })
+)
 
 export default router

@@ -4,12 +4,13 @@ import Record from '../database/models/record'
 import userSignUp from '../database/models/userSignUp'
 import RecordController from '../controllers/RecordController'
 import { ActionType } from '../constants'
+import catchError from './catchError'
 
 const router = Router()
 
 router.get(
     '/:epks',
-    async (req: Request, res: Response, next: NextFunction) => {
+    catchError(async (req: Request, res: Response, next: NextFunction) => {
         // console.log(req.params.epks);
         const epks = req.params.epks.split('_')
         if (
@@ -47,15 +48,10 @@ router.get(
                 }))
             )
         } else {
-            try {
-                const ret = await RecordController.getRecords(epks)
-                res.status(200).json(ret)
-            } catch (error) {
-                console.log(error)
-                next(error)
-            }
+            const ret = await RecordController.getRecords(epks)
+            res.json(ret)
         }
-    }
+    })
 )
 
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
