@@ -1,4 +1,3 @@
-import { ethers } from 'ethers'
 import { Circuit, verifyProof } from '@unirep/circuits'
 import {
     ReputationProof,
@@ -9,30 +8,6 @@ import Record from '../database/models/record'
 import Nullifier from '../database/models/nullifiers'
 import Epoch from '../database/models/epoch'
 import GSTRoot from '../database/models/GSTRoots'
-import SynchronizerState from '../database/models/synchronizerState'
-import Synchronizer from '../daemons/Synchronizer'
-import { DEFAULT_ETH_PROVIDER } from '../constants'
-
-const processNewEvents = async () => {
-    const latestBlock = await DEFAULT_ETH_PROVIDER.getBlockNumber()
-    const latestProcessed = await SynchronizerState.findOne({})
-    const blockNumber = latestProcessed?.latestCompleteBlock ?? 0
-    if (latestBlock == blockNumber) return
-    const allEvents = (
-        await Promise.all([
-            Synchronizer.unirepContract.queryFilter(
-                Synchronizer.unirepFilter,
-                blockNumber + 1
-            ),
-            Synchronizer.unirepSocialContract.queryFilter(
-                Synchronizer.unirepSocialFilter,
-                blockNumber + 1
-            ),
-        ])
-    ).flat() as ethers.Event[]
-    // first process historical ones then listen
-    await Synchronizer.processEvents(allEvents)
-}
 
 const verifyGSTRoot = async (
     epoch: number,
@@ -42,15 +17,7 @@ const verifyGSTRoot = async (
         epoch,
         root: gstRoot,
     })
-    if (exists) return !!exists
-    else {
-        await processNewEvents()
-        const exists = await GSTRoot.exists({
-            epoch,
-            root: gstRoot,
-        })
-        return !!exists
-    }
+    return !!exists
 }
 
 const verifyEpochTreeRoot = async (epoch: number, epochTreeRoot: string) => {
@@ -58,15 +25,7 @@ const verifyEpochTreeRoot = async (epoch: number, epochTreeRoot: string) => {
         epoch,
         epochRoot: epochTreeRoot,
     })
-    if (exists) return exists
-    else {
-        await processNewEvents()
-        const exists = await Epoch.exists({
-            epoch,
-            epochRoot: epochTreeRoot,
-        })
-        return exists
-    }
+    return !!exists
 }
 
 const verifyReputationProof = async (
