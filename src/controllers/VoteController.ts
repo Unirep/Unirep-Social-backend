@@ -203,25 +203,27 @@ const vote = async (req: any, res: any) => {
             )
         }
     }
-    await Nullifier.create(reputationProof.repNullifiers.filter(n => n.toString() !== '0').map((n) => ({
-      nullifier: n.toString(),
-      epoch: currentEpoch,
-      transactionHash: hash,
-      confirmed: false,
-    })))
-        await Record.create(
-                {
-                    to: req.body.receiver,
-                    from: epochKey,
-                    upvote: req.body.upvote,
-                    downvote: req.body.downvote,
-                    epoch: currentEpoch,
-                    action: ActionType.Vote,
-                    transactionHash: hash,
-                    data: '',
-                    confirmed: false,
-                },
-        )
+    await Nullifier.create(
+        reputationProof.repNullifiers
+            .filter((n) => n.toString() !== '0')
+            .map((n) => ({
+                nullifier: n.toString(),
+                epoch: currentEpoch,
+                transactionHash: hash,
+                confirmed: false,
+            }))
+    )
+    await Record.create({
+        to: req.body.receiver,
+        from: epochKey,
+        upvote: req.body.upvote,
+        downvote: req.body.downvote,
+        epoch: currentEpoch,
+        action: ActionType.Vote,
+        transactionHash: hash,
+        data: '',
+        confirmed: false,
+    })
     res.json({
         transaction: hash,
     })

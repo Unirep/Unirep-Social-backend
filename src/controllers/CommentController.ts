@@ -153,25 +153,27 @@ const leaveComment = async (req: any, res: any) => {
 
     const comment = await newComment.save()
 
-    await Nullifier.create(reputationProof.repNullifiers.filter(n => n.toString() !== '0').map((n) => ({
-      epoch: currentEpoch,
-      transactionHash: hash,
-      nullifier: n.toString(),
-      confirmed: false,
-    })))
-    await Record.create(
-        {
-            to: epochKey,
-            from: epochKey,
-            upvote: 0,
-            downvote: DEFAULT_COMMENT_KARMA,
-            epoch: currentEpoch,
-            action: ActionType.Comment,
-            data: hash,
-            transactionHash: hash,
-            confirmed: false,
-        }
+    await Nullifier.create(
+        reputationProof.repNullifiers
+            .filter((n) => n.toString() !== '0')
+            .map((n) => ({
+                epoch: currentEpoch,
+                transactionHash: hash,
+                nullifier: n.toString(),
+                confirmed: false,
+            }))
     )
+    await Record.create({
+        to: epochKey,
+        from: epochKey,
+        upvote: 0,
+        downvote: DEFAULT_COMMENT_KARMA,
+        epoch: currentEpoch,
+        action: ActionType.Comment,
+        data: hash,
+        transactionHash: hash,
+        confirmed: false,
+    })
 
     res.json({
         error: error,

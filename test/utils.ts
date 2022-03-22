@@ -16,9 +16,9 @@ export const getInvitationCode = async (t) => {
 
 export const waitForBackendBlock = async (t, blockNumber) => {
     for (;;) {
-        const { blockNumber: latestBlock } = await fetch(`${t.context.url}/api/block`).then(
-            (r) => r.json()
-        )
+        const { blockNumber: latestBlock } = await fetch(
+            `${t.context.url}/api/block`
+        ).then((r) => r.json())
         if (latestBlock >= +blockNumber) break
         await new Promise((r) => setTimeout(r, 2000))
     }
@@ -172,7 +172,11 @@ const genReputationProof = async (t, iden, proveAmount) => {
 
 export const createPost = async (t, iden) => {
     const proveAmount = t.context.constants.DEFAULT_POST_KARMA
-    const { blockNumber, proof, publicSignals } = await genReputationProof(t, iden, proveAmount)
+    const { blockNumber, proof, publicSignals } = await genReputationProof(
+        t,
+        iden,
+        proveAmount
+    )
     await waitForBackendBlock(t, blockNumber)
 
     const r = await fetch(`${t.context.url}/api/post`, {
@@ -203,9 +207,9 @@ export const createPost = async (t, iden) => {
         if (prevSpent + proveAmount !== currentSpent) continue
         t.is(prevSpent + proveAmount, currentSpent)
 
-        const { blockNumber: latestBlock } = await fetch(`${t.context.url}/api/block`).then(
-            (r) => r.json()
-        )
+        const { blockNumber: latestBlock } = await fetch(
+            `${t.context.url}/api/block`
+        ).then((r) => r.json())
         if (latestBlock < receipt.blockNumber) continue
         else break
     }
@@ -215,9 +219,7 @@ export const createPost = async (t, iden) => {
 export const queryPost = async (t, postId) => {
     for (;;) {
         await new Promise((r) => setTimeout(r, 1000))
-        const r = await fetch(
-            `${t.context.url}/api/post/${postId}`
-        )
+        const r = await fetch(`${t.context.url}/api/post/${postId}`)
         if (r.status === 404) continue
         t.is(r.status, 200)
         return true
@@ -226,7 +228,11 @@ export const queryPost = async (t, postId) => {
 
 export const createComment = async (t, iden, postId) => {
     const proveAmount = t.context.constants.DEFAULT_COMMENT_KARMA
-    const { blockNumber, proof, publicSignals } = await genReputationProof(t, iden, proveAmount)
+    const { blockNumber, proof, publicSignals } = await genReputationProof(
+        t,
+        iden,
+        proveAmount
+    )
     await waitForBackendBlock(t, blockNumber)
 
     const r = await fetch(`${t.context.url}/api/comment`, {
@@ -256,18 +262,30 @@ export const createComment = async (t, iden, postId) => {
         if (prevSpent + proveAmount !== currentSpent) continue
         t.is(prevSpent + proveAmount, currentSpent)
 
-        const { blockNumber: latestBlock } = await fetch(`${t.context.url}/api/block`).then(
-            (r) => r.json()
-        )
+        const { blockNumber: latestBlock } = await fetch(
+            `${t.context.url}/api/block`
+        ).then((r) => r.json())
         if (latestBlock < receipt.blockNumber) continue
         else break
     }
     return data
 }
 
-export const vote = async (t, iden, receiver, dataId, isPost, upvote, downvote) => {
+export const vote = async (
+    t,
+    iden,
+    receiver,
+    dataId,
+    isPost,
+    upvote,
+    downvote
+) => {
     const proveAmount = upvote + downvote
-    const { blockNumber, proof, publicSignals } = await genReputationProof(t, iden, proveAmount)
+    const { blockNumber, proof, publicSignals } = await genReputationProof(
+        t,
+        iden,
+        proveAmount
+    )
     await waitForBackendBlock(t, blockNumber)
 
     const r = await fetch(`${t.context.url}/api/vote`, {
@@ -300,9 +318,9 @@ export const vote = async (t, iden, receiver, dataId, isPost, upvote, downvote) 
         if (prevSpent + proveAmount !== currentSpent) continue
         t.is(prevSpent + proveAmount, currentSpent)
 
-        const { blockNumber: latestBlock } = await fetch(`${t.context.url}/api/block`).then(
-            (r) => r.json()
-        )
+        const { blockNumber: latestBlock } = await fetch(
+            `${t.context.url}/api/block`
+        ).then((r) => r.json())
         if (latestBlock < receipt.blockNumber) continue
         else break
     }

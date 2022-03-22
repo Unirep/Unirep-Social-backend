@@ -610,12 +610,15 @@ export class Synchronizer extends EventEmitter {
             return
         }
         // everything checks out, lets start mutating the db
-        await Nullifier.deleteMany({
-          nullfier: {
-            $in: repNullifiers,
-          },
-          confirmed: false,
-        }, { session: this._session })
+        await Nullifier.deleteMany(
+            {
+                nullfier: {
+                    $in: repNullifiers,
+                },
+                confirmed: false,
+            },
+            { session: this._session }
+        )
         await Nullifier.insertMany(
             repNullifiers.map((nullifier) => ({
                 epoch: _epoch,
@@ -660,10 +663,13 @@ export class Synchronizer extends EventEmitter {
             await newComment.save({ session: this._session })
         }
 
-        await Record.deleteMany({
-          transactionHash: _transactionHash,
-          confirmed: false,
-        }, { session: this._session })
+        await Record.deleteMany(
+            {
+                transactionHash: _transactionHash,
+                confirmed: false,
+            },
+            { session: this._session }
+        )
 
         await Record.create(
             [
@@ -753,12 +759,15 @@ export class Synchronizer extends EventEmitter {
             return
         }
         // everything checks out, lets start mutating the db
-        await Nullifier.deleteMany({
-          nullfier: {
-            $in: repNullifiers,
-          },
-          confirmed: false,
-        }, { session: this._session })
+        await Nullifier.deleteMany(
+            {
+                nullfier: {
+                    $in: repNullifiers,
+                },
+                confirmed: false,
+            },
+            { session: this._session }
+        )
         await Nullifier.insertMany(
             repNullifiers.map((nullifier) => ({
                 epoch: _epoch,
@@ -824,10 +833,13 @@ export class Synchronizer extends EventEmitter {
             newpost.set({ new: true, upsert: false, session: this._session })
             await newpost.save({ session: this._session })
         }
-        await Record.deleteMany({
-          transactionHash: _transactionHash,
-          confirmed: false,
-        }, { session: this._session })
+        await Record.deleteMany(
+            {
+                transactionHash: _transactionHash,
+                confirmed: false,
+            },
+            { session: this._session }
+        )
         await Record.create(
             [
                 {
@@ -941,12 +953,15 @@ export class Synchronizer extends EventEmitter {
             return
         }
         // everything checks out, lets start mutating the db
-        await Nullifier.deleteMany({
-          nullfier: {
-            $in: repNullifiers,
-          },
-          confirmed: false,
-        }, { session: this._session })
+        await Nullifier.deleteMany(
+            {
+                nullfier: {
+                    $in: repNullifiers,
+                },
+                confirmed: false,
+            },
+            { session: this._session }
+        )
         await Nullifier.insertMany(
             repNullifiers.map((nullifier) => ({
                 epoch: _epoch,
@@ -955,10 +970,13 @@ export class Synchronizer extends EventEmitter {
             { session: this._session }
         )
 
-        await Record.deleteMany({
-          transactionHash: _transactionHash,
-          confirmed: false,
-        }, { session: this._session })
+        await Record.deleteMany(
+            {
+                transactionHash: _transactionHash,
+                confirmed: false,
+            },
+            { session: this._session }
+        )
         await Record.create(
             [
                 {
@@ -1034,10 +1052,13 @@ export class Synchronizer extends EventEmitter {
         )
         if (isProofValid === false) return
 
-        await Record.deleteMany({
-          transactionHash: _transactionHash,
-          confirmed: false,
-        }, { session: this._session })
+        await Record.deleteMany(
+            {
+                transactionHash: _transactionHash,
+                confirmed: false,
+            },
+            { session: this._session }
+        )
         await Record.create(
             [
                 {
@@ -1404,12 +1425,15 @@ export class Synchronizer extends EventEmitter {
             return
         }
         // everything checks out, lets start mutating the db
-        await Nullifier.deleteMany({
-          nullfier: {
-            $in: epkNullifiers,
-          },
-          confirmed: false,
-        }, { session: this._session })
+        await Nullifier.deleteMany(
+            {
+                nullfier: {
+                    $in: epkNullifiers,
+                },
+                confirmed: false,
+            },
+            { session: this._session }
+        )
         await Nullifier.insertMany(
             epkNullifiers.map((nullifier) => ({
                 epoch,

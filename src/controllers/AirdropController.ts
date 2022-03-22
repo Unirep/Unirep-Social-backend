@@ -61,19 +61,17 @@ export const getAirdrop = async (req, res) => {
             value: attestingFee,
         }
     )
-    await Record.create(
-        {
-            to: publicSignals[1].toString(16),
-            from: 'UnirepSocial',
-            upvote: DEFAULT_AIRDROPPED_KARMA,
-            downvote: 0,
-            epoch: currentEpoch,
-            action: 'UST',
-            data: '0',
-            transactionHash: hash,
-            confirmed: false,
-        },
-    )
+    await Record.create({
+        to: publicSignals[1].toString(16),
+        from: 'UnirepSocial',
+        upvote: DEFAULT_AIRDROPPED_KARMA,
+        downvote: 0,
+        epoch: currentEpoch,
+        action: 'UST',
+        data: '0',
+        transactionHash: hash,
+        confirmed: false,
+    })
     res.json({ transaction: hash })
 }
 

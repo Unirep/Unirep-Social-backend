@@ -17,31 +17,35 @@ router.get(
             req.query.spentonly.toString() === 'true'
         ) {
             const records = await Record.find({
-              $or: [
-                {
-                  from: {
-                    $in: epks,
-                  }
-                },
-                {
-                  to: {
-                    $in: epks,
-                  },
-                  action: ActionType.Vote,
-                }
-              ]
+                $or: [
+                    {
+                        from: {
+                            $in: epks,
+                        },
+                    },
+                    {
+                        to: {
+                            $in: epks,
+                        },
+                        action: ActionType.Vote,
+                    },
+                ],
             }).lean()
             const recordsByFrom = records.reduce((acc, val) => {
-              return {
-                [val.from]: [...(acc[val.from] || []), val],
-                ...acc,
-              }
+                return {
+                    [val.from]: [...(acc[val.from] || []), val],
+                    ...acc,
+                }
             }, {})
-            const epkRecords = await EpkRecord.find({ epk: { $in: epks } }).lean()
-            res.json(epkRecords.map(r => ({
-              ...r,
-              records: recordsByFrom[r.epk] || []
-            })))
+            const epkRecords = await EpkRecord.find({
+                epk: { $in: epks },
+            }).lean()
+            res.json(
+                epkRecords.map((r) => ({
+                    ...r,
+                    records: recordsByFrom[r.epk] || [],
+                }))
+            )
         } else {
             try {
                 const ret = await RecordController.getRecords(epks)

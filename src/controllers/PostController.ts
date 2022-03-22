@@ -193,25 +193,27 @@ const publishPost = async (req: any, res: any) => {
         status: 0,
         transactionHash: hash,
     })
-    await Nullifier.create(reputationProof.repNullifiers.filter(n => n.toString() !== '0').map((n) => ({
-      nullifier: n.toString(),
-      epoch: currentEpoch,
-      transactionHash: hash,
-      confirmed: false,
-    })))
-        await Record.create(
-                {
-                    to: epochKey,
-                    from: epochKey,
-                    upvote: 0,
-                    downvote: DEFAULT_POST_KARMA,
-                    epoch: currentEpoch,
-                    action: ActionType.Post,
-                    data: hash,
-                    transactionHash: hash,
-                    confirmed: false,
-                },
-        )
+    await Nullifier.create(
+        reputationProof.repNullifiers
+            .filter((n) => n.toString() !== '0')
+            .map((n) => ({
+                nullifier: n.toString(),
+                epoch: currentEpoch,
+                transactionHash: hash,
+                confirmed: false,
+            }))
+    )
+    await Record.create({
+        to: epochKey,
+        from: epochKey,
+        upvote: 0,
+        downvote: DEFAULT_POST_KARMA,
+        epoch: currentEpoch,
+        action: ActionType.Post,
+        data: hash,
+        transactionHash: hash,
+        confirmed: false,
+    })
 
     res.json({
         transaction: hash,

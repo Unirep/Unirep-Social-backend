@@ -10,8 +10,8 @@ const getRecords = async (epks: string[]) => {
     const ret: any[] = []
     for (const record of records) {
         if (record.data === '0') {
-          ret.push(record)
-          continue
+            ret.push(record)
+            continue
         }
         const tmp = record.data.split('_')
         if (tmp.length === 1) {
@@ -31,8 +31,8 @@ const getRecords = async (epks: string[]) => {
             })
             if (c === null) continue
             ret.push({
-              ...record.toObject(),
-              content: c.content,
+                ...record.toObject(),
+                content: c.content,
             })
         }
     }

@@ -23,7 +23,7 @@ const RecordSchema: Schema = new Schema(
         action: { type: String, required: true },
         data: { type: String },
         transactionHash: { type: String },
-        confirmed: { type: Boolean, default: true }
+        confirmed: { type: Boolean, default: true },
     },
     {
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
