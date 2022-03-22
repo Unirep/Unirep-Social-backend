@@ -14,6 +14,17 @@ export const getInvitationCode = async (t) => {
     return signupCode
 }
 
+export const waitForBackendBlock = async (t, blockNumber) => {
+    for (;;) {
+        await new Promise((r) => setTimeout(r, 1000))
+        const latestBlock = await fetch(`${t.context.url}/api/block`).then(
+            (r) => r.json()
+        )
+        if (latestBlock < blockNumber) continue
+        break
+    }
+}
+
 export const signUp = async (t) => {
     const iden = genIdentity()
     const commitment = genIdentityCommitment(iden)
@@ -34,16 +45,9 @@ export const signUp = async (t) => {
     t.is(currentEpoch.toString(), data.epoch.toString())
     t.is(r.status, 200)
 
-    for (;;) {
-        await new Promise((r) => setTimeout(r, 1000))
-        const latestBlock = await fetch(`${t.context.url}/api/block`).then(
-            (r) => r.json()
-        )
-        if (latestBlock < receipt.blockNumber) continue
-        // sign in should success
-        await signIn(t)
-        break
-    }
+    await waitForBackendBlock(t, receipt.blockNumber)
+    // sign in should success
+    await signIn(t)
 
     return { iden, commitment }
 }
@@ -79,14 +83,7 @@ export const airdrop = async (t) => {
         data.transaction
     )
 
-    for (;;) {
-        await new Promise((r) => setTimeout(r, 1000))
-        const latestBlock = await fetch(`${t.context.url}/api/block`).then(
-            (r) => r.json()
-        )
-        if (latestBlock < receipt.blockNumber) continue
-        else break
-    }
+    await waitForBackendBlock(t, receipt.blockNumber)
     t.pass()
 }
 
@@ -97,6 +94,9 @@ export const signIn = async (t) => {
         commitment,
     })
     const r = await fetch(`${t.context.url}/api/signin?${params}`)
+    if (!r.ok) {
+      throw new Error(`/signin error`)
+    }
     t.is(r.status, 200)
 }
 
@@ -118,6 +118,9 @@ export const getSpent = async (t) => {
         `${t.context.url}/api/records/${paramStr}?spentonly=true`
     )
     const data = await r.json()
+    if (!r.ok) {
+      throw new Error(`/records error ${JSON.stringify(data)}`)
+    }
     let spent = 0
     for (var i = 0; i < data.length; i++) {
         spent = spent + data[i].spent
@@ -131,6 +134,11 @@ const genReputationProof = async (t) => {
         t.context.unirep.address,
         t.context.iden
     )
+    {
+      // this might be unnecessary, here for the `getSpent` call below
+      const blockNumber = await t.context.provider.getBlockNumber()
+      await waitForBackendBlock(t, blockNumber)
+    }
 
     // find valid nonce starter
     // gen proof
@@ -163,13 +171,20 @@ const genReputationProof = async (t) => {
         publicSignals
     )
     t.true(isValid)
-    return { proof: formatProofForVerifierContract(proof), publicSignals }
+    // we need to wait for the backend to process whatever block our provider is on
+    const blockNumber = await t.context.provider.getBlockNumber()
+    return {
+      proof: formatProofForVerifierContract(proof),
+      publicSignals,
+      blockNumber,
+    }
 }
 
 export const createPost = async (t) => {
     const proveAmount = t.context.constants.DEFAULT_POST_KARMA
     Object.assign(t.context, { ...t.context, proveAmount })
-    const { proof, publicSignals } = await genReputationProof(t)
+    const { blockNumber, proof, publicSignals } = await genReputationProof(t)
+    await waitForBackendBlock(t, blockNumber)
 
     const r = await fetch(`${t.context.url}/api/post`, {
         method: 'POST',
@@ -186,6 +201,9 @@ export const createPost = async (t) => {
 
     const data = await r.json()
     const prevSpent = await getSpent(t)
+    if (!r.ok) {
+      throw new Error(`/post error ${JSON.stringify(data)}`)
+    }
     const receipt = await t.context.provider.waitForTransaction(
         data.transaction
     )
@@ -220,7 +238,8 @@ export const queryPost = async (t) => {
 export const createComment = async (t) => {
     const proveAmount = t.context.constants.DEFAULT_COMMENT_KARMA
     Object.assign(t.context, { ...t.context, proveAmount })
-    const { proof, publicSignals } = await genReputationProof(t)
+    const { blockNumber, proof, publicSignals } = await genReputationProof(t)
+    await waitForBackendBlock(t, blockNumber)
 
     const r = await fetch(`${t.context.url}/api/comment`, {
         method: 'POST',
@@ -236,6 +255,9 @@ export const createComment = async (t) => {
     })
     const data = await r.json()
     const prevSpent = await getSpent(t)
+    if (!r.ok) {
+      throw new Error(`/comment error ${JSON.stringify(data)}`)
+    }
     const receipt = await t.context.provider.waitForTransaction(
         data.transaction
     )
@@ -258,7 +280,8 @@ export const createComment = async (t) => {
 export const vote = async (t) => {
     const proveAmount = t.context.upvote + t.context.downvote
     Object.assign(t.context, { ...t.context, proveAmount })
-    const { proof, publicSignals } = await genReputationProof(t)
+    const { blockNumber, proof, publicSignals } = await genReputationProof(t)
+    await waitForBackendBlock(t, blockNumber)
 
     const r = await fetch(`${t.context.url}/api/vote`, {
         method: 'POST',
@@ -277,6 +300,9 @@ export const vote = async (t) => {
     })
     const data = await r.json()
     const prevSpent = await getSpent(t)
+    if (!r.ok) {
+      throw new Error(`/vote error ${JSON.stringify(data)}`)
+    }
     const receipt = await t.context.provider.waitForTransaction(
         data.transaction
     )
@@ -327,17 +353,13 @@ export const userStateTransition = async (t) => {
         },
     })
     const data = await r.json()
+    if (!r.ok) {
+      throw new Error(`/userStateTransition error ${JSON.stringify(data)}`)
+    }
     const receipt = await t.context.provider.waitForTransaction(
         data.transaction
     )
 
-    for (;;) {
-        await new Promise((r) => setTimeout(r, 1000))
-        const latestBlock = await fetch(`${t.context.url}/api/block`).then(
-            (r) => r.json()
-        )
-        if (latestBlock < receipt.blockNumber) continue
-        else break
-    }
+    await waitForBackendBlock(t, receipt.blockNumber)
     t.pass()
 }

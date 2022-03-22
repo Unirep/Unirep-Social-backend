@@ -42,15 +42,15 @@ const verifyGSTRoot = async (
         epoch,
         root: gstRoot,
     })
-    if (exists) return exists
+    if (exists) return !!exists
     else {
         await processNewEvents()
         const exists = await GSTRoot.exists({
             epoch,
             root: gstRoot,
         })
-        console.log(await GSTRoot.find())
-        return exists
+        // console.log(await GSTRoot.find())
+        return !!exists
     }
 }
 

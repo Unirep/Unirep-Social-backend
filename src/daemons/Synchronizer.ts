@@ -215,8 +215,14 @@ export class Synchronizer extends EventEmitter {
                     ),
                 ])
             ).flat() as ethers.Event[]
+            const state = await SynchronizerState.findOne({})
+            if (!state) throw new Error('State not initialized')
             // first process historical ones then listen
-            await this.processEvents(allEvents)
+            await this.processEvents(allEvents.filter(e => {
+              return e.blockNumber > state.latestProcessedBlock ||
+                e.transactionIndex > state.latestProcessedTransactionIndex ||
+                e.logIndex > state.latestProcessedEventIndex
+            }))
             latestProcessed = newLatest
             await SynchronizerState.updateOne({}, {
               latestCompleteBlock: newLatest,
@@ -363,6 +369,7 @@ export class Synchronizer extends EventEmitter {
 
     async processEvents(_events: ethers.Event | ethers.Event[]) {
         const events = [_events].flat()
+        if (events.length === 0) return
         events.sort((a: any, b: any) => {
             if (a.blockNumber !== b.blockNumber) {
                 return a.blockNumber - b.blockNumber
@@ -388,12 +395,13 @@ export class Synchronizer extends EventEmitter {
             } catch (err) {
               console.log(`Error processing event:`, err)
               console.log(event)
+              if (!this._session) break // the commit failed, no need to abort
               await this._session.abortTransaction()
-              await this._session.endSession()
               break
             }
         }
-        await this._session.endSession()
+        if (this._session)
+          await this._session.endSession()
         await db.close()
         this._session = undefined
     }
