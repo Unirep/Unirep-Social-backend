@@ -15,7 +15,6 @@ import Proof from '../database/models/proof'
 import Post from '../database/models/post'
 import Comment from '../database/models/comment'
 import { verifyReputationProof } from '../controllers/utils'
-import { writeRecord } from '../database/utils'
 import TransactionManager from '../daemons/TransactionManager'
 import Nullifier from '../database/models/nullifiers'
 import Record from '../database/models/record'
@@ -173,19 +172,8 @@ const vote = async (req: any, res: any) => {
             },
             { new: true, upsert: false }
         )
-
-        await writeRecord(
-            req.body.receiver,
-            epochKey,
-            req.body.upvote,
-            req.body.downvote,
-            currentEpoch,
-            ActionType.Vote,
-            hash,
-            dataId
-        )
     } else {
-        const comment = await Comment.findOneAndUpdate(
+        await Comment.findOneAndUpdate(
             { transactionHash: dataId },
             {
                 $push: { votes: newVote },
@@ -193,18 +181,6 @@ const vote = async (req: any, res: any) => {
             },
             { new: true, upsert: false }
         )
-        if (comment !== undefined && comment !== null) {
-            await writeRecord(
-                req.body.receiver,
-                epochKey,
-                req.body.upvote,
-                req.body.downvote,
-                currentEpoch,
-                ActionType.Vote,
-                hash,
-                dataId
-            )
-        }
     }
     await Nullifier.create(
         reputationProof.repNullifiers
