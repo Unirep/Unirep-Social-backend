@@ -1,7 +1,4 @@
-import {
-    unirepSocialContract,
-    unirepContract,
-} from '../constants'
+import { unirepSocialContract, unirepContract } from '../constants'
 import TransactionManager from '../daemons/TransactionManager'
 
 const signUp = async (req: any, res: any) => {

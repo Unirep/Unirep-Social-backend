@@ -117,7 +117,7 @@ const leaveComment = async (req: any, res: any) => {
         [
             req.body.postId as any,
             req.body.content as any,
-            reputationProof as any
+            reputationProof as any,
         ]
     )
     const hash = await TransactionManager.queueTransaction(

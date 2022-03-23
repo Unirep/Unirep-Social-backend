@@ -1,6 +1,4 @@
-import {
-    unirepContract,
-} from '../constants'
+import { unirepContract } from '../constants'
 import TransactionManager from './TransactionManager'
 
 export class EpochManager {
@@ -48,9 +46,10 @@ export class EpochManager {
 
     async doEpochTransition() {
         const currentEpoch = await unirepContract.currentEpoch()
-        const calldata = (
-            unirepContract as any
-        ).interface.encodeFunctionData('beginEpochTransition', [])
+        const calldata = (unirepContract as any).interface.encodeFunctionData(
+            'beginEpochTransition',
+            []
+        )
         const hash = await TransactionManager.queueTransaction(
             unirepContract.address,
             {

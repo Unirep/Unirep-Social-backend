@@ -2,10 +2,7 @@ import {
     UserTransitionProof,
     computeStartTransitionProofHash,
 } from '@unirep/contracts'
-import {
-    unirepContract,
-    unirepSocialContract,
-} from '../constants'
+import { unirepContract, unirepSocialContract } from '../constants'
 import { formatProofForVerifierContract } from '@unirep/circuits'
 import { verifyUSTProof } from './utils'
 import TransactionManager from '../daemons/TransactionManager'
@@ -95,10 +92,7 @@ const userStateTransition = async (req: any, res: any) => {
     )
     const calldata = unirepSocialContract.interface.encodeFunctionData(
         'updateUserStateRoot',
-        [
-            USTProof as any,
-            proofIndexes
-        ]
+        [USTProof as any, proofIndexes]
     )
     const hash = await TransactionManager.queueTransaction(
         unirepSocialContract.address,
