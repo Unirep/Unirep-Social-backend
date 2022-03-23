@@ -32,7 +32,7 @@ const listAllPosts = async () => {
     const commentsByPostId = comments.reduce((acc, c) => {
         return {
             ...acc,
-            [c.postId]: [...(acc[c.postId] ?? []), c]
+            [c.postId]: [...(acc[c.postId] ?? []), c],
         }
     }, {})
 
