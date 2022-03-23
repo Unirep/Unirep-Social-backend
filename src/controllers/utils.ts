@@ -4,10 +4,10 @@ import {
     SignUpProof,
     UserTransitionProof,
 } from '@unirep/contracts'
-import Record from '../database/models/record'
-import Nullifier from '../database/models/nullifiers'
-import Epoch from '../database/models/epoch'
-import GSTRoot from '../database/models/GSTRoots'
+import Record from '../models/record'
+import Nullifier from '../models/nullifiers'
+import Epoch from '../models/epoch'
+import GSTRoot from '../models/GSTRoots'
 
 const verifyGSTRoot = async (
     epoch: number,

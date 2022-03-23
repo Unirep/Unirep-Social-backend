@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response, Router } from 'express'
-import Report, { IReport } from '../database/models/report'
+import Report, { IReport } from '../models/report'
 import catchError from './catchError'
 
 const router = Router()

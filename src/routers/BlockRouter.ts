@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response, Router } from 'express'
-import SynchronizerState from '../database/models/synchronizerState'
+import SynchronizerState from '../models/synchronizerState'
 import catchError from './catchError'
 
 const router = Router()

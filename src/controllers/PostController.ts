@@ -15,12 +15,12 @@ import {
     UNIREP_SOCIAL_ABI,
     ActionType,
 } from '../constants'
-import Post, { IPost } from '../database/models/post'
-import Comment, { IComment } from '../database/models/comment'
+import Post, { IPost } from '../models/post'
+import Comment, { IComment } from '../models/comment'
 import { verifyReputationProof } from '../controllers/utils'
 import TransactionManager from '../daemons/TransactionManager'
-import Nullifier from '../database/models/nullifiers'
-import Record from '../database/models/record'
+import Nullifier from '../models/nullifiers'
+import Record from '../models/record'
 
 const listAllPosts = async () => {
     const allPosts = await Post.find({ status: 1 }).lean()

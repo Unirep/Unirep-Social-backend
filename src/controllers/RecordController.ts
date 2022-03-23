@@ -1,6 +1,6 @@
-import Record from '../database/models/record'
-import Post from '../database/models/post'
-import Comment from '../database/models/comment'
+import Record from '../models/record'
+import Post from '../models/post'
+import Comment from '../models/comment'
 import { titlePrefix, titlePostfix } from '../constants'
 
 const getRecords = async (epks: string[]) => {

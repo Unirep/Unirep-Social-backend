@@ -1,6 +1,6 @@
 import test from 'ava'
 import { startServer } from './environment'
-import Epoch from '../src/database/models/epoch'
+import Epoch from '../src/models/epoch'
 
 import { epochTransition, signUp, userStateTransition } from './utils'
 

@@ -12,7 +12,7 @@ import {
 import { verifyAirdropProof } from './utils'
 import { ethers } from 'ethers'
 import TransactionManager from '../daemons/TransactionManager'
-import Record from '../database/models/record'
+import Record from '../models/record'
 
 export const getAirdrop = async (req, res) => {
     // Unirep Social contract

@@ -13,11 +13,11 @@ import {
     LOAD_POST_COUNT,
     ActionType,
 } from '../constants'
-import Comment, { IComment } from '../database/models/comment'
-import Nullifier from '../database/models/nullifiers'
+import Comment, { IComment } from '../models/comment'
+import Nullifier from '../models/nullifiers'
 import { verifyReputationProof } from '../controllers/utils'
 import TransactionManager from '../daemons/TransactionManager'
-import Record from '../database/models/record'
+import Record from '../models/record'
 
 const listAllComments = async () => {
     const comments = await Comment.find({})

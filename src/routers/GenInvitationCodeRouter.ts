@@ -1,8 +1,6 @@
 import { NextFunction, Request, Response, Router } from 'express'
 import GenInvitationCodeController from '../controllers/GenInvitationCodeController'
-import InvitationCode, {
-    IInvitationCode,
-} from '../database/models/invitationCode'
+import InvitationCode, { IInvitationCode } from '../models/invitationCode'
 import { ADMIN_SESSION_CODE } from '../constants'
 import catchError from './catchError'
 

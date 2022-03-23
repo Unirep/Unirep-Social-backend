@@ -10,14 +10,14 @@ import {
     ActionType,
     UNIREP_SOCIAL_ATTESTER_ID,
 } from '../constants'
-import { IVote } from '../database/models/vote'
-import Proof from '../database/models/proof'
-import Post from '../database/models/post'
-import Comment from '../database/models/comment'
+import { IVote } from '../models/vote'
+import Proof from '../models/proof'
+import Post from '../models/post'
+import Comment from '../models/comment'
 import { verifyReputationProof } from '../controllers/utils'
 import TransactionManager from '../daemons/TransactionManager'
-import Nullifier from '../database/models/nullifiers'
-import Record from '../database/models/record'
+import Nullifier from '../models/nullifiers'
+import Record from '../models/record'
 
 const vote = async (req: any, res: any) => {
     const unirepContract = new ethers.Contract(

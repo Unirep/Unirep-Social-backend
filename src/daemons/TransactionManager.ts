@@ -2,11 +2,11 @@ import mongoose from 'mongoose'
 import AccountNonce, {
     IAccountNonce,
     AccountNonceSchema,
-} from '../database/models/accountNonce'
+} from '../models/accountNonce'
 import AccountTransaction, {
     IAccountTransaction,
     AccountTransactionSchema,
-} from '../database/models/accountTransaction'
+} from '../models/accountTransaction'
 import { ethers } from 'ethers'
 
 export class TransactionManager {
