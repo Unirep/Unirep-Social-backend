@@ -1,25 +1,11 @@
-import { ethers } from 'ethers'
 import {
-    UNIREP,
-    UNIREP_ABI,
-    DEFAULT_ETH_PROVIDER,
-    UNIREP_SOCIAL,
-    UNIREP_SOCIAL_ABI,
+    unirepSocialContract,
+    unirepContract,
 } from '../constants'
 import TransactionManager from '../daemons/TransactionManager'
 
 const signUp = async (req: any, res: any) => {
     const uploadedCommitment = req.query.commitment!.toString()
-    const unirepContract = new ethers.Contract(
-        UNIREP,
-        UNIREP_ABI,
-        DEFAULT_ETH_PROVIDER
-    )
-    const unirepSocialContract = new ethers.Contract(
-        UNIREP_SOCIAL,
-        UNIREP_SOCIAL_ABI,
-        DEFAULT_ETH_PROVIDER
-    )
 
     if (!/^(0x)?[0-9a-fA-F]{64}$/.test(uploadedCommitment)) {
         res.status(400).json({

@@ -1,19 +1,15 @@
 import { formatProofForSnarkjsVerification } from '@unirep/circuits'
 import { ReputationProof } from '@unirep/contracts'
-import { ethers } from 'ethers'
 import {
-    UNIREP_SOCIAL,
-    DEFAULT_ETH_PROVIDER,
     DEFAULT_POST_KARMA,
     QueryType,
     UNIREP_SOCIAL_ATTESTER_ID,
     LOAD_POST_COUNT,
     titlePrefix,
     titlePostfix,
-    UNIREP,
-    UNIREP_ABI,
-    UNIREP_SOCIAL_ABI,
     ActionType,
+    unirepContract,
+    unirepSocialContract,
 } from '../constants'
 import Post, { IPost } from '../models/post'
 import Comment, { IComment } from '../models/comment'
@@ -113,16 +109,6 @@ const getPostWithQuery = async (
 
 const publishPost = async (req: any, res: any) => {
     // should have content, epk, proof, minRep, nullifiers, publicSignals
-    const unirepContract = new ethers.Contract(
-        UNIREP,
-        UNIREP_ABI,
-        DEFAULT_ETH_PROVIDER
-    )
-    const unirepSocialContract = new ethers.Contract(
-        UNIREP_SOCIAL,
-        UNIREP_SOCIAL_ABI,
-        DEFAULT_ETH_PROVIDER
-    )
     const unirepSocialId = UNIREP_SOCIAL_ATTESTER_ID
     const currentEpoch = Number(await unirepContract.currentEpoch())
 
@@ -169,7 +155,7 @@ const publishPost = async (req: any, res: any) => {
             title !== undefined && title.length > 0
                 ? `${titlePrefix}${title}${titlePostfix}${content}`
                 : content,
-            reputationProof,
+            reputationProof as any,
         ]
     )
     const hash = await TransactionManager.queueTransaction(

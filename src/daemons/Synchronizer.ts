@@ -1,11 +1,6 @@
 import mongoose from 'mongoose'
 import { ethers } from 'ethers'
 import {
-    UNIREP,
-    UNIREP_SOCIAL,
-    DEFAULT_ETH_PROVIDER,
-    UNIREP_ABI,
-    UNIREP_SOCIAL_ABI,
     DEFAULT_AIRDROPPED_KARMA,
     ActionType,
     titlePostfix,
@@ -13,6 +8,9 @@ import {
     DEFAULT_POST_KARMA,
     DEFAULT_COMMENT_KARMA,
     MONGO_URL,
+    unirepContract,
+    unirepSocialContract,
+    DEFAULT_ETH_PROVIDER,
 } from '../constants'
 import {
     IncrementalQuinTree,
@@ -147,16 +145,8 @@ export class Synchronizer extends EventEmitter {
 
     constructor() {
         super()
-        this.unirepSocialContract = new ethers.Contract(
-            UNIREP_SOCIAL,
-            UNIREP_SOCIAL_ABI,
-            DEFAULT_ETH_PROVIDER
-        )
-        this.unirepContract = new ethers.Contract(
-            UNIREP,
-            UNIREP_ABI,
-            DEFAULT_ETH_PROVIDER
-        )
+        this.unirepSocialContract = unirepSocialContract
+        this.unirepContract = unirepContract
         this.epochKeyInEpoch[this.currentEpoch] = new Map()
         this.epochTreeRoot[this.currentEpoch] = BigInt(0)
         const emptyUserStateRoot = computeEmptyUserStateRoot(
@@ -1032,8 +1022,6 @@ export class Synchronizer extends EventEmitter {
         const _epochKey = BigInt(event.topics[2]).toString(16)
         const signUpProof = decodedData.proofRelated
 
-        const unirepContract = getUnirepContract(UNIREP, DEFAULT_ETH_PROVIDER)
-
         const proofNullifier = await this.unirepContract.hashSignUpProof(
             signUpProof
         )
@@ -1676,7 +1664,6 @@ export class Synchronizer extends EventEmitter {
     }
 
     async userSignedUpProofEvent(event: ethers.Event) {
-        const iface = new ethers.utils.Interface(UNIREP_ABI)
         const _proofIndex = Number(event.topics[1])
         const _epoch = Number(event.topics[2])
         const decodedData = this.unirepContract.interface.decodeEventLog(

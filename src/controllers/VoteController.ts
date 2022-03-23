@@ -1,14 +1,10 @@
 import { formatProofForSnarkjsVerification } from '@unirep/circuits'
 import { ReputationProof } from '@unirep/contracts'
-import { ethers } from 'ethers'
 import {
-    UNIREP,
-    UNIREP_SOCIAL_ABI,
-    UNIREP_ABI,
-    UNIREP_SOCIAL,
-    DEFAULT_ETH_PROVIDER,
     ActionType,
     UNIREP_SOCIAL_ATTESTER_ID,
+    unirepContract,
+    unirepSocialContract,
 } from '../constants'
 import { IVote } from '../models/vote'
 import Proof from '../models/proof'
@@ -20,16 +16,6 @@ import Nullifier from '../models/nullifiers'
 import Record from '../models/record'
 
 const vote = async (req: any, res: any) => {
-    const unirepContract = new ethers.Contract(
-        UNIREP,
-        UNIREP_ABI,
-        DEFAULT_ETH_PROVIDER
-    )
-    const unirepSocialContract = new ethers.Contract(
-        UNIREP_SOCIAL,
-        UNIREP_SOCIAL_ABI,
-        DEFAULT_ETH_PROVIDER
-    )
     const unirepSocialId = UNIREP_SOCIAL_ATTESTER_ID
     const currentEpoch = Number(await unirepContract.currentEpoch())
 
@@ -141,7 +127,7 @@ const vote = async (req: any, res: any) => {
         req.body.downvote,
         receiver,
         postProofIndex,
-        reputationProof,
+        reputationProof as any,
     ])
     const hash = await TransactionManager.queueTransaction(
         unirepSocialContract.address,

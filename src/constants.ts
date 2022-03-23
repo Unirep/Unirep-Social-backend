@@ -1,8 +1,7 @@
-import UnirepSocial from '@unirep/unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json'
-import Unirep from '@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json'
 import { ethers } from 'ethers'
 import randomstring from 'randomstring'
 import { numEpochKeyNoncePerEpoch } from '@unirep/unirep'
+import { UnirepFactory, UnirepSocialFacory } from '@unirep/unirep-social'
 
 // Provide default values for process.env
 Object.assign(process.env, {
@@ -39,6 +38,16 @@ export const DEFAULT_ETH_PROVIDER = DEFAULT_ETH_PROVIDER_URL.startsWith('http')
 export const DEFAULT_START_BLOCK = 0
 export const UNIREP_SOCIAL_ATTESTER_ID = 1
 
+export const unirepContract = UnirepFactory.connect(
+    UNIREP,
+    DEFAULT_ETH_PROVIDER
+)
+
+export const unirepSocialContract = UnirepSocialFacory.connect(
+    UNIREP_SOCIAL,
+    DEFAULT_ETH_PROVIDER
+)
+
 export const DEFAULT_POST_KARMA = 5
 export const DEFAULT_COMMENT_KARMA = 3
 export const MAX_KARMA_BUDGET = 10
@@ -50,9 +59,6 @@ export const EPOCH_KEY_NONCE_PER_EPOCH = numEpochKeyNoncePerEpoch
 export const maxReputationBudget = 10
 
 export const LOAD_POST_COUNT = 10
-
-export const UNIREP_ABI = Unirep.abi
-export const UNIREP_SOCIAL_ABI = UnirepSocial.abi
 
 export enum ActionType {
     Post = 'Post',

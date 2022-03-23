@@ -2,29 +2,15 @@ import {
     UserTransitionProof,
     computeStartTransitionProofHash,
 } from '@unirep/contracts'
-import { ethers } from 'ethers'
 import {
-    UNIREP,
-    UNIREP_ABI,
-    UNIREP_SOCIAL_ABI,
-    UNIREP_SOCIAL,
-    DEFAULT_ETH_PROVIDER,
+    unirepContract,
+    unirepSocialContract,
 } from '../constants'
 import { formatProofForVerifierContract } from '@unirep/circuits'
 import { verifyUSTProof } from './utils'
 import TransactionManager from '../daemons/TransactionManager'
 
 const userStateTransition = async (req: any, res: any) => {
-    const unirepContract = new ethers.Contract(
-        UNIREP,
-        UNIREP_ABI,
-        DEFAULT_ETH_PROVIDER
-    )
-    const unirepSocialContract = new ethers.Contract(
-        UNIREP_SOCIAL,
-        UNIREP_SOCIAL_ABI,
-        DEFAULT_ETH_PROVIDER
-    )
     const currentEpoch = Number(await unirepContract.currentEpoch())
     const { results } = req.body
 
@@ -109,7 +95,10 @@ const userStateTransition = async (req: any, res: any) => {
     )
     const calldata = unirepSocialContract.interface.encodeFunctionData(
         'updateUserStateRoot',
-        [USTProof, proofIndexes]
+        [
+            USTProof as any,
+            proofIndexes
+        ]
     )
     const hash = await TransactionManager.queueTransaction(
         unirepSocialContract.address,

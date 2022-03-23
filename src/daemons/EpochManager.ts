@@ -1,25 +1,10 @@
-import { ethers } from 'ethers'
 import {
-    UNIREP,
-    UNIREP_SOCIAL,
-    DEFAULT_ETH_PROVIDER,
-    UNIREP_ABI,
-    UNIREP_SOCIAL_ABI,
+    unirepContract,
 } from '../constants'
 import TransactionManager from './TransactionManager'
 
 export class EpochManager {
     timer: NodeJS.Timeout | null = null
-    unirepContract = new ethers.Contract(
-        UNIREP,
-        UNIREP_ABI,
-        DEFAULT_ETH_PROVIDER
-    )
-    unirepSocialContract = new ethers.Contract(
-        UNIREP_SOCIAL,
-        UNIREP_SOCIAL_ABI,
-        DEFAULT_ETH_PROVIDER
-    )
 
     async updateWatch() {
         if (this.timer) {
@@ -44,8 +29,8 @@ export class EpochManager {
 
     async nextTransition() {
         const [lastTransition, epochLength] = await Promise.all([
-            this.unirepContract.latestEpochTransitionTime(),
-            this.unirepContract.epochLength(),
+            unirepContract.latestEpochTransitionTime(),
+            unirepContract.epochLength(),
         ])
         return lastTransition.toNumber() + epochLength.toNumber()
     }
@@ -62,12 +47,12 @@ export class EpochManager {
     }
 
     async doEpochTransition() {
-        const currentEpoch = await this.unirepContract.currentEpoch()
+        const currentEpoch = await unirepContract.currentEpoch()
         const calldata = (
-            this.unirepContract as any
+            unirepContract as any
         ).interface.encodeFunctionData('beginEpochTransition', [])
         const hash = await TransactionManager.queueTransaction(
-            this.unirepContract.address,
+            unirepContract.address,
             {
                 data: calldata,
             }

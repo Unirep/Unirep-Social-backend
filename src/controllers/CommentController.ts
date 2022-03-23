@@ -1,17 +1,13 @@
 import { formatProofForSnarkjsVerification } from '@unirep/circuits'
 import { ReputationProof } from '@unirep/contracts'
-import { ethers } from 'ethers'
 import {
-    UNIREP,
-    UNIREP_SOCIAL_ABI,
-    UNIREP_ABI,
-    UNIREP_SOCIAL,
-    DEFAULT_ETH_PROVIDER,
     DEFAULT_COMMENT_KARMA,
     UNIREP_SOCIAL_ATTESTER_ID,
     QueryType,
     LOAD_POST_COUNT,
     ActionType,
+    unirepContract,
+    unirepSocialContract,
 } from '../constants'
 import Comment, { IComment } from '../models/comment'
 import Nullifier from '../models/nullifiers'
@@ -79,16 +75,6 @@ const getCommentsWithQuery = async (
 }
 
 const leaveComment = async (req: any, res: any) => {
-    const unirepContract = new ethers.Contract(
-        UNIREP,
-        UNIREP_ABI,
-        DEFAULT_ETH_PROVIDER
-    )
-    const unirepSocialContract = new ethers.Contract(
-        UNIREP_SOCIAL,
-        UNIREP_SOCIAL_ABI,
-        DEFAULT_ETH_PROVIDER
-    )
     const unirepSocialId = UNIREP_SOCIAL_ATTESTER_ID
     const currentEpoch = Number(await unirepContract.currentEpoch())
 
@@ -128,7 +114,11 @@ const leaveComment = async (req: any, res: any) => {
     const attestingFee = await unirepContract.attestingFee()
     const calldata = unirepSocialContract.interface.encodeFunctionData(
         'leaveComment',
-        [req.body.postId, req.body.content, reputationProof]
+        [
+            req.body.postId as any,
+            req.body.content as any,
+            reputationProof as any
+        ]
     )
     const hash = await TransactionManager.queueTransaction(
         unirepSocialContract.address,
