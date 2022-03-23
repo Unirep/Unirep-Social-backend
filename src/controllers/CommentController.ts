@@ -11,11 +11,13 @@ import {
     UNIREP_SOCIAL_ATTESTER_ID,
     QueryType,
     LOAD_POST_COUNT,
+    ActionType,
 } from '../constants'
-import Comment, { IComment } from '../database/models/comment'
-import Nullifier from '../database/models/nullifiers'
+import Comment, { IComment } from '../models/comment'
+import Nullifier from '../models/nullifiers'
 import { verifyReputationProof } from '../controllers/utils'
 import TransactionManager from '../daemons/TransactionManager'
+import Record from '../models/record'
 
 const listAllComments = async () => {
     const comments = await Comment.find({})
@@ -106,7 +108,7 @@ const leaveComment = async (req: any, res: any) => {
             },
         })
         if (exists) {
-            res.status(400).json({
+            res.status(422).json({
                 error: 'Duplicate nullifier',
             })
             return
@@ -150,6 +152,28 @@ const leaveComment = async (req: any, res: any) => {
     })
 
     const comment = await newComment.save()
+
+    await Nullifier.create(
+        reputationProof.repNullifiers
+            .filter((n) => n.toString() !== '0')
+            .map((n) => ({
+                epoch: currentEpoch,
+                transactionHash: hash,
+                nullifier: n.toString(),
+                confirmed: false,
+            }))
+    )
+    await Record.create({
+        to: epochKey,
+        from: epochKey,
+        upvote: 0,
+        downvote: DEFAULT_COMMENT_KARMA,
+        epoch: currentEpoch,
+        action: ActionType.Comment,
+        data: hash,
+        transactionHash: hash,
+        confirmed: false,
+    })
 
     res.json({
         error: error,

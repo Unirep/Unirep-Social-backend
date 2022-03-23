@@ -1,7 +1,5 @@
 import randomstring from 'randomstring'
-import InvitationCode, {
-    IInvitationCode,
-} from '../database/models/invitationCode'
+import InvitationCode, { IInvitationCode } from '../models/invitationCode'
 
 const genCode = async () => {
     const randomOutput = randomstring.generate(8)

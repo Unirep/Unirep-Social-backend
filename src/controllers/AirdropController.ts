@@ -7,10 +7,12 @@ import {
     UNIREP,
     UNIREP_ABI,
     UNIREP_SOCIAL_ABI,
+    DEFAULT_AIRDROPPED_KARMA,
 } from '../constants'
 import { verifyAirdropProof } from './utils'
 import { ethers } from 'ethers'
 import TransactionManager from '../daemons/TransactionManager'
+import Record from '../models/record'
 
 export const getAirdrop = async (req, res) => {
     // Unirep Social contract
@@ -43,7 +45,7 @@ export const getAirdrop = async (req, res) => {
         currentEpoch
     )
     if (error !== undefined) {
-        res.json({ error: error, transaction: undefined })
+        res.status(422).json({ error: error, transaction: undefined })
         return
     }
 
@@ -59,6 +61,17 @@ export const getAirdrop = async (req, res) => {
             value: attestingFee,
         }
     )
+    await Record.create({
+        to: publicSignals[1].toString(16),
+        from: 'UnirepSocial',
+        upvote: DEFAULT_AIRDROPPED_KARMA,
+        downvote: 0,
+        epoch: currentEpoch,
+        action: 'UST',
+        data: '0',
+        transactionHash: hash,
+        confirmed: false,
+    })
     res.json({ transaction: hash })
 }
 

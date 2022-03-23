@@ -10,6 +10,7 @@ export interface IRecord extends Document {
     action: string
     data: string
     transactionHash: string
+    confirmed: boolean
 }
 
 const RecordSchema: Schema = new Schema(
@@ -22,6 +23,7 @@ const RecordSchema: Schema = new Schema(
         action: { type: String, required: true },
         data: { type: String },
         transactionHash: { type: String },
+        confirmed: { type: Boolean, default: true },
     },
     {
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },

@@ -1,14 +1,7 @@
 import test from 'ava'
 import { startServer } from './environment'
 
-import {
-    createComment,
-    createPost,
-    queryPost,
-    signIn,
-    signUp,
-    vote,
-} from './utils'
+import { createComment, createPost, queryPost, signUp, vote } from './utils'
 
 test.before(async (t) => {
     const context = await startServer()
@@ -18,19 +11,14 @@ test.before(async (t) => {
 test('should vote on a post', async (t: any) => {
     // sign up first user
     const user1 = await signUp(t)
-    Object.assign(t.context, { ...t.context, iden: user1.iden })
-    await signIn(t)
 
     // first create a post
-    const { post, transaction } = await createPost(t)
-    Object.assign(t.context, { ...t.context, transaction })
-    const exist = await queryPost(t)
+    const { post, transaction } = await createPost(t, user1.iden)
+    const exist = await queryPost(t, transaction)
     t.true(exist)
 
     // sign up second user
     const user2 = await signUp(t)
-    Object.assign(t.context, { ...t.context, iden: user2.iden })
-    await signIn(t)
 
     // upvote the post
     {
@@ -38,15 +26,7 @@ test('should vote on a post', async (t: any) => {
         const downvote = 0
         const dataId = transaction
         const receiver = post.epochKey.toString(16)
-        Object.assign(t.context, {
-            ...t.context,
-            upvote,
-            downvote,
-            dataId,
-            receiver,
-            isPost: true,
-        })
-        await vote(t)
+        await vote(t, user2.iden, receiver, dataId, true, upvote, downvote)
     }
 
     // downvote the post
@@ -55,15 +35,7 @@ test('should vote on a post', async (t: any) => {
         const downvote = 2
         const dataId = transaction
         const receiver = post.epochKey.toString(16)
-        Object.assign(t.context, {
-            ...t.context,
-            upvote,
-            downvote,
-            dataId,
-            receiver,
-            isPost: true,
-        })
-        await vote(t)
+        await vote(t, user2.iden, receiver, dataId, true, upvote, downvote)
     }
     t.pass()
 })
@@ -71,23 +43,22 @@ test('should vote on a post', async (t: any) => {
 test('should vote on comment', async (t: any) => {
     // sign up first user
     const user1 = await signUp(t)
-    Object.assign(t.context, { ...t.context, iden: user1.iden })
-    await signIn(t)
 
     // first create a post
-    const post = await createPost(t)
-    Object.assign(t.context, { ...t.context, transaction: post.transaction })
-    const exist = await queryPost(t)
+    const post = await createPost(t, user1.iden)
+    const exist = await queryPost(t, post.transaction)
     t.true(exist)
 
     // leave a comment
-    Object.assign(t.context, { ...t.context, postId: post.transaction })
-    const { comment, transaction } = await createComment(t)
+    // Object.assign(t.context, { ...t.context, postId: post.transaction })
+    const { comment, transaction } = await createComment(
+        t,
+        user1.iden,
+        post.transaction
+    )
 
     // sign up second user
     const user2 = await signUp(t)
-    Object.assign(t.context, { ...t.context, iden: user2.iden })
-    await signIn(t)
 
     // upvote the comment
     {
@@ -95,15 +66,7 @@ test('should vote on comment', async (t: any) => {
         const downvote = 0
         const dataId = transaction
         const receiver = comment.epochKey.toString(16)
-        Object.assign(t.context, {
-            ...t.context,
-            upvote,
-            downvote,
-            dataId,
-            receiver,
-            isPost: false,
-        })
-        await vote(t)
+        await vote(t, user2.iden, receiver, dataId, false, upvote, downvote)
     }
 
     // downvote the comment
@@ -112,15 +75,7 @@ test('should vote on comment', async (t: any) => {
         const downvote = 1
         const dataId = transaction
         const receiver = comment.epochKey.toString(16)
-        Object.assign(t.context, {
-            ...t.context,
-            upvote,
-            downvote,
-            dataId,
-            receiver,
-            isPost: false,
-        })
-        await vote(t)
+        await vote(t, user2.iden, receiver, dataId, false, upvote, downvote)
     }
     t.pass()
 })

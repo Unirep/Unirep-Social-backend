@@ -1,4 +1,4 @@
-import 'mongoose'
+import mongoose from 'mongoose'
 import { ethers } from 'ethers'
 import {
     UNIREP,
@@ -12,6 +12,7 @@ import {
     titlePrefix,
     DEFAULT_POST_KARMA,
     DEFAULT_COMMENT_KARMA,
+    MONGO_URL,
 } from '../constants'
 import {
     IncrementalQuinTree,
@@ -44,18 +45,20 @@ import {
     SignUpProof,
     UserTransitionProof,
 } from '@unirep/contracts'
-import Proof from '../database/models/proof'
-import UserSignUp from '../database/models/userSignUp'
-import GSTLeaf from '../database/models/GSTLeaf'
-import GSTRoot from '../database/models/GSTRoots'
-import Nullifier from '../database/models/nullifiers'
-import Attestation from '../database/models/attestation'
-import Epoch from '../database/models/epoch'
-import Record from '../database/models/record'
-import EpkRecord from '../database/models/epkRecord'
-import Post from '../database/models/post'
-import Comment from '../database/models/comment'
-import BlockNumber from '../database/models/blockNumber'
+import { EventEmitter } from 'events'
+import Proof from '../models/proof'
+import UserSignUp from '../models/userSignUp'
+import GSTLeaf from '../models/GSTLeaf'
+import GSTRoot from '../models/GSTRoots'
+import Nullifier from '../models/nullifiers'
+import Attestation from '../models/attestation'
+import Epoch from '../models/epoch'
+import Record from '../models/record'
+import EpkRecord from '../models/epkRecord'
+import Post from '../models/post'
+import Comment from '../models/comment'
+import BlockNumber from '../models/blockNumber'
+import SynchronizerState from '../models/synchronizerState'
 
 const encodeBigIntArray = (arr: BigInt[]): string => {
     return JSON.stringify(stringifyBigInts(arr))
@@ -121,7 +124,7 @@ class HAttestation implements IAttestation {
     }
 }
 
-export class Synchronizer {
+export class Synchronizer extends EventEmitter {
     provider = DEFAULT_ETH_PROVIDER
     unirepSocialContract: ethers.Contract
     unirepContract: ethers.Contract
@@ -134,6 +137,7 @@ export class Synchronizer {
     private epochTree: { [key: number]: SparseMerkleTreeImpl } = {}
     private defaultGSTLeaf: BigInt
     private userNum: number = 0
+    _session: any
 
     public latestProcessedBlock: number = 0
     private sealedEpochKey: { [key: string]: boolean } = {}
@@ -142,6 +146,7 @@ export class Synchronizer {
     private epochGSTRootMap: { [key: number]: Map<string, boolean> } = {}
 
     constructor() {
+        super()
         this.unirepSocialContract = new ethers.Contract(
             UNIREP_SOCIAL,
             UNIREP_SOCIAL_ABI,
@@ -169,6 +174,14 @@ export class Synchronizer {
 
     // start sychronizing events
     async start() {
+        const state = await SynchronizerState.findOne({})
+        if (!state) {
+            await SynchronizerState.create({
+                latestProcessedBlock: 0,
+                latestProcessedTransactionIndex: 0,
+                latestProcessedEventIndex: 0,
+            })
+        }
         this.startDaemon()
     }
 
@@ -202,9 +215,26 @@ export class Synchronizer {
                     ),
                 ])
             ).flat() as ethers.Event[]
+            const state = await SynchronizerState.findOne({})
+            if (!state) throw new Error('State not initialized')
             // first process historical ones then listen
-            await this.processEvents(allEvents)
+            await this.processEvents(
+                allEvents.filter((e) => {
+                    return (
+                        e.blockNumber > state.latestProcessedBlock ||
+                        e.transactionIndex >
+                            state.latestProcessedTransactionIndex ||
+                        e.logIndex > state.latestProcessedEventIndex
+                    )
+                })
+            )
             latestProcessed = newLatest
+            await SynchronizerState.updateOne(
+                {},
+                {
+                    latestCompleteBlock: newLatest,
+                }
+            )
         }
     }
 
@@ -347,6 +377,7 @@ export class Synchronizer {
 
     async processEvents(_events: ethers.Event | ethers.Event[]) {
         const events = [_events].flat()
+        if (events.length === 0) return
         events.sort((a: any, b: any) => {
             if (a.blockNumber !== b.blockNumber) {
                 return a.blockNumber - b.blockNumber
@@ -357,95 +388,105 @@ export class Synchronizer {
             return a.logIndex - b.logIndex
         })
 
-        let currentBlockNumber: number = -1
+        const db = mongoose.createConnection(MONGO_URL)
+        this._session = await db.startSession()
         for (const event of events) {
-            // init current block number
-            if (currentBlockNumber === -1)
-                currentBlockNumber = event.blockNumber
-            // update db when the transactions of current block are all processed
-            if (
-                currentBlockNumber !== event.blockNumber &&
-                currentBlockNumber !== -1
-            ) {
-                await BlockNumber.updateOne({}, { number: currentBlockNumber })
-                currentBlockNumber = event.blockNumber
-            }
-            // no, i don't know what a switch statement is...
-            if (event.topics[0] === this.allTopics.IndexedEpochKeyProof) {
-                console.log('IndexedEpochKeyProof')
-                await this.epochKeyProofEvent(event)
-            } else if (
-                event.topics[0] === this.allTopics.IndexedReputationProof
-            ) {
-                console.log('IndexedReputationProof')
-                await this.reputationProofEvent(event)
-            } else if (
-                event.topics[0] === this.allTopics.IndexedUserSignedUpProof
-            ) {
-                console.log('IndexedUserSignedUpProof')
-                await this.userSignedUpProofEvent(event)
-            } else if (
-                event.topics[0] === this.allTopics.IndexedStartedTransitionProof
-            ) {
-                console.log('IndexedStartedTransitionProof')
-                await this.startUSTProofEvent(event)
-            } else if (
-                event.topics[0] ===
-                this.allTopics.IndexedProcessedAttestationsProof
-            ) {
-                console.log('IndexedProcessedAttestationsProof')
-                await this.processAttestationProofEvent(event)
-            } else if (
-                event.topics[0] ===
-                this.allTopics.IndexedUserStateTransitionProof
-            ) {
-                console.log('IndexedUserStateTransitionProof')
-                await this.USTProofEvent(event)
-            } else if (event.topics[0] === this.allTopics.UserSignedUp) {
-                console.log('UserSignedUp')
-                await this.userSignedUpEvent(event)
-            } else if (
-                event.topics[0] === this.allTopics.UserStateTransitioned
-            ) {
-                console.log('UserStateTransitioned')
-                await this.USTEvent(event)
-            } else if (
-                event.topics[0] === this.allTopics.AttestationSubmitted
-            ) {
-                console.log('AttestationSubmitted')
-                await this.attestationEvent(event)
-            } else if (event.topics[0] === this.allTopics.EpochEnded) {
-                console.log('EpochEnded')
-                await this.epochEndedEvent(event)
-            } else if (event.topics[0] === this.allTopics._UserSignedUp) {
-                console.log('Social: UserSignedUp')
-                const _epoch = Number(event.topics[1])
-                const _commitment = BigInt(event.topics[2]).toString()
-                await UserSignUp.create({
-                    transactionHash: event.transactionHash,
-                    commitment: _commitment,
-                    epoch: _epoch,
-                })
-            } else if (event.topics[0] === this.allTopics._PostSubmitted) {
-                console.log('Social: PostSubmitted')
-                await this.postSubmittedEvent(event)
-            } else if (event.topics[0] === this.allTopics._CommentSubmitted) {
-                console.log('Social: CommentSubmitted')
-                await this.commentSubmittedEvent(event)
-            } else if (event.topics[0] === this.allTopics._VoteSubmitted) {
-                console.log('Social: VoteSubmitted')
-                await this.voteSubmittedEvent(event)
-            } else if (event.topics[0] === this.allTopics._AirdropSubmitted) {
-                console.log('Social: AirdropSubmitted')
-                await this.airdropSubmittedEvent(event)
-            } else {
+            this._session.startTransaction()
+            try {
+                await this._processEvent(event)
+                await SynchronizerState.updateOne(
+                    {},
+                    {
+                        latestProcessedBlock: +event.blockNumber,
+                        latestProcessedTransactionIndex:
+                            +event.transactionIndex,
+                        latestProcessedEventIndex: +event.logIndex,
+                    },
+                    { session: this._session }
+                )
+                await this._session.commitTransaction()
+            } catch (err) {
+                console.log(`Error processing event:`, err)
                 console.log(event)
-                throw new Error(`Unrecognized event topic "${event.topics[0]}"`)
+                if (!this._session) break // the commit failed, no need to abort
+                await this._session.abortTransaction()
+                break
             }
         }
-        // update db when all transactions are processed
-        if (currentBlockNumber !== -1) {
-            await BlockNumber.updateOne({}, { number: currentBlockNumber })
+        if (this._session) await this._session.endSession()
+        await db.close()
+        this._session = undefined
+    }
+
+    private async _processEvent(event) {
+        // no, i don't know what a switch statement is...
+        if (event.topics[0] === this.allTopics.IndexedEpochKeyProof) {
+            console.log('IndexedEpochKeyProof')
+            await this.epochKeyProofEvent(event)
+        } else if (event.topics[0] === this.allTopics.IndexedReputationProof) {
+            console.log('IndexedReputationProof')
+            await this.reputationProofEvent(event)
+        } else if (
+            event.topics[0] === this.allTopics.IndexedUserSignedUpProof
+        ) {
+            console.log('IndexedUserSignedUpProof')
+            await this.userSignedUpProofEvent(event)
+        } else if (
+            event.topics[0] === this.allTopics.IndexedStartedTransitionProof
+        ) {
+            console.log('IndexedStartedTransitionProof')
+            await this.startUSTProofEvent(event)
+        } else if (
+            event.topics[0] === this.allTopics.IndexedProcessedAttestationsProof
+        ) {
+            console.log('IndexedProcessedAttestationsProof')
+            await this.processAttestationProofEvent(event)
+        } else if (
+            event.topics[0] === this.allTopics.IndexedUserStateTransitionProof
+        ) {
+            console.log('IndexedUserStateTransitionProof')
+            await this.USTProofEvent(event)
+        } else if (event.topics[0] === this.allTopics.UserSignedUp) {
+            console.log('UserSignedUp')
+            await this.userSignedUpEvent(event)
+        } else if (event.topics[0] === this.allTopics.UserStateTransitioned) {
+            console.log('UserStateTransitioned')
+            await this.USTEvent(event)
+        } else if (event.topics[0] === this.allTopics.AttestationSubmitted) {
+            console.log('AttestationSubmitted')
+            await this.attestationEvent(event)
+        } else if (event.topics[0] === this.allTopics.EpochEnded) {
+            console.log('EpochEnded')
+            await this.epochEndedEvent(event)
+        } else if (event.topics[0] === this.allTopics._UserSignedUp) {
+            console.log('Social: UserSignedUp')
+            const _epoch = Number(event.topics[1])
+            const _commitment = BigInt(event.topics[2]).toString()
+            await UserSignUp.create(
+                [
+                    {
+                        transactionHash: event.transactionHash,
+                        commitment: _commitment,
+                        epoch: _epoch,
+                    },
+                ],
+                { session: this._session }
+            )
+        } else if (event.topics[0] === this.allTopics._PostSubmitted) {
+            console.log('Social: PostSubmitted')
+            await this.postSubmittedEvent(event)
+        } else if (event.topics[0] === this.allTopics._CommentSubmitted) {
+            console.log('Social: CommentSubmitted')
+            await this.commentSubmittedEvent(event)
+        } else if (event.topics[0] === this.allTopics._VoteSubmitted) {
+            console.log('Social: VoteSubmitted')
+            await this.voteSubmittedEvent(event)
+        } else if (event.topics[0] === this.allTopics._AirdropSubmitted) {
+            console.log('Social: AirdropSubmitted')
+            await this.airdropSubmittedEvent(event)
+        } else {
+            console.log(event)
+            throw new Error(`Unrecognized event topic "${event.topics[0]}"`)
         }
     }
 
@@ -502,7 +543,8 @@ export class Synchronizer {
                 },
                 {
                     valid: false,
-                }
+                },
+                { session: this._session }
             )
             return { isProofValid: false, proof: formedProof }
         }
@@ -561,31 +603,47 @@ export class Synchronizer {
             nullifier: {
                 $in: repNullifiers,
             },
+            confirmed: true,
         })
         if (existingNullifier) {
             console.log(`comment duplicated nullifier`, repNullifiers)
             return
         }
         // everything checks out, lets start mutating the db
-
+        await Nullifier.deleteMany(
+            {
+                nullfier: {
+                    $in: repNullifiers,
+                },
+                confirmed: false,
+            },
+            { session: this._session }
+        )
         await Nullifier.insertMany(
             repNullifiers.map((nullifier) => ({
                 epoch: _epoch,
                 nullifier,
-            }))
+            })),
+            { session: this._session }
         )
 
         if (findComment) {
-            findComment?.set('status', 1, { new: true, upsert: false })
+            findComment?.set('status', 1, {
+                new: true,
+                upsert: false,
+                session: this._session,
+            })
             findComment?.set('transactionHash', _transactionHash, {
                 new: true,
                 upsert: false,
+                session: this._session,
             })
             findComment?.set('proofIndex', proofIndex, {
                 new: true,
                 upsert: false,
+                session: this._session,
             })
-            await findComment?.save()
+            await findComment?.save({ session: this._session })
         } else {
             const newComment = new Comment({
                 transactionHash: _transactionHash,
@@ -600,37 +658,47 @@ export class Synchronizer {
                 negRep: 0,
                 status: 1,
             })
-            newComment.set({ new: true, upsert: false })
+            newComment.set({ new: true, upsert: false, session: this._session })
 
-            await newComment.save()
+            await newComment.save({ session: this._session })
         }
 
-        const newRecord = await Record.create({
-            to: _epochKey,
-            from: _epochKey,
-            upvote: 0,
-            downvote: DEFAULT_COMMENT_KARMA,
-            epoch: _epoch,
-            action: ActionType.Comment,
-            data: _transactionHash,
-            transactionHash: _transactionHash,
-        })
+        await Record.deleteMany(
+            {
+                transactionHash: _transactionHash,
+                confirmed: false,
+            },
+            { session: this._session }
+        )
+
+        await Record.create(
+            [
+                {
+                    to: _epochKey,
+                    from: _epochKey,
+                    upvote: 0,
+                    downvote: DEFAULT_COMMENT_KARMA,
+                    epoch: _epoch,
+                    action: ActionType.Comment,
+                    data: _transactionHash,
+                    transactionHash: _transactionHash,
+                },
+            ],
+            { session: this._session }
+        )
         await EpkRecord.findOneAndUpdate(
             {
                 epk: _epochKey,
                 epoch: _epoch,
             },
             {
-                $push: {
-                    records: newRecord._id.toString(),
-                },
                 $inc: {
                     posRep: 0,
                     negRep: 0,
                     spent: DEFAULT_COMMENT_KARMA,
                 },
             },
-            { new: true, upsert: true }
+            { new: true, upsert: true, session: this._session }
         )
     }
 
@@ -684,31 +752,47 @@ export class Synchronizer {
             nullifier: {
                 $in: repNullifiers,
             },
+            confirmed: true,
         })
         if (existingNullifier) {
             console.log(`post duplicated nullifier`, repNullifiers)
             return
         }
         // everything checks out, lets start mutating the db
-
+        await Nullifier.deleteMany(
+            {
+                nullfier: {
+                    $in: repNullifiers,
+                },
+                confirmed: false,
+            },
+            { session: this._session }
+        )
         await Nullifier.insertMany(
             repNullifiers.map((nullifier) => ({
                 epoch: _epoch,
                 nullifier,
-            }))
+            })),
+            { session: this._session }
         )
 
         if (findPost) {
-            findPost?.set('status', 1, { new: true, upsert: false })
+            findPost?.set('status', 1, {
+                new: true,
+                upsert: false,
+                session: this._session,
+            })
             findPost?.set('transactionHash', _transactionHash, {
                 new: true,
                 upsert: false,
+                session: this._session,
             })
             findPost?.set('proofIndex', proofIndex, {
                 new: true,
                 upsert: false,
+                session: this._session,
             })
-            await findPost?.save()
+            await findPost?.save({ session: this._session })
         } else {
             let content: string = ''
             let title: string = ''
@@ -746,35 +830,44 @@ export class Synchronizer {
                 comments: [],
                 status: 1,
             })
-            newpost.set({ new: true, upsert: false })
-            await newpost.save()
+            newpost.set({ new: true, upsert: false, session: this._session })
+            await newpost.save({ session: this._session })
         }
-        const newRecord = await Record.create({
-            to: _epochKey,
-            from: _epochKey,
-            upvote: 0,
-            downvote: DEFAULT_POST_KARMA,
-            epoch: _epoch,
-            action: ActionType.Post,
-            data: _transactionHash,
-            transactionHash: _transactionHash,
-        })
+        await Record.deleteMany(
+            {
+                transactionHash: _transactionHash,
+                confirmed: false,
+            },
+            { session: this._session }
+        )
+        await Record.create(
+            [
+                {
+                    to: _epochKey,
+                    from: _epochKey,
+                    upvote: 0,
+                    downvote: DEFAULT_POST_KARMA,
+                    epoch: _epoch,
+                    action: ActionType.Post,
+                    data: _transactionHash,
+                    transactionHash: _transactionHash,
+                },
+            ],
+            { session: this._session }
+        )
         await EpkRecord.findOneAndUpdate(
             {
                 epk: _epochKey,
                 epoch: _epoch,
             },
             {
-                $push: {
-                    records: newRecord._id.toString(),
-                },
                 $inc: {
                     posRep: 0,
                     negRep: 0,
                     spent: DEFAULT_POST_KARMA,
                 },
             },
-            { new: true, upsert: true }
+            { new: true, upsert: true, session: this._session }
         )
     }
 
@@ -853,46 +946,65 @@ export class Synchronizer {
             nullifier: {
                 $in: repNullifiers,
             },
+            confirmed: true,
         })
         if (existingNullifier) {
             console.log(`vote duplicated nullifier`, repNullifiers)
             return
         }
         // everything checks out, lets start mutating the db
-
+        await Nullifier.deleteMany(
+            {
+                nullfier: {
+                    $in: repNullifiers,
+                },
+                confirmed: false,
+            },
+            { session: this._session }
+        )
         await Nullifier.insertMany(
             repNullifiers.map((nullifier) => ({
                 epoch: _epoch,
                 nullifier,
-            }))
+            })),
+            { session: this._session }
         )
 
-        const record = await Record.create({
-            to: _toEpochKey,
-            from: _fromEpochKey,
-            upvote: _posRep,
-            downvote: _negRep,
-            epoch: _epoch,
-            action: ActionType.Vote,
-            transactionHash: _transactionHash,
-            data: '',
-        })
+        await Record.deleteMany(
+            {
+                transactionHash: _transactionHash,
+                confirmed: false,
+            },
+            { session: this._session }
+        )
+        await Record.create(
+            [
+                {
+                    to: _toEpochKey,
+                    from: _fromEpochKey,
+                    upvote: _posRep,
+                    downvote: _negRep,
+                    epoch: _epoch,
+                    action: ActionType.Vote,
+                    transactionHash: _transactionHash,
+                    data: '',
+                },
+            ],
+            { session: this._session }
+        )
         await EpkRecord.findOneAndUpdate(
             {
                 epk: _fromEpochKey,
                 epoch: _epoch,
             },
             {
-                $push: {
-                    records: record._id.toString(),
-                },
                 $inc: {
                     posRep: 0,
                     negRep: 0,
                     spent: _posRep + _negRep,
                 },
             },
-            { new: true, upsert: true }
+            { new: true, upsert: true, session: this._session }
         )
 
         await EpkRecord.findOneAndUpdate(
@@ -901,15 +1013,12 @@ export class Synchronizer {
                 epoch: _epoch,
             },
             {
-                $push: {
-                    records: record._id.toString(),
-                },
                 $inc: {
                     posRep: _posRep,
                     negRep: _negRep,
                 },
             },
-            { new: true, upsert: true }
+            { new: true, upsert: true, session: this._session }
         )
     }
 
@@ -943,20 +1052,28 @@ export class Synchronizer {
         )
         if (isProofValid === false) return
 
-        const exists = await Record.exists({
-            transactionHash: _transactionHash,
-        })
-        if (exists) return
-        await Record.create({
-            to: _epochKey,
-            from: 'UnirepSocial',
-            upvote: DEFAULT_AIRDROPPED_KARMA,
-            downvote: 0,
-            epoch: _epoch,
-            action: 'UST',
-            data: '0',
-            transactionHash: event.transactionHash,
-        })
+        await Record.deleteMany(
+            {
+                transactionHash: _transactionHash,
+                confirmed: false,
+            },
+            { session: this._session }
+        )
+        await Record.create(
+            [
+                {
+                    to: _epochKey,
+                    from: 'UnirepSocial',
+                    upvote: DEFAULT_AIRDROPPED_KARMA,
+                    downvote: 0,
+                    epoch: _epoch,
+                    action: 'UST',
+                    data: '0',
+                    transactionHash: event.transactionHash,
+                },
+            ],
+            { session: this._session }
+        )
     }
 
     async epochEndedEvent(event: ethers.Event) {
@@ -1024,6 +1141,7 @@ export class Synchronizer {
             },
             {
                 upsert: true,
+                session: this._session,
             }
         )
     }
@@ -1053,20 +1171,25 @@ export class Synchronizer {
             BigInt(decodedData._attestation.graffiti._hex),
             BigInt(decodedData._attestation.signUp)
         )
-        await Attestation.create({
-            epoch: _epoch,
-            epochKey: _epochKey.toString(16),
-            index: attestIndex,
-            transactionHash: event.transactionHash,
-            attester: _attester,
-            proofIndex: toProofIndex,
-            attesterId: Number(decodedData._attestation.attesterId),
-            posRep: Number(decodedData._attestation.posRep),
-            negRep: Number(decodedData._attestation.negRep),
-            graffiti: decodedData._attestation.graffiti._hex,
-            signUp: Boolean(Number(decodedData._attestation?.signUp)),
-            hash: attestation.hash().toString(),
-        })
+        await Attestation.create(
+            [
+                {
+                    epoch: _epoch,
+                    epochKey: _epochKey.toString(16),
+                    index: attestIndex,
+                    transactionHash: event.transactionHash,
+                    attester: _attester,
+                    proofIndex: toProofIndex,
+                    attesterId: Number(decodedData._attestation.attesterId),
+                    posRep: Number(decodedData._attestation.posRep),
+                    negRep: Number(decodedData._attestation.negRep),
+                    graffiti: decodedData._attestation.graffiti._hex,
+                    signUp: Boolean(Number(decodedData._attestation?.signUp)),
+                    hash: attestation.hash().toString(),
+                },
+            ],
+            { session: this._session }
+        )
 
         const validProof = await Proof.findOne({
             epoch: _epoch,
@@ -1084,7 +1207,8 @@ export class Synchronizer {
                 },
                 {
                     valid: false,
-                }
+                },
+                { session: this._session }
             )
             return
         }
@@ -1105,7 +1229,8 @@ export class Synchronizer {
                     },
                     {
                         valid: false,
-                    }
+                    },
+                    { session: this._session }
                 )
                 return
             }
@@ -1116,7 +1241,8 @@ export class Synchronizer {
                 },
                 {
                     spent: true,
-                }
+                },
+                { session: this._session }
             )
         }
         await Attestation.findOneAndUpdate(
@@ -1127,7 +1253,8 @@ export class Synchronizer {
             },
             {
                 valid: true,
-            }
+            },
+            { session: this._session }
         )
         const epochKey = _epochKey.toString(16)
         const attestations = this.epochKeyToAttestationsMap[epochKey]
@@ -1291,18 +1418,28 @@ export class Synchronizer {
             nullifier: {
                 $in: epkNullifiers,
             },
+            confirmed: true,
         })
         if (existingNullifier) {
             console.log(`duplicated nullifier`)
             return
         }
         // everything checks out, lets start mutating the db
-
+        await Nullifier.deleteMany(
+            {
+                nullfier: {
+                    $in: epkNullifiers,
+                },
+                confirmed: false,
+            },
+            { session: this._session }
+        )
         await Nullifier.insertMany(
             epkNullifiers.map((nullifier) => ({
                 epoch,
                 nullifier,
-            }))
+            })),
+            { session: this._session }
         )
 
         this.GSTLeaves[epoch].push(leaf)
@@ -1318,16 +1455,26 @@ export class Synchronizer {
         const leafIndexInEpoch = await GSTLeaf.count({
             epoch,
         })
-        await GSTLeaf.create({
-            epoch,
-            transactionHash,
-            hash: leaf.toString(),
-            index: leafIndexInEpoch,
-        })
-        await GSTRoot.create({
-            epoch,
-            root: this.globalStateTree[epoch].root.toString(),
-        })
+        await GSTLeaf.create(
+            [
+                {
+                    epoch,
+                    transactionHash,
+                    hash: leaf.toString(),
+                    index: leafIndexInEpoch,
+                },
+            ],
+            { session: this._session }
+        )
+        await GSTRoot.create(
+            [
+                {
+                    epoch,
+                    root: this.globalStateTree[epoch].root.toString(),
+                },
+            ],
+            { session: this._session }
+        )
     }
 
     async userSignedUpEvent(event: ethers.Event) {
@@ -1362,16 +1509,26 @@ export class Synchronizer {
         const leafIndexInEpoch = await GSTLeaf.count({
             epoch,
         })
-        await GSTLeaf.create({
-            epoch,
-            transactionHash,
-            hash: newGSTLeaf.toString(),
-            index: leafIndexInEpoch,
-        })
-        await GSTRoot.create({
-            epoch,
-            root: this.globalStateTree[epoch].root.toString(),
-        })
+        await GSTLeaf.create(
+            [
+                {
+                    epoch,
+                    transactionHash,
+                    hash: newGSTLeaf.toString(),
+                    index: leafIndexInEpoch,
+                },
+            ],
+            { session: this._session }
+        )
+        await GSTRoot.create(
+            [
+                {
+                    epoch,
+                    root: this.globalStateTree[epoch].root.toString(),
+                },
+            ],
+            { session: this._session }
+        )
     }
 
     async USTProofEvent(event: ethers.Event) {
@@ -1409,17 +1566,22 @@ export class Synchronizer {
             formatPublicSignals
         )
 
-        await Proof.create({
-            index: _proofIndex,
-            proof: proof,
-            publicSignals: publicSignals,
-            blindedUserState: args.blindedUserStates[0],
-            globalStateTree: args.fromGlobalStateTree,
-            proofIndexRecords: proofIndexRecords,
-            transactionHash: event.transactionHash,
-            event: 'IndexedUserStateTransitionProof',
-            valid: isValid,
-        })
+        await Proof.create(
+            [
+                {
+                    index: _proofIndex,
+                    proof: proof,
+                    publicSignals: publicSignals,
+                    blindedUserState: args.blindedUserStates[0],
+                    globalStateTree: args.fromGlobalStateTree,
+                    proofIndexRecords: proofIndexRecords,
+                    transactionHash: event.transactionHash,
+                    event: 'IndexedUserStateTransitionProof',
+                    valid: isValid,
+                },
+            ],
+            { session: this._session }
+        )
     }
 
     async processAttestationProofEvent(event: ethers.Event) {
@@ -1453,16 +1615,21 @@ export class Synchronizer {
 
         const proof = encodeBigIntArray(formattedProof)
 
-        await Proof.create({
-            index: _proofIndex,
-            outputBlindedUserState: _outputBlindedUserState.toString(),
-            outputBlindedHashChain: _outputBlindedHashChain.toString(),
-            inputBlindedUserState: _inputBlindedUserState.toString(),
-            proof: proof,
-            transactionHash: event.transactionHash,
-            event: 'IndexedProcessedAttestationsProof',
-            valid: isValid,
-        })
+        await Proof.create(
+            [
+                {
+                    index: _proofIndex,
+                    outputBlindedUserState: _outputBlindedUserState.toString(),
+                    outputBlindedHashChain: _outputBlindedHashChain.toString(),
+                    inputBlindedUserState: _inputBlindedUserState.toString(),
+                    proof: proof,
+                    transactionHash: event.transactionHash,
+                    event: 'IndexedProcessedAttestationsProof',
+                    valid: isValid,
+                },
+            ],
+            { session: this._session }
+        )
     }
 
     async startUSTProofEvent(event: ethers.Event) {
@@ -1491,16 +1658,21 @@ export class Synchronizer {
 
         const proof = encodeBigIntArray(formattedProof)
 
-        await Proof.create({
-            index: _proofIndex,
-            blindedUserState: _blindedUserState.toString(),
-            blindedHashChain: _blindedHashChain.toString(),
-            globalStateTree: _globalStateTree.toString(),
-            proof: proof,
-            transactionHash: event.transactionHash,
-            event: 'IndexedStartedTransitionProof',
-            valid: isValid,
-        })
+        await Proof.create(
+            [
+                {
+                    index: _proofIndex,
+                    blindedUserState: _blindedUserState.toString(),
+                    blindedHashChain: _blindedHashChain.toString(),
+                    globalStateTree: _globalStateTree.toString(),
+                    proof: proof,
+                    transactionHash: event.transactionHash,
+                    event: 'IndexedStartedTransitionProof',
+                    valid: isValid,
+                },
+            ],
+            { session: this._session }
+        )
     }
 
     async userSignedUpProofEvent(event: ethers.Event) {
@@ -1535,15 +1707,20 @@ export class Synchronizer {
             formatPublicSignals
         )
 
-        await Proof.create({
-            index: _proofIndex,
-            epoch: _epoch,
-            proof: proof,
-            publicSignals: publicSignals,
-            transactionHash: event.transactionHash,
-            event: 'IndexedUserSignedUpProof',
-            valid: isValid,
-        })
+        await Proof.create(
+            [
+                {
+                    index: _proofIndex,
+                    epoch: _epoch,
+                    proof: proof,
+                    publicSignals: publicSignals,
+                    transactionHash: event.transactionHash,
+                    event: 'IndexedUserSignedUpProof',
+                    valid: isValid,
+                },
+            ],
+            { session: this._session }
+        )
     }
 
     async reputationProofEvent(event: ethers.Event) {
@@ -1580,15 +1757,20 @@ export class Synchronizer {
             formatPublicSignals
         )
 
-        await Proof.create({
-            index: _proofIndex,
-            epoch: _epoch,
-            proof: proof,
-            publicSignals: publicSignals,
-            transactionHash: event.transactionHash,
-            event: 'IndexedReputationProof',
-            valid: isValid,
-        })
+        await Proof.create(
+            [
+                {
+                    index: _proofIndex,
+                    epoch: _epoch,
+                    proof: proof,
+                    publicSignals: publicSignals,
+                    transactionHash: event.transactionHash,
+                    event: 'IndexedReputationProof',
+                    valid: isValid,
+                },
+            ],
+            { session: this._session }
+        )
     }
 
     async epochKeyProofEvent(event: ethers.Event) {
@@ -1616,15 +1798,20 @@ export class Synchronizer {
             formatPublicSignals
         )
 
-        await Proof.create({
-            index: _proofIndex,
-            epoch: _epoch,
-            proof: proof,
-            publicSignals: publicSignals,
-            transactionHash: event.transactionHash,
-            event: 'IndexedEpochKeyProof',
-            valid: isValid,
-        })
+        await Proof.create(
+            [
+                {
+                    index: _proofIndex,
+                    epoch: _epoch,
+                    proof: proof,
+                    publicSignals: publicSignals,
+                    transactionHash: event.transactionHash,
+                    event: 'IndexedEpochKeyProof',
+                    valid: isValid,
+                },
+            ],
+            { session: this._session }
+        )
     }
 }
 

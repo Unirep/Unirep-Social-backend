@@ -25,8 +25,7 @@ test('should sign up', async (t: any) => {
 
 test('should airdrop', async (t: any) => {
     const { iden } = await signUp(t)
-    Object.assign(t.context, { ...t.context, iden })
-    await airdrop(t)
+    await airdrop(t, iden)
     t.pass()
 })
 
@@ -41,7 +40,6 @@ test('should sign up many in parallel', async (t: any) => {
 
 test('should sign in', async (t: any) => {
     const { commitment } = await signUp(t)
-    Object.assign(t.context, { ...t.context, commitment })
-    await signIn(t)
+    await signIn(t, commitment)
     t.pass()
 })

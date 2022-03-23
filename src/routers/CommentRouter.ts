@@ -4,17 +4,13 @@ import catchError from './catchError'
 
 const router = Router()
 
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
-    if (req.query.query === undefined) {
-        try {
+router.get(
+    '/',
+    catchError(async (req: Request, res: Response, next: NextFunction) => {
+        if (req.query.query === undefined) {
             const result = await CommentController.listAllComments()
-            res.status(200).json(result)
-        } catch (error) {
-            console.log(error)
-            next(error)
-        }
-    } else {
-        try {
+            res.json(result)
+        } else {
             let query: string,
                 lastRead: string,
                 epks: string[] = []
@@ -36,13 +32,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
                 lastRead,
                 epks
             )
-            res.status(200).json(result)
-        } catch (error) {
-            console.log(error)
-            next(error)
+            res.json(result)
         }
-    }
-})
+    })
+)
 
 router.post('/', catchError(CommentController.leaveComment))
 

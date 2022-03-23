@@ -40,15 +40,6 @@ async function main() {
     app.use(cors())
     app.use(express.json())
     app.use('/api', MasterRouter)
-    // make server app handle any error
-    app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-        // TODO: refactor this middleware out, handle errors at the route level
-        res.status(err.statusCode || 500).json({
-            status: 'error',
-            statusCode: err.statusCode,
-            message: err.message,
-        })
-    })
     const port = process.env.APP_PORT ?? 5000
     app.listen(port, () => console.log(`> Listening on port ${port}`))
 }
