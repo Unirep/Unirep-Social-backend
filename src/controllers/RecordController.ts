@@ -9,11 +9,11 @@ const getRecords = async (epks: string[]) => {
     })
     const ret: any[] = []
     for (const record of records) {
-        if (record.data === '0') {
+        if (record.data === '0' || record.data === '') {
             ret.push(record)
             continue
         }
-        
+
         if (record.action === 'Post') {
             const p = await Post.findOne({ transactionHash: record.data })
             if (p === null) continue
