@@ -12,6 +12,7 @@ import RecordRouter from './RecordRouter'
 import ReportRouter from './ReportRouter'
 import AdminRouter from './AdminRouter'
 import BlockRouter from './BlockRouter'
+import ConfigRouter from './ConfigRouter'
 
 const router = Router()
 router.use('/signup', SignUpRouter)
@@ -27,5 +28,6 @@ router.use('/records', RecordRouter)
 router.use('/report', ReportRouter)
 router.use('/admin', AdminRouter)
 router.use('/block', BlockRouter)
+router.use('/config', ConfigRouter)
 
 export default router
