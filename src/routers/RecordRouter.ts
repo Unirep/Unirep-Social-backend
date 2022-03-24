@@ -34,8 +34,8 @@ router.get(
             }).lean()
             const recordsByFrom = records.reduce((acc, val) => {
                 return {
-                    [val.from]: [...(acc[val.from] || []), val],
                     ...acc,
+                    [val.from]: [...(acc[val.from] || []), val],
                 }
             }, {})
             const epkRecords = await EpkRecord.find({

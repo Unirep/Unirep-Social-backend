@@ -13,9 +13,9 @@ const getRecords = async (epks: string[]) => {
             ret.push(record)
             continue
         }
-        const tmp = record.data.split('_')
-        if (tmp.length === 1) {
-            const p = await Post.findOne({ transactionHash: tmp[0] })
+        
+        if (record.action === 'Post') {
+            const p = await Post.findOne({ transactionHash: record.data })
             if (p === null) continue
             ret.push({
                 ...record.toObject(),
@@ -25,15 +25,17 @@ const getRecords = async (epks: string[]) => {
                         : ''
                 }${p.content}`,
             })
-        } else {
+        } else if (record.action === 'Comment') {
             const c = await Comment.findOne({
-                transactionHash: tmp[1],
+                transactionHash: record.data,
             })
             if (c === null) continue
             ret.push({
                 ...record.toObject(),
                 content: c.content,
             })
+        } else {
+            continue
         }
     }
     return ret
