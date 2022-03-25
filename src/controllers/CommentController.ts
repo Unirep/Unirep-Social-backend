@@ -101,20 +101,6 @@ const leaveComment = async (req: any, res: any) => {
     const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
     const minRep = Number(reputationProof.minRep)
 
-    {
-        const exists = await Nullifier.exists({
-            nullifier: {
-                $in: reputationProof.repNullifiers.map((n) => n.toString()),
-            },
-        })
-        if (exists) {
-            res.status(422).json({
-                error: 'Duplicate nullifier',
-            })
-            return
-        }
-    }
-
     const error = await verifyReputationProof(
         reputationProof,
         DEFAULT_COMMENT_KARMA,
@@ -122,7 +108,10 @@ const leaveComment = async (req: any, res: any) => {
         currentEpoch
     )
     if (error !== undefined) {
-        throw error
+        res.status(422).json({
+            error,
+        })
+        return
     }
 
     const attestingFee = await unirepContract.attestingFee()
