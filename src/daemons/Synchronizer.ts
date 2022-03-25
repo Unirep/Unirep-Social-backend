@@ -188,10 +188,7 @@ export class Synchronizer extends EventEmitter {
     async startDaemon() {
         let latestBlock = await this.provider.getBlockNumber()
         this.provider.on('block', (num) => {
-            // optimism node has a delay before events are available
-            setTimeout(() => {
-                latestBlock = num
-            }, 10000)
+            if (num > latestBlock) latestBlock = num
         })
         let latestProcessed = 0
         await BlockNumber.create({ number: latestProcessed })

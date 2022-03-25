@@ -177,7 +177,6 @@ const publishPost = async (req: any, res: any) => {
         {
             data: calldata,
             value: attestingFee,
-            gasLimit: 1000000, // don't estimate for now
         }
     )
 
