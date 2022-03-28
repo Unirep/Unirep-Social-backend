@@ -40,19 +40,6 @@ const vote = async (req: any, res: any) => {
     )
     const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
     const receiver = parseInt(req.body.receiver, 16)
-    {
-        const exists = await Nullifier.exists({
-            nullifier: {
-                $in: reputationProof.repNullifiers.map((n) => n.toString()),
-            },
-        })
-        if (exists) {
-            res.status(422).json({
-                error: 'Duplicate nullifier',
-            })
-            return
-        }
-    }
 
     const { isPost, dataId } = req.body
     let postProofIndex: number = 0

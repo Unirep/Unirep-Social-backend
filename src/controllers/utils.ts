@@ -71,7 +71,7 @@ const verifyReputationProof = async (
     // check nullifiers
     const exists = await Nullifier.exists({
         nullifier: {
-            $in: repNullifiers,
+            $in: reputationProof.repNullifiers.map((n) => n.toString()),
         },
     })
     if (exists) {

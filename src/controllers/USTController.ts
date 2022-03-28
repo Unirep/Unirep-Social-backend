@@ -29,7 +29,12 @@ const userStateTransition = async (req: any, res: any) => {
     const { results } = req.body
 
     const error = await verifyUSTProof(results, currentEpoch)
-    if (error !== undefined) throw error
+    if (error !== undefined) {
+        res.status(422).json({
+            error,
+        })
+        return
+    }
 
     // submit user state transition proofs
     const { blindedUserState, blindedHashChain, globalStateTreeRoot, proof } =

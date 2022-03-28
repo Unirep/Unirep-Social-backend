@@ -45,7 +45,7 @@ export const getAirdrop = async (req, res) => {
         currentEpoch
     )
     if (error !== undefined) {
-        res.status(422).json({ error: error, transaction: undefined })
+        res.status(422).json({ error: error })
         return
     }
 
