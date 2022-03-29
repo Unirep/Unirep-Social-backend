@@ -11,8 +11,8 @@ const router = Router()
 router.get(
     '/:epks',
     catchError(async (req: Request, res: Response, next: NextFunction) => {
-        // console.log(req.params.epks);
         const epks = req.params.epks.split('_')
+        
         if (
             req.query.spentonly !== undefined &&
             req.query.spentonly.toString() === 'true'
