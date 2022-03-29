@@ -2,11 +2,11 @@ import mongoose from 'mongoose'
 import AccountNonce, {
     IAccountNonce,
     AccountNonceSchema,
-} from '../database/models/accountNonce'
+} from '../models/accountNonce'
 import AccountTransaction, {
     IAccountTransaction,
     AccountTransactionSchema,
-} from '../database/models/accountTransaction'
+} from '../models/accountTransaction'
 import { ethers } from 'ethers'
 
 export class TransactionManager {
@@ -129,7 +129,7 @@ export class TransactionManager {
         const signedData = await this.wallet.signTransaction({
             nonce,
             to,
-            gasPrice: 10000,
+            gasPrice: 2 * 10 ** 9, // 2 gwei
             ...args,
         })
         await this.AccountTransaction.create({

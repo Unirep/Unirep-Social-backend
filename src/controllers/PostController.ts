@@ -13,12 +13,14 @@ import {
     UNIREP,
     UNIREP_ABI,
     UNIREP_SOCIAL_ABI,
+    ActionType,
 } from '../constants'
-import Post, { IPost } from '../database/models/post'
-import Comment, { IComment } from '../database/models/comment'
+import Post, { IPost } from '../models/post'
+import Comment, { IComment } from '../models/comment'
 import { verifyReputationProof } from '../controllers/utils'
 import TransactionManager from '../daemons/TransactionManager'
-import Nullifier from '../database/models/nullifiers'
+import Nullifier from '../models/nullifiers'
+import Record from '../models/record'
 
 const listAllPosts = async () => {
     const allPosts = await Post.find({ status: 1 }).lean()
@@ -29,8 +31,8 @@ const listAllPosts = async () => {
     }).lean()
     const commentsByPostId = comments.reduce((acc, c) => {
         return {
-            [c.postId]: [...(acc[c.postId] ?? []), c],
             ...acc,
+            [c.postId]: [...(acc[c.postId] ?? []), c],
         }
     }, {})
 
@@ -133,20 +135,6 @@ const publishPost = async (req: any, res: any) => {
     const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
     const minRep = Number(reputationProof.minRep)
 
-    {
-        const exists = await Nullifier.exists({
-            nullifier: {
-                $in: reputationProof.repNullifiers.map((n) => n.toString()),
-            },
-        })
-        if (exists) {
-            res.status(400).json({
-                error: 'Duplicate nullifier',
-            })
-            return
-        }
-    }
-
     const error = await verifyReputationProof(
         reputationProof,
         DEFAULT_POST_KARMA,
@@ -154,7 +142,10 @@ const publishPost = async (req: any, res: any) => {
         currentEpoch
     )
     if (error !== undefined) {
-        throw error
+        res.status(422).json({
+            error,
+        })
+        return
     }
 
     const attestingFee = await unirepContract.attestingFee()
@@ -175,7 +166,6 @@ const publishPost = async (req: any, res: any) => {
         {
             data: calldata,
             value: attestingFee,
-            gasLimit: 1000000, // don't estimate for now
         }
     )
 
@@ -190,6 +180,27 @@ const publishPost = async (req: any, res: any) => {
         negRep: 0,
         status: 0,
         transactionHash: hash,
+    })
+    await Nullifier.create(
+        reputationProof.repNullifiers
+            .filter((n) => n.toString() !== '0')
+            .map((n) => ({
+                nullifier: n.toString(),
+                epoch: currentEpoch,
+                transactionHash: hash,
+                confirmed: false,
+            }))
+    )
+    await Record.create({
+        to: epochKey,
+        from: epochKey,
+        upvote: 0,
+        downvote: DEFAULT_POST_KARMA,
+        epoch: currentEpoch,
+        action: ActionType.Post,
+        data: hash,
+        transactionHash: hash,
+        confirmed: false,
     })
 
     res.json({

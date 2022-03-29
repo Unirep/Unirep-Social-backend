@@ -22,9 +22,10 @@ const signUp = async (req: any, res: any) => {
     )
 
     if (!/^(0x)?[0-9a-fA-F]{64}$/.test(uploadedCommitment)) {
-        return {
+        res.status(400).json({
             error: 'Commitment must be exactly 64 hex characters with an optional 0x prefix',
-        }
+        })
+        return
     }
     const commitment = `0x${uploadedCommitment.replace('0x', '')}`
 

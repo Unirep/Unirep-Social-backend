@@ -5,6 +5,7 @@ export interface INullifier extends Document {
     epoch: number
     nullifier: string
     transactionHash: string
+    confirmed: boolean
 }
 
 const NullifierSchema: Schema = new Schema(
@@ -12,6 +13,7 @@ const NullifierSchema: Schema = new Schema(
         epoch: { type: Number },
         nullifier: { type: String, unique: true },
         transactionHash: { type: String },
+        confirmed: { type: Boolean, default: true },
     },
     { collection: 'Nullifiers' }
 )
