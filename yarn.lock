@@ -701,7 +701,7 @@
 
 "@unirep/unirep-social@git+https://github.com/Unirep/unirep-social.git":
   version "1.0.0"
-  resolved "git+https://github.com/Unirep/unirep-social.git#e37b61a2939a3a7f0ab26013751682bc38c7f4c3"
+  resolved "git+https://github.com/Unirep/unirep-social.git#2d63c0b94ac966fa26136e388c8de2bfc6bec7b8"
   dependencies:
     "@unirep/circuits" "git+https://github.com/Unirep/circuits.git"
     "@unirep/contracts" "git+https://github.com/Unirep/contracts.git"
