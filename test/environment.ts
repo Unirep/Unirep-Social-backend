@@ -1,11 +1,16 @@
 import { ethers } from 'ethers'
-import UnirepSocial from '@unirep/unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json'
+import UnirepSocial from 'Unirep-Social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json'
 import { deployUnirep } from '@unirep/contracts'
 import express from 'express'
 import cors from 'cors'
 import mongoose from 'mongoose'
 import settings from './config'
 import getPort from 'get-port'
+import {
+    EPOCH_TREE_DEPTH,
+    GLOBAL_STATE_TREE_DEPTH,
+    USER_STATE_TREE_DEPTH,
+} from '@unirep/config'
 
 // const GANACHE_URL = 'https://hardhat.unirep.social'
 const GANACHE_URL = 'http://127.0.0.1:18545'
@@ -25,12 +30,12 @@ async function waitForGanache() {
 
 async function deploy(wallet: ethers.Wallet, overrides = {}) {
     const provider = new ethers.providers.JsonRpcProvider(GANACHE_URL)
-    const epochTreeDepth = 32
+    const epochTreeDepth = EPOCH_TREE_DEPTH
     const unirep = await deployUnirep(
         wallet,
         {
-            globalStateTreeDepth: 5,
-            userStateTreeDepth: 5,
+            globalStateTreeDepth: GLOBAL_STATE_TREE_DEPTH,
+            userStateTreeDepth: USER_STATE_TREE_DEPTH,
             epochTreeDepth,
         },
         {
@@ -116,7 +121,7 @@ export async function startServer(contractOverrides = {}) {
     // make server app handle any error
     const port = await getPort()
     const url = `http://127.0.0.1:${port}`
-    const attesterId = BigInt(await unirep.attesters(unirepSocial.address))
+    const attesterId = (await unirep.attesters(unirepSocial.address)).toBigInt()
     await new Promise((r) => app.listen(port, r as any))
     return { ...data, constants, url, attesterId }
 }

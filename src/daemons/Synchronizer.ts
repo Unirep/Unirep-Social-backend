@@ -1,5 +1,5 @@
 import mongoose from 'mongoose'
-import { ethers } from 'ethers'
+import { ethers, BigNumberish } from 'ethers'
 import {
     UNIREP,
     UNIREP_SOCIAL,
@@ -15,10 +15,10 @@ import {
     MONGO_URL,
 } from '../constants'
 import {
-    IncrementalQuinTree,
+    IncrementalMerkleTree,
     hash5,
     hashLeftRight,
-    SparseMerkleTreeImpl,
+    SparseMerkleTree,
     stringifyBigInts,
     unstringifyBigInts,
 } from '@unirep/crypto'
@@ -27,17 +27,17 @@ import {
     computeInitUserStateRoot,
     genNewSMT,
     SMT_ONE_LEAF,
-} from '@unirep/unirep'
+} from '@unirep/core'
 import {
     Circuit,
     formatProofForSnarkjsVerification,
     verifyProof,
 } from '@unirep/circuits'
 import {
-    circuitGlobalStateTreeDepth,
-    circuitUserStateTreeDepth,
-    circuitEpochTreeDepth,
-} from '@unirep/circuits/config'
+    GLOBAL_STATE_TREE_DEPTH,
+    USER_STATE_TREE_DEPTH,
+    EPOCH_TREE_DEPTH,
+} from '@unirep/config'
 import {
     getUnirepContract,
     EpochKeyProof,
@@ -60,11 +60,11 @@ import Comment from '../models/comment'
 import BlockNumber from '../models/blockNumber'
 import SynchronizerState from '../models/synchronizerState'
 
-const encodeBigIntArray = (arr: BigInt[]): string => {
+const encodeBigIntArray = (arr: BigNumberish[]): string => {
     return JSON.stringify(stringifyBigInts(arr))
 }
 
-const decodeBigIntArray = (input: string): BigInt[] => {
+const decodeBigIntArray = (input: string): BigNumberish[] => {
     return unstringifyBigInts(JSON.parse(input))
 }
 
@@ -133,8 +133,8 @@ export class Synchronizer extends EventEmitter {
     private GSTLeaves: { [key: number]: BigInt[] } = {}
     private epochTreeLeaves: { [key: number]: any[] } = {}
     private nullifiers: { [key: string]: boolean } = {}
-    private globalStateTree: { [key: number]: IncrementalQuinTree } = {}
-    private epochTree: { [key: number]: SparseMerkleTreeImpl } = {}
+    private globalStateTree: { [key: number]: IncrementalMerkleTree } = {}
+    private epochTree: { [key: number]: SparseMerkleTree } = {}
     private defaultGSTLeaf: BigInt
     private userNum: number = 0
     _session: any
@@ -160,12 +160,12 @@ export class Synchronizer extends EventEmitter {
         this.epochKeyInEpoch[this.currentEpoch] = new Map()
         this.epochTreeRoot[this.currentEpoch] = BigInt(0)
         const emptyUserStateRoot = computeEmptyUserStateRoot(
-            circuitUserStateTreeDepth
+            USER_STATE_TREE_DEPTH
         )
         this.defaultGSTLeaf = hashLeftRight(BigInt(0), emptyUserStateRoot)
         this.GSTLeaves[this.currentEpoch] = []
-        this.globalStateTree[this.currentEpoch] = new IncrementalQuinTree(
-            circuitGlobalStateTreeDepth,
+        this.globalStateTree[this.currentEpoch] = new IncrementalMerkleTree(
+            GLOBAL_STATE_TREE_DEPTH,
             this.defaultGSTLeaf,
             2
         )
@@ -794,20 +794,20 @@ export class Synchronizer extends EventEmitter {
             let content: string = ''
             let title: string = ''
             if (decodedData !== null) {
-                let i: number = decodedData._postContent.indexOf(titlePrefix)
+                let i: number = decodedData.postContent.indexOf(titlePrefix)
                 if (i === -1) {
-                    content = decodedData._postContent
+                    content = decodedData.postContent
                 } else {
                     i = i + titlePrefix.length
-                    let j: number = decodedData._postContent.indexOf(
+                    let j: number = decodedData.postContent.indexOf(
                         titlePostfix,
                         i + 1
                     )
                     if (j === -1) {
-                        content = decodedData._postContent
+                        content = decodedData.postContent
                     } else {
-                        title = decodedData._postContent.substring(i, j)
-                        content = decodedData._postContent.substring(
+                        title = decodedData.postContent.substring(i, j)
+                        content = decodedData.postContent.substring(
                             j + titlePostfix.length
                         )
                     }
@@ -1078,10 +1078,7 @@ export class Synchronizer extends EventEmitter {
         // console.log(event);
         // update Unirep state
         const epoch = Number(event?.topics[1])
-        this.epochTree[epoch] = await genNewSMT(
-            circuitEpochTreeDepth,
-            SMT_ONE_LEAF
-        )
+        this.epochTree[epoch] = await genNewSMT(EPOCH_TREE_DEPTH, SMT_ONE_LEAF)
         const epochTreeLeaves = [] as any[]
 
         // seal all epoch keys in current epoch
@@ -1121,8 +1118,8 @@ export class Synchronizer extends EventEmitter {
         this.currentEpoch++
         this.GSTLeaves[this.currentEpoch] = []
         this.epochKeyInEpoch[this.currentEpoch] = new Map()
-        this.globalStateTree[this.currentEpoch] = new IncrementalQuinTree(
-            circuitGlobalStateTreeDepth,
+        this.globalStateTree[this.currentEpoch] = new IncrementalMerkleTree(
+            GLOBAL_STATE_TREE_DEPTH,
             this.defaultGSTLeaf,
             2
         )
@@ -1153,7 +1150,7 @@ export class Synchronizer extends EventEmitter {
         )
         const toProofIndex = Number(decodedData.toProofIndex)
         const fromProofIndex = Number(decodedData.fromProofIndex)
-        const attestIndex = Number(decodedData.attestIndex)
+        const attestIndex = Number(decodedData.attestationEvent)
         {
             const existing = await Attestation.exists({
                 index: attestIndex,
@@ -1162,11 +1159,11 @@ export class Synchronizer extends EventEmitter {
         }
 
         const attestation = new HAttestation(
-            BigInt(decodedData._attestation.attesterId),
-            BigInt(decodedData._attestation.posRep),
-            BigInt(decodedData._attestation.negRep),
-            BigInt(decodedData._attestation.graffiti._hex),
-            BigInt(decodedData._attestation.signUp)
+            BigInt(decodedData.attestation.attesterId),
+            BigInt(decodedData.attestation.posRep),
+            BigInt(decodedData.attestation.negRep),
+            BigInt(decodedData.attestation.graffiti._hex),
+            BigInt(decodedData.attestation.signUp)
         )
         await Attestation.create(
             [
@@ -1177,11 +1174,11 @@ export class Synchronizer extends EventEmitter {
                     transactionHash: event.transactionHash,
                     attester: _attester,
                     proofIndex: toProofIndex,
-                    attesterId: Number(decodedData._attestation.attesterId),
-                    posRep: Number(decodedData._attestation.posRep),
-                    negRep: Number(decodedData._attestation.negRep),
-                    graffiti: decodedData._attestation.graffiti._hex,
-                    signUp: Boolean(Number(decodedData._attestation?.signUp)),
+                    attesterId: Number(decodedData.attestation.attesterId),
+                    posRep: Number(decodedData.attestation.posRep),
+                    negRep: Number(decodedData.attestation.negRep),
+                    graffiti: decodedData.attestation.graffiti._hex,
+                    signUp: Boolean(Number(decodedData.attestation?.signUp)),
                     hash: attestation.hash().toString(),
                 },
             ],
@@ -1269,7 +1266,7 @@ export class Synchronizer extends EventEmitter {
         const transactionHash = event.transactionHash
         const epoch = Number(event.topics[1])
         const leaf = BigInt(event.topics[2])
-        const proofIndex = Number(decodedData._proofIndex)
+        const proofIndex = Number(decodedData.proofIndex)
 
         // verify the transition
         const transitionProof = await Proof.findOne({
@@ -1483,11 +1480,11 @@ export class Synchronizer extends EventEmitter {
         const transactionHash = event.transactionHash
         const epoch = Number(event.topics[1])
         const idCommitment = BigInt(event.topics[2])
-        const attesterId = Number(decodedData._attesterId)
-        const airdrop = Number(decodedData._airdropAmount)
+        const attesterId = Number(decodedData.attesterId)
+        const airdrop = Number(decodedData.airdropAmount)
 
         const USTRoot = await computeInitUserStateRoot(
-            circuitUserStateTreeDepth,
+            USER_STATE_TREE_DEPTH,
             attesterId,
             airdrop
         )
@@ -1537,8 +1534,8 @@ export class Synchronizer extends EventEmitter {
         if (!decodedData) {
             throw new Error('Failed to decode data')
         }
-        const args = decodedData._proof
-        const proofIndexRecords = decodedData._proofIndexRecords.map((n) =>
+        const args = decodedData.proof
+        const proofIndexRecords = decodedData.proofIndexRecords.map((n) =>
             Number(n)
         )
 
@@ -1592,10 +1589,10 @@ export class Synchronizer extends EventEmitter {
             throw new Error('Failed to decode data')
         }
         const _outputBlindedUserState = BigInt(
-            decodedData._outputBlindedUserState
+            decodedData.outputBlindedUserState
         )
         const _outputBlindedHashChain = BigInt(
-            decodedData._outputBlindedHashChain
+            decodedData.outputBlindedHashChain
         )
 
         const formatPublicSignals = [
@@ -1603,7 +1600,7 @@ export class Synchronizer extends EventEmitter {
             _outputBlindedHashChain,
             _inputBlindedUserState,
         ]
-        const formattedProof = decodedData._proof.map((n) => BigInt(n))
+        const formattedProof = decodedData.proof.map((n) => BigInt(n))
         const isValid = await verifyProof(
             Circuit.processAttestations,
             formatProofForSnarkjsVerification(formattedProof),
@@ -1640,13 +1637,13 @@ export class Synchronizer extends EventEmitter {
         if (!decodedData) {
             throw new Error('Failed to decode data')
         }
-        const _blindedHashChain = BigInt(decodedData._blindedHashChain)
+        const _blindedHashChain = BigInt(decodedData.blindedHashChain)
         const formatPublicSignals = [
             _blindedUserState,
             _blindedHashChain,
             _globalStateTree,
         ]
-        const formattedProof = decodedData._proof.map((n) => BigInt(n))
+        const formattedProof = decodedData.proof.map((n) => BigInt(n))
         const isValid = await verifyProof(
             Circuit.startTransition,
             formatProofForSnarkjsVerification(formattedProof),
@@ -1683,7 +1680,7 @@ export class Synchronizer extends EventEmitter {
         if (!decodedData) {
             throw new Error('Failed to decode data')
         }
-        const args = decodedData._proof
+        const args = decodedData.proof
 
         const emptyArray = []
         const formatPublicSignals = emptyArray
@@ -1730,7 +1727,7 @@ export class Synchronizer extends EventEmitter {
         if (!decodedData) {
             throw new Error('Failed to decode data')
         }
-        const args = decodedData._proof
+        const args = decodedData.proof
         const emptyArray = []
         const formatPublicSignals = emptyArray
             .concat(
@@ -1780,7 +1777,7 @@ export class Synchronizer extends EventEmitter {
         if (!decodedData) {
             throw new Error('Failed to decode data')
         }
-        const args = decodedData._proof
+        const args = decodedData.proof
 
         const emptyArray = []
         const formatPublicSignals = emptyArray

@@ -4,8 +4,8 @@ import {
     formatProofForVerifierContract,
     verifyProof,
 } from '@unirep/circuits'
-import { genIdentity, genIdentityCommitment } from '@unirep/crypto'
-import { genEpochKey, genUserStateFromContract } from '@unirep/unirep'
+import { ZkIdentity } from '@unirep/crypto'
+import { genEpochKey, genUserStateFromContract } from '@unirep/core'
 
 export const getInvitationCode = async (t) => {
     const r = await fetch(`${t.context.url}/api/genInvitationCode?code=ffff`)
@@ -25,8 +25,9 @@ export const waitForBackendBlock = async (t, blockNumber) => {
 }
 
 export const signUp = async (t) => {
-    const iden = genIdentity()
-    const commitment = genIdentityCommitment(iden)
+    const iden = new ZkIdentity()
+    const commitment = iden
+        .genIdentityCommitment()
         .toString(16)
         .padStart(64, '0')
     const currentEpoch = await t.context.unirep.currentEpoch()
@@ -106,7 +107,7 @@ export const getSpent = async (t, iden) => {
     for (let i = 0; i < t.context.constants.EPOCH_KEY_NONCE_PER_EPOCH; i++) {
         epks.push(
             genEpochKey(
-                iden.identityNullifier,
+                iden.getNullifier(),
                 currentEpoch,
                 i,
                 t.context.epochTreeDepth
