@@ -54,7 +54,7 @@ const vote = async (req: any, res: any) => {
             })
             return
         }
-        
+
         console.log('find post proof index: ' + post.proofIndex)
         const validProof = await Proof.findOne({
             index: post.proofIndex,
@@ -145,13 +145,13 @@ const vote = async (req: any, res: any) => {
         transactionHash: hash,
         epoch: currentEpoch,
         voter: epochKey,
-        receiver: req.body.receiver, 
+        receiver: req.body.receiver,
         posRep: req.body.upvote,
         negRep: req.body.downvote,
         graffiti: '0',
         overwriteGraffiti: false,
-        postId: isPost? dataId : '',
-        commentId: isPost? '' : dataId,
+        postId: isPost ? dataId : '',
+        commentId: isPost ? '' : dataId,
         status: 0,
     })
 

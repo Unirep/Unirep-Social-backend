@@ -872,7 +872,7 @@ export class Synchronizer extends EventEmitter {
     async voteSubmittedEvent(event: ethers.Event) {
         const voteId = event.transactionHash
         const findVote = await Vote.findOne({ transactionHash: voteId })
-        
+
         const decodedData = this.unirepSocialContract.interface.decodeEventLog(
             'VoteSubmitted',
             event.data

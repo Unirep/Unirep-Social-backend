@@ -27,7 +27,7 @@ const VoteSchema: Schema = new Schema(
         overwriteGraffiti: { type: Boolean },
         postId: { type: String },
         commentId: { type: String },
-        status: { type: Number, required: true }
+        status: { type: Number, required: true },
     },
     {
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },

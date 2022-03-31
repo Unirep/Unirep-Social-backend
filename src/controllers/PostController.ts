@@ -26,7 +26,7 @@ import Record from '../models/record'
 const listAllPosts = async () => {
     // load posts
     const allPosts = await Post.find({ status: 1 }).lean()
-    
+
     // load comments
     const comments = await Comment.find({
         postId: {
@@ -56,7 +56,7 @@ const listAllPosts = async () => {
     return allPosts.map((p) => ({
         ...p,
         comments: commentsByPostId[p.transactionHash] ?? [],
-        votes: votesByPostId[p.transactionHash] ?? []
+        votes: votesByPostId[p.transactionHash] ?? [],
     }))
 }
 
