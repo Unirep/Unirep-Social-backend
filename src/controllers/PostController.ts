@@ -15,15 +15,19 @@ import {
     UNIREP_SOCIAL_ABI,
     ActionType,
 } from '../constants'
-import Post, { IPost } from '../models/post'
-import Comment, { IComment } from '../models/comment'
+import Post from '../models/post'
+import Comment from '../models/comment'
+import Vote from '../models/vote'
 import { verifyReputationProof } from '../controllers/utils'
 import TransactionManager from '../daemons/TransactionManager'
 import Nullifier from '../models/nullifiers'
 import Record from '../models/record'
 
 const listAllPosts = async () => {
+    // load posts
     const allPosts = await Post.find({ status: 1 }).lean()
+    
+    // load comments
     const comments = await Comment.find({
         postId: {
             $in: allPosts.map((p) => p.transactionHash),
@@ -36,9 +40,23 @@ const listAllPosts = async () => {
         }
     }, {})
 
+    // load votes
+    const votes = await Vote.find({
+        postId: {
+            $in: allPosts.map((p) => p.transactionHash),
+        },
+    }).lean()
+    const votesByPostId = votes.reduce((acc, v) => {
+        return {
+            ...acc,
+            [v.postId]: [...(acc[v.postId] ?? []), v],
+        }
+    }, {})
+
     return allPosts.map((p) => ({
         ...p,
         comments: commentsByPostId[p.transactionHash] ?? [],
+        votes: votesByPostId[p.transactionHash] ?? []
     }))
 }
 
@@ -52,10 +70,14 @@ const getPostWithId = async (postId: string) => {
     const comments = await Comment.find({
         postId,
     })
+    const votes = await Vote.find({
+        postId,
+    })
     return [
         {
             ...post.toObject(),
-            comments,
+            comments: comments ?? [],
+            votes: votes ?? [],
         },
     ]
 }
