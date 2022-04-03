@@ -1,7 +1,4 @@
-import {
-    UserTransitionProof,
-    computeStartTransitionProofHash,
-} from '@unirep/contracts'
+import { circuits, contracts } from 'unirep'
 import { ethers } from 'ethers'
 import {
     UNIREP,
@@ -10,7 +7,6 @@ import {
     UNIREP_SOCIAL,
     DEFAULT_ETH_PROVIDER,
 } from '../constants'
-import { formatProofForVerifierContract } from '@unirep/circuits'
 import { verifyUSTProof } from './utils'
 import TransactionManager from '../daemons/TransactionManager'
 
@@ -46,7 +42,7 @@ const userStateTransition = async (req: any, res: any) => {
                 blindedUserState,
                 blindedHashChain,
                 globalStateTreeRoot,
-                formatProofForVerifierContract(proof),
+                circuits.formatProofForVerifierContract(proof),
             ]
         )
         const hash = await TransactionManager.queueTransaction(
@@ -70,7 +66,7 @@ const userStateTransition = async (req: any, res: any) => {
                 outputBlindedUserState,
                 outputBlindedHashChain,
                 inputBlindedUserState,
-                formatProofForVerifierContract(proof),
+                circuits.formatProofForVerifierContract(proof),
             ]
         )
         const hash = await TransactionManager.queueTransaction(
@@ -83,11 +79,11 @@ const userStateTransition = async (req: any, res: any) => {
 
     const proofIndexes: number[] = []
     {
-        const proofNullifier = computeStartTransitionProofHash(
+        const proofNullifier = contracts.computeStartTransitionProofHash(
             blindedUserState,
             blindedHashChain,
             globalStateTreeRoot,
-            formatProofForVerifierContract(proof)
+            circuits.formatProofForVerifierContract(proof)
         )
         const proofIndex = await unirepContract.getProofIndex(proofNullifier)
         proofIndexes.push(Number(proofIndex))
@@ -99,16 +95,16 @@ const userStateTransition = async (req: any, res: any) => {
             inputBlindedUserState,
             proof,
         } = results.processAttestationProofs[i]
-        const proofNullifier = computeStartTransitionProofHash(
+        const proofNullifier = contracts.computeStartTransitionProofHash(
             outputBlindedUserState,
             outputBlindedHashChain,
             inputBlindedUserState,
-            formatProofForVerifierContract(proof)
+            circuits.formatProofForVerifierContract(proof)
         )
         const proofIndex = await unirepContract.getProofIndex(proofNullifier)
         proofIndexes.push(Number(proofIndex))
     }
-    const USTProof = new UserTransitionProof(
+    const USTProof = new contracts.UserTransitionProof(
         results.finalTransitionProof.publicSignals,
         results.finalTransitionProof.proof
     )

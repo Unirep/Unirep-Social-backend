@@ -1,5 +1,4 @@
-import { formatProofForSnarkjsVerification } from '@unirep/circuits'
-import { ReputationProof } from '@unirep/contracts'
+import { circuits, contracts } from 'unirep'
 import { ethers } from 'ethers'
 import {
     UNIREP,
@@ -94,9 +93,9 @@ const leaveComment = async (req: any, res: any) => {
 
     // Parse Inputs
     const { publicSignals, proof } = req.body
-    const reputationProof = new ReputationProof(
+    const reputationProof = new contracts.ReputationProof(
         publicSignals,
-        formatProofForSnarkjsVerification(proof)
+        circuits.formatProofForSnarkjsVerification(proof)
     )
     const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
     const minRep = Number(reputationProof.minRep)

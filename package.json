@@ -3,17 +3,18 @@
     "version": "1.0.0",
     "description": "",
     "scripts": {
-        "start": "yarn link-unirep && nodemon src/app.ts",
+        "start": "nodemon src/app.ts",
         "start:daemon": "ts-node src/app.ts",
-        "build": "yarn link-unirep && tsc",
+        "build": "tsc",
         "lint": "prettier .",
-        "link-unirep": "./scripts/linkPackages.sh",
         "test": "yarn build && sh scripts/pretest.sh && ava test/*.test.ts -T 5m --verbose"
     },
     "keywords": [],
     "author": "",
     "license": "ISC",
     "devDependencies": {
+        "unirep": "git+https://github.com/Unirep/Unirep.git#alpha-monorepo",
+        "unirep-social": "git+https://github.com/Unirep/Unirep-Social.git#93d2fd97bc2c6f6fc465a9806af324f4ba3361f7",
         "@ava/typescript": "2",
         "@types/express": "^4.17.13",
         "@types/node": "^16.4.6",

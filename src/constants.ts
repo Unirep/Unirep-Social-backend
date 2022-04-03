@@ -1,8 +1,8 @@
 import UnirepSocial from 'unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json'
-import Unirep from '@unirep/contracts/build/artifacts/contracts/Unirep.sol/Unirep.json'
+import Unirep from 'unirep/artifacts/contracts/Unirep.sol/Unirep.json'
 import { ethers } from 'ethers'
 import randomstring from 'randomstring'
-import { NUM_EPOCH_KEY_NONCE_PER_EPOCH } from '@unirep/config'
+import { config } from 'unirep'
 
 // Provide default values for process.env
 Object.assign(process.env, {
@@ -45,7 +45,7 @@ export const MAX_KARMA_BUDGET = 10
 export const DEFAULT_AIRDROPPED_KARMA = 30
 export const DEFAULT_QUERY_DEPTH = 5
 export const QUERY_DELAY_TIME = 300
-export const EPOCH_KEY_NONCE_PER_EPOCH = NUM_EPOCH_KEY_NONCE_PER_EPOCH
+export const EPOCH_KEY_NONCE_PER_EPOCH = config.NUM_EPOCH_KEY_NONCE_PER_EPOCH
 
 export const maxReputationBudget = 10
 

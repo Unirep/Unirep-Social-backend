@@ -14,37 +14,7 @@ import {
     DEFAULT_COMMENT_KARMA,
     MONGO_URL,
 } from '../constants'
-import {
-    IncrementalMerkleTree,
-    hash5,
-    hashLeftRight,
-    SparseMerkleTree,
-    stringifyBigInts,
-    unstringifyBigInts,
-} from '@unirep/crypto'
-import {
-    computeEmptyUserStateRoot,
-    computeInitUserStateRoot,
-    genNewSMT,
-    SMT_ONE_LEAF,
-} from '@unirep/core'
-import {
-    Circuit,
-    formatProofForSnarkjsVerification,
-    verifyProof,
-} from '@unirep/circuits'
-import {
-    GLOBAL_STATE_TREE_DEPTH,
-    USER_STATE_TREE_DEPTH,
-    EPOCH_TREE_DEPTH,
-} from '@unirep/config'
-import {
-    getUnirepContract,
-    EpochKeyProof,
-    ReputationProof,
-    SignUpProof,
-    UserTransitionProof,
-} from '@unirep/contracts'
+import { config, crypto, circuits, contracts, core } from 'unirep'
 import { EventEmitter } from 'events'
 import Proof from '../models/proof'
 import UserSignUp from '../models/userSignUp'
@@ -61,11 +31,11 @@ import BlockNumber from '../models/blockNumber'
 import SynchronizerState from '../models/synchronizerState'
 
 const encodeBigIntArray = (arr: BigNumberish[]): string => {
-    return JSON.stringify(stringifyBigInts(arr))
+    return JSON.stringify(crypto.stringifyBigInts(arr))
 }
 
 const decodeBigIntArray = (input: string): BigNumberish[] => {
-    return unstringifyBigInts(JSON.parse(input))
+    return crypto.unstringifyBigInts(JSON.parse(input))
 }
 
 interface IAttestation {
@@ -100,7 +70,7 @@ class HAttestation implements IAttestation {
     }
 
     public hash = (): BigInt => {
-        return hash5([
+        return crypto.hash5([
             this.attesterId,
             this.posRep,
             this.negRep,
@@ -133,8 +103,9 @@ export class Synchronizer extends EventEmitter {
     private GSTLeaves: { [key: number]: BigInt[] } = {}
     private epochTreeLeaves: { [key: number]: any[] } = {}
     private nullifiers: { [key: string]: boolean } = {}
-    private globalStateTree: { [key: number]: IncrementalMerkleTree } = {}
-    private epochTree: { [key: number]: SparseMerkleTree } = {}
+    private globalStateTree: { [key: number]: crypto.IncrementalMerkleTree } =
+        {}
+    private epochTree: { [key: number]: crypto.SparseMerkleTree } = {}
     private defaultGSTLeaf: BigInt
     private userNum: number = 0
     _session: any
@@ -159,16 +130,20 @@ export class Synchronizer extends EventEmitter {
         )
         this.epochKeyInEpoch[this.currentEpoch] = new Map()
         this.epochTreeRoot[this.currentEpoch] = BigInt(0)
-        const emptyUserStateRoot = computeEmptyUserStateRoot(
-            USER_STATE_TREE_DEPTH
+        const emptyUserStateRoot = core.computeEmptyUserStateRoot(
+            config.USER_STATE_TREE_DEPTH
         )
-        this.defaultGSTLeaf = hashLeftRight(BigInt(0), emptyUserStateRoot)
+        this.defaultGSTLeaf = crypto.hashLeftRight(
+            BigInt(0),
+            emptyUserStateRoot
+        )
         this.GSTLeaves[this.currentEpoch] = []
-        this.globalStateTree[this.currentEpoch] = new IncrementalMerkleTree(
-            GLOBAL_STATE_TREE_DEPTH,
-            this.defaultGSTLeaf,
-            2
-        )
+        this.globalStateTree[this.currentEpoch] =
+            new crypto.IncrementalMerkleTree(
+                config.GLOBAL_STATE_TREE_DEPTH,
+                this.defaultGSTLeaf,
+                2
+            )
         this.epochGSTRootMap[this.currentEpoch] = new Map()
     }
 
@@ -497,23 +472,23 @@ export class Synchronizer extends EventEmitter {
         if (proof.event === 'IndexedEpochKeyProof') {
             const publicSignals = decodeBigIntArray(proof.publicSignals)
             const _proof = JSON.parse(proof.proof)
-            formedProof = new EpochKeyProof(
+            formedProof = new contracts.EpochKeyProof(
                 publicSignals,
-                formatProofForSnarkjsVerification(_proof)
+                circuits.formatProofForSnarkjsVerification(_proof)
             )
         } else if (proof.event === 'IndexedReputationProof') {
             const publicSignals = decodeBigIntArray(proof.publicSignals)
             const _proof = JSON.parse(proof.proof)
-            formedProof = new ReputationProof(
+            formedProof = new contracts.ReputationProof(
                 publicSignals,
-                formatProofForSnarkjsVerification(_proof)
+                circuits.formatProofForSnarkjsVerification(_proof)
             )
         } else if (proof.event === 'IndexedUserSignedUpProof') {
             const publicSignals = decodeBigIntArray(proof.publicSignals)
             const _proof = JSON.parse(proof.proof)
-            formedProof = new SignUpProof(
+            formedProof = new contracts.SignUpProof(
                 publicSignals,
-                formatProofForSnarkjsVerification(_proof)
+                circuits.formatProofForSnarkjsVerification(_proof)
             )
         } else {
             console.log(
@@ -1029,7 +1004,10 @@ export class Synchronizer extends EventEmitter {
         const _epochKey = BigInt(event.topics[2]).toString(16)
         const signUpProof = decodedData.proofRelated
 
-        const unirepContract = getUnirepContract(UNIREP, DEFAULT_ETH_PROVIDER)
+        const unirepContract = contracts.getUnirepContract(
+            UNIREP,
+            DEFAULT_ETH_PROVIDER
+        )
 
         const proofNullifier = await this.unirepContract.hashSignUpProof(
             signUpProof
@@ -1078,7 +1056,10 @@ export class Synchronizer extends EventEmitter {
         // console.log(event);
         // update Unirep state
         const epoch = Number(event?.topics[1])
-        this.epochTree[epoch] = await genNewSMT(EPOCH_TREE_DEPTH, SMT_ONE_LEAF)
+        this.epochTree[epoch] = await core.genNewSMT(
+            config.EPOCH_TREE_DEPTH,
+            core.SMT_ONE_LEAF
+        )
         const epochTreeLeaves = [] as any[]
 
         // seal all epoch keys in current epoch
@@ -1092,12 +1073,15 @@ export class Synchronizer extends EventEmitter {
                 i < this.epochKeyToAttestationsMap[epochKey].length;
                 i++
             ) {
-                hashChain = hashLeftRight(
+                hashChain = crypto.hashLeftRight(
                     this.epochKeyToAttestationsMap[epochKey][i].hash(),
                     hashChain
                 )
             }
-            const sealedHashChainResult = hashLeftRight(BigInt(1), hashChain)
+            const sealedHashChainResult = crypto.hashLeftRight(
+                BigInt(1),
+                hashChain
+            )
             const epochTreeLeaf = {
                 epochKey: BigInt(parseInt(epochKey, 16)),
                 hashchainResult: sealedHashChainResult,
@@ -1118,11 +1102,12 @@ export class Synchronizer extends EventEmitter {
         this.currentEpoch++
         this.GSTLeaves[this.currentEpoch] = []
         this.epochKeyInEpoch[this.currentEpoch] = new Map()
-        this.globalStateTree[this.currentEpoch] = new IncrementalMerkleTree(
-            GLOBAL_STATE_TREE_DEPTH,
-            this.defaultGSTLeaf,
-            2
-        )
+        this.globalStateTree[this.currentEpoch] =
+            new crypto.IncrementalMerkleTree(
+                config.GLOBAL_STATE_TREE_DEPTH,
+                this.defaultGSTLeaf,
+                2
+            )
         this.epochGSTRootMap[this.currentEpoch] = new Map()
         await Epoch.findOneAndUpdate(
             {
@@ -1345,9 +1330,9 @@ export class Synchronizer extends EventEmitter {
         const { publicSignals, proof } = transitionProof
         const publicSignals_ = decodeBigIntArray(publicSignals)
         const proof_ = JSON.parse(proof)
-        const formatProof = new UserTransitionProof(
+        const formatProof = new contracts.UserTransitionProof(
             publicSignals_,
-            formatProofForSnarkjsVerification(proof_)
+            circuits.formatProofForSnarkjsVerification(proof_)
         )
         for (const blindedHC of formatProof.blindedHashChains) {
             const query = {
@@ -1483,12 +1468,12 @@ export class Synchronizer extends EventEmitter {
         const attesterId = Number(decodedData.attesterId)
         const airdrop = Number(decodedData.airdropAmount)
 
-        const USTRoot = await computeInitUserStateRoot(
-            USER_STATE_TREE_DEPTH,
+        const USTRoot = await core.computeInitUserStateRoot(
+            config.USER_STATE_TREE_DEPTH,
             attesterId,
             airdrop
         )
-        const newGSTLeaf = hashLeftRight(idCommitment, USTRoot)
+        const newGSTLeaf = crypto.hashLeftRight(idCommitment, USTRoot)
         this.GSTLeaves[epoch].push(newGSTLeaf)
 
         // update GST when new leaf is inserted
@@ -1554,9 +1539,9 @@ export class Synchronizer extends EventEmitter {
         const formattedProof = args.proof.map((n) => BigInt(n))
         const proof = encodeBigIntArray(formattedProof)
         const publicSignals = encodeBigIntArray(formatPublicSignals)
-        const isValid = await verifyProof(
-            Circuit.userStateTransition,
-            formatProofForSnarkjsVerification(formattedProof),
+        const isValid = await circuits.verifyProof(
+            circuits.Circuit.userStateTransition,
+            circuits.formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
         )
 
@@ -1601,9 +1586,9 @@ export class Synchronizer extends EventEmitter {
             _inputBlindedUserState,
         ]
         const formattedProof = decodedData.proof.map((n) => BigInt(n))
-        const isValid = await verifyProof(
-            Circuit.processAttestations,
-            formatProofForSnarkjsVerification(formattedProof),
+        const isValid = await circuits.verifyProof(
+            circuits.Circuit.processAttestations,
+            circuits.formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
         )
 
@@ -1644,9 +1629,9 @@ export class Synchronizer extends EventEmitter {
             _globalStateTree,
         ]
         const formattedProof = decodedData.proof.map((n) => BigInt(n))
-        const isValid = await verifyProof(
-            Circuit.startTransition,
-            formatProofForSnarkjsVerification(formattedProof),
+        const isValid = await circuits.verifyProof(
+            circuits.Circuit.startTransition,
+            circuits.formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
         )
 
@@ -1695,9 +1680,9 @@ export class Synchronizer extends EventEmitter {
         const formattedProof = args.proof.map((n) => BigInt(n))
         const proof = encodeBigIntArray(formattedProof)
         const publicSignals = encodeBigIntArray(formatPublicSignals)
-        const isValid = await verifyProof(
-            Circuit.proveUserSignUp,
-            formatProofForSnarkjsVerification(formattedProof),
+        const isValid = await circuits.verifyProof(
+            circuits.Circuit.proveUserSignUp,
+            circuits.formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
         )
 
@@ -1745,9 +1730,9 @@ export class Synchronizer extends EventEmitter {
         const formattedProof = args.proof.map((n) => BigInt(n))
         const proof = encodeBigIntArray(formattedProof)
         const publicSignals = encodeBigIntArray(formatPublicSignals)
-        const isValid = await verifyProof(
-            Circuit.proveReputation,
-            formatProofForSnarkjsVerification(formattedProof),
+        const isValid = await circuits.verifyProof(
+            circuits.Circuit.proveReputation,
+            circuits.formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
         )
 
@@ -1786,9 +1771,9 @@ export class Synchronizer extends EventEmitter {
         const formattedProof = args.proof.map((n) => BigInt(n))
         const proof = encodeBigIntArray(formattedProof)
         const publicSignals = encodeBigIntArray(formatPublicSignals)
-        const isValid = await verifyProof(
-            Circuit.verifyEpochKey,
-            formatProofForSnarkjsVerification(formattedProof),
+        const isValid = await circuits.verifyProof(
+            circuits.Circuit.verifyEpochKey,
+            circuits.formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
         )
 

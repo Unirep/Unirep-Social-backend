@@ -1,5 +1,4 @@
-import { formatProofForSnarkjsVerification } from '@unirep/circuits'
-import { SignUpProof } from '@unirep/contracts'
+import { circuits, contracts } from 'unirep'
 import {
     UNIREP_SOCIAL,
     DEFAULT_ETH_PROVIDER,
@@ -31,9 +30,9 @@ export const getAirdrop = async (req, res) => {
 
     // Parse Inputs
     const { publicSignals, proof } = req.body
-    const signUpProof = new SignUpProof(
+    const signUpProof = new contracts.SignUpProof(
         publicSignals,
-        formatProofForSnarkjsVerification(proof)
+        circuits.formatProofForSnarkjsVerification(proof)
     )
 
     const attestingFee = await unirepContract.attestingFee()

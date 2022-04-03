@@ -1,11 +1,5 @@
 import fetch from 'node-fetch'
-import {
-    Circuit,
-    formatProofForVerifierContract,
-    verifyProof,
-} from '@unirep/circuits'
-import { ZkIdentity } from '@unirep/crypto'
-import { genEpochKey, genUserStateFromContract } from '@unirep/core'
+import { circuits, crypto, core } from 'unirep'
 
 export const getInvitationCode = async (t) => {
     const r = await fetch(`${t.context.url}/api/genInvitationCode?code=ffff`)
@@ -25,7 +19,7 @@ export const waitForBackendBlock = async (t, blockNumber) => {
 }
 
 export const signUp = async (t) => {
-    const iden = new ZkIdentity()
+    const iden = new crypto.ZkIdentity()
     const commitment = iden
         .genIdentityCommitment()
         .toString(16)
@@ -53,7 +47,7 @@ export const signUp = async (t) => {
 }
 
 export const airdrop = async (t, iden) => {
-    const userState = await genUserStateFromContract(
+    const userState = await core.genUserStateFromContract(
         t.context.unirepSocial.provider,
         t.context.unirep.address,
         iden
@@ -61,8 +55,8 @@ export const airdrop = async (t, iden) => {
     const { proof, publicSignals } = await userState.genUserSignUpProof(
         t.context.attesterId
     )
-    const isValid = await verifyProof(
-        Circuit.proveUserSignUp,
+    const isValid = await circuits.verifyProof(
+        circuits.Circuit.proveUserSignUp,
         proof,
         publicSignals
     )
@@ -74,7 +68,7 @@ export const airdrop = async (t, iden) => {
             'content-type': 'application/json',
         },
         body: JSON.stringify({
-            proof: formatProofForVerifierContract(proof),
+            proof: circuits.formatProofForVerifierContract(proof),
             publicSignals,
         }),
     })
@@ -106,12 +100,14 @@ export const getSpent = async (t, iden) => {
     const epks: string[] = []
     for (let i = 0; i < t.context.constants.EPOCH_KEY_NONCE_PER_EPOCH; i++) {
         epks.push(
-            genEpochKey(
-                iden.getNullifier(),
-                currentEpoch,
-                i,
-                t.context.epochTreeDepth
-            ).toString(16)
+            core
+                .genEpochKey(
+                    iden.getNullifier(),
+                    currentEpoch,
+                    i,
+                    t.context.epochTreeDepth
+                )
+                .toString(16)
         )
     }
     const paramStr = epks.join('_')
@@ -130,7 +126,7 @@ export const getSpent = async (t, iden) => {
 }
 
 const genReputationProof = async (t, iden, proveAmount) => {
-    const userState = await genUserStateFromContract(
+    const userState = await core.genUserStateFromContract(
         t.context.unirepSocial.provider,
         t.context.unirep.address,
         iden
@@ -159,8 +155,8 @@ const genReputationProof = async (t, iden, proveAmount) => {
         BigInt(0),
         nonceList
     )
-    const isValid = await verifyProof(
-        Circuit.proveReputation,
+    const isValid = await circuits.verifyProof(
+        circuits.Circuit.proveReputation,
         proof,
         publicSignals
     )
@@ -168,7 +164,7 @@ const genReputationProof = async (t, iden, proveAmount) => {
     // we need to wait for the backend to process whatever block our provider is on
     const blockNumber = await t.context.provider.getBlockNumber()
     return {
-        proof: formatProofForVerifierContract(proof),
+        proof: circuits.formatProofForVerifierContract(proof),
         publicSignals,
         blockNumber,
     }
@@ -342,7 +338,7 @@ export const epochTransition = async (t) => {
 }
 
 export const userStateTransition = async (t, iden) => {
-    const userState = await genUserStateFromContract(
+    const userState = await core.genUserStateFromContract(
         t.context.unirepSocial.provider,
         t.context.unirep.address,
         iden

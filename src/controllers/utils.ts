@@ -1,9 +1,4 @@
-import { Circuit, verifyProof } from '@unirep/circuits'
-import {
-    ReputationProof,
-    SignUpProof,
-    UserTransitionProof,
-} from '@unirep/contracts'
+import { circuits, contracts } from 'unirep'
 import Record from '../models/record'
 import Nullifier from '../models/nullifiers'
 import Epoch from '../models/epoch'
@@ -29,7 +24,7 @@ const verifyEpochTreeRoot = async (epoch: number, epochTreeRoot: string) => {
 }
 
 const verifyReputationProof = async (
-    reputationProof: ReputationProof,
+    reputationProof: contracts.ReputationProof,
     spendReputation: number,
     unirepSocialId: number,
     currentEpoch: number
@@ -80,7 +75,7 @@ const verifyReputationProof = async (
 }
 
 const verifyAirdropProof = async (
-    signUpProof: SignUpProof,
+    signUpProof: contracts.SignUpProof,
     unirepSocialId: number,
     currentEpoch: number
 ): Promise<string | undefined> => {
@@ -140,8 +135,8 @@ const verifyUSTProof = async (
     }
 
     // Start user state transition proof
-    let isValid = await verifyProof(
-        Circuit.startTransition,
+    let isValid = await circuits.verifyProof(
+        circuits.Circuit.startTransition,
         results.startTransitionProof.proof,
         results.startTransitionProof.publicSignals
     )
@@ -152,8 +147,8 @@ const verifyUSTProof = async (
 
     // Process attestations proofs
     for (let i = 0; i < results.processAttestationProofs.length; i++) {
-        const isValid = await verifyProof(
-            Circuit.processAttestations,
+        const isValid = await circuits.verifyProof(
+            circuits.Circuit.processAttestations,
             results.processAttestationProofs[i].proof,
             results.processAttestationProofs[i].publicSignals
         )
@@ -164,7 +159,7 @@ const verifyUSTProof = async (
     }
 
     // User state transition proof
-    const USTProof = new UserTransitionProof(
+    const USTProof = new contracts.UserTransitionProof(
         results.finalTransitionProof.publicSignals,
         results.finalTransitionProof.proof
     )
