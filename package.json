@@ -13,7 +13,6 @@
     "author": "",
     "license": "ISC",
     "devDependencies": {
-        "unirep": "git+https://github.com/Unirep/Unirep.git#alpha-monorepo",
         "unirep-social": "git+https://github.com/Unirep/Unirep-Social.git#feat/refactor-packages",
         "@ava/typescript": "2",
         "@types/express": "^4.17.13",

@@ -5275,8 +5275,8 @@ unique-string@^2.0.0:
     crypto-random-string "^2.0.0"
 
 "unirep-social@git+https://github.com/Unirep/Unirep-Social.git#feat/refactor-packages":
-  version "1.0.0"
-  resolved "git+https://github.com/Unirep/Unirep-Social.git#571dd70ba08b82b8fef65d1695d0a5c7111b5c90"
+  version "1.0.0-alpha"
+  resolved "git+https://github.com/Unirep/Unirep-Social.git#e42ea93fd4be0471cdb32432f2a5a6f9fb17f684"
   dependencies:
     "@openzeppelin/contracts" "^4.5.0"
     "@typechain/ethers-v5" "^9.0.0"
@@ -5288,10 +5288,11 @@ unique-string@^2.0.0:
     mongoose "^5.12.10"
     prettier "^2.6.0"
     typescript "^4.0.5"
+    unirep "git+https://github.com/Unirep/Unirep.git#alpha-monorepo"
 
 "unirep@git+https://github.com/Unirep/Unirep.git#alpha-monorepo":
   version "1.0.0-alpha"
-  resolved "git+https://github.com/Unirep/Unirep.git#65f3bac60bee563d1de7028cafc333642f710c6d"
+  resolved "git+https://github.com/Unirep/Unirep.git#80d20580c839b09cb6da9a3f8eca0a8fc65e5e86"
   dependencies:
     "@ethersproject/bignumber" "^5.5.0"
     "@ethersproject/random" "^5.5.1"
