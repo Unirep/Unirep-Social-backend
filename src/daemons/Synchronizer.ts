@@ -1053,7 +1053,6 @@ export class Synchronizer extends EventEmitter {
 
     async epochEndedEvent(event: ethers.Event) {
         console.log('update db from epoch ended event: ')
-        // console.log(event);
         // update Unirep state
         const epoch = Number(event?.topics[1])
         this.epochTree[epoch] = await core.genNewSMT(
@@ -1135,7 +1134,7 @@ export class Synchronizer extends EventEmitter {
         )
         const toProofIndex = Number(decodedData.toProofIndex)
         const fromProofIndex = Number(decodedData.fromProofIndex)
-        const attestIndex = Number(decodedData.attestationEvent)
+        const attestIndex = Number(decodedData.attestIndex)
         {
             const existing = await Attestation.exists({
                 index: attestIndex,
@@ -1150,6 +1149,7 @@ export class Synchronizer extends EventEmitter {
             BigInt(decodedData.attestation.graffiti._hex),
             BigInt(decodedData.attestation.signUp)
         )
+        console.log(attestation)
         await Attestation.create(
             [
                 {

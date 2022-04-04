@@ -5274,9 +5274,9 @@ unique-string@^2.0.0:
   dependencies:
     crypto-random-string "^2.0.0"
 
-"unirep-social@git+https://github.com/Unirep/Unirep-Social.git#93d2fd97bc2c6f6fc465a9806af324f4ba3361f7":
+"unirep-social@git+https://github.com/Unirep/Unirep-Social.git#feat/refactor-packages":
   version "1.0.0"
-  resolved "git+https://github.com/Unirep/Unirep-Social.git#93d2fd97bc2c6f6fc465a9806af324f4ba3361f7"
+  resolved "git+https://github.com/Unirep/Unirep-Social.git#571dd70ba08b82b8fef65d1695d0a5c7111b5c90"
   dependencies:
     "@openzeppelin/contracts" "^4.5.0"
     "@typechain/ethers-v5" "^9.0.0"
@@ -5291,7 +5291,7 @@ unique-string@^2.0.0:
 
 "unirep@git+https://github.com/Unirep/Unirep.git#alpha-monorepo":
   version "1.0.0-alpha"
-  resolved "git+https://github.com/Unirep/Unirep.git#18a803cbba410f3e2fd9cbceb5468a12397ad7fb"
+  resolved "git+https://github.com/Unirep/Unirep.git#65f3bac60bee563d1de7028cafc333642f710c6d"
   dependencies:
     "@ethersproject/bignumber" "^5.5.0"
     "@ethersproject/random" "^5.5.1"

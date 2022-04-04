@@ -14,7 +14,7 @@
     "license": "ISC",
     "devDependencies": {
         "unirep": "git+https://github.com/Unirep/Unirep.git#alpha-monorepo",
-        "unirep-social": "git+https://github.com/Unirep/Unirep-Social.git#93d2fd97bc2c6f6fc465a9806af324f4ba3361f7",
+        "unirep-social": "git+https://github.com/Unirep/Unirep-Social.git#feat/refactor-packages",
         "@ava/typescript": "2",
         "@types/express": "^4.17.13",
         "@types/node": "^16.4.6",
