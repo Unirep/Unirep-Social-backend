@@ -1120,7 +1120,7 @@ export class Synchronizer extends EventEmitter {
         const epochTreeLeaves = [] as any[]
 
         // seal all epoch keys in current epoch
-        for (const epochKey of (this.epochKeyInEpoch[epoch] || {}).keys()) {
+        for (const epochKey of this.epochKeyInEpoch[epoch]?.keys() || []) {
             // this._checkEpochKeyRange(epochKey)
             // this._isEpochKeySealed(epochKey)
 
