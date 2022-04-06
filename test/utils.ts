@@ -109,7 +109,6 @@ export const getSpent = async (t, iden) => {
                 iden.identityNullifier,
                 currentEpoch,
                 i,
-                t.context.epochTreeDepth
             ).toString(16)
         )
     }
