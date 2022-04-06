@@ -26,14 +26,10 @@ async function waitForGanache() {
 
 async function deploy(wallet: ethers.Wallet, overrides = {}) {
     const provider = new ethers.providers.JsonRpcProvider(GANACHE_URL)
-    const unirep = await deployUnirep(
-        wallet,
-        treeDepth,
-        {
-            ...settings,
-            ...overrides,
-        }
-    )
+    const unirep = await deployUnirep(wallet, treeDepth, {
+        ...settings,
+        ...overrides,
+    })
     const UnirepSocialF = new ethers.ContractFactory(
         UnirepSocial.abi,
         UnirepSocial.bytecode,

@@ -1,9 +1,9 @@
-import { 
-    circuitEpochTreeDepth, 
-    circuitGlobalStateTreeDepth, 
-    circuitUserStateTreeDepth, 
-    maxReputationBudget, 
-    numEpochKeyNoncePerEpoch 
+import {
+    circuitEpochTreeDepth,
+    circuitGlobalStateTreeDepth,
+    circuitUserStateTreeDepth,
+    maxReputationBudget,
+    numEpochKeyNoncePerEpoch,
 } from '@unirep/circuits/config'
 import { ethers } from 'ethers'
 
