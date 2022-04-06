@@ -105,12 +105,7 @@ export const getSpent = async (t, iden) => {
     const epks: string[] = []
     for (let i = 0; i < t.context.constants.EPOCH_KEY_NONCE_PER_EPOCH; i++) {
         epks.push(
-            genEpochKey(
-                iden.identityNullifier,
-                currentEpoch,
-                i,
-                t.context.epochTreeDepth
-            ).toString(16)
+            genEpochKey(iden.identityNullifier, currentEpoch, i).toString(16)
         )
     }
     const paramStr = epks.join('_')

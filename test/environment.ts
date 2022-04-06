@@ -4,8 +4,9 @@ import { deployUnirep } from '@unirep/contracts'
 import express from 'express'
 import cors from 'cors'
 import mongoose from 'mongoose'
-import settings from './config'
 import getPort from 'get-port'
+
+import { settings, treeDepth } from './config'
 
 // const GANACHE_URL = 'https://hardhat.unirep.social'
 const GANACHE_URL = 'http://127.0.0.1:18545'
@@ -25,19 +26,10 @@ async function waitForGanache() {
 
 async function deploy(wallet: ethers.Wallet, overrides = {}) {
     const provider = new ethers.providers.JsonRpcProvider(GANACHE_URL)
-    const epochTreeDepth = 32
-    const unirep = await deployUnirep(
-        wallet,
-        {
-            globalStateTreeDepth: 5,
-            userStateTreeDepth: 5,
-            epochTreeDepth,
-        },
-        {
-            ...settings,
-            ...overrides,
-        }
-    )
+    const unirep = await deployUnirep(wallet, treeDepth, {
+        ...settings,
+        ...overrides,
+    })
     const UnirepSocialF = new ethers.ContractFactory(
         UnirepSocial.abi,
         UnirepSocial.bytecode,
@@ -53,7 +45,7 @@ async function deploy(wallet: ethers.Wallet, overrides = {}) {
         airdrop
     )
     await unirepSocial.deployed()
-    return { unirep, unirepSocial, epochTreeDepth, provider }
+    return { unirep, unirepSocial, provider }
 }
 
 export async function startServer(contractOverrides = {}) {
