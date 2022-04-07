@@ -45,6 +45,7 @@ export const getAirdrop = async (req, res) => {
         currentEpoch
     )
     if (error !== undefined) {
+        console.log('get airdrop error: ' + error)
         res.status(422).json({ error: error })
         return
     }

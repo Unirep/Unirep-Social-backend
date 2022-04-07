@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response, Router } from 'express'
 import GenInvitationCodeController from '../controllers/GenInvitationCodeController'
-import InvitationCode, { IInvitationCode } from '../models/invitationCode'
+import InvitationCode from '../models/invitationCode'
 import { ADMIN_SESSION_CODE } from '../constants'
 import catchError from './catchError'
 
@@ -27,7 +27,7 @@ router.get(
             res.status(204).end()
             return
         }
-        const code = InvitationCode.findOneAndDelete({ code: req.params.ic })
+        const code = InvitationCode.findOne({ code: req.params.ic })
         if (code === null) {
             console.log('code is null')
             res.status(403).json({ error: 'Not available invitation code' })

@@ -7,6 +7,7 @@ import {
     UNIREP_SOCIAL_ABI,
 } from '../constants'
 import TransactionManager from '../daemons/TransactionManager'
+import InvitationCode from '../models/invitationCode'
 
 const signUp = async (req: any, res: any) => {
     const uploadedCommitment = req.query.commitment!.toString()
@@ -40,6 +41,15 @@ const signUp = async (req: any, res: any) => {
 
     const epoch = await unirepContract.currentEpoch()
     console.log('transaction: ' + hash + ', sign up epoch: ' + epoch.toString())
+
+    const code = req.query.invitationCode.toString()
+    InvitationCode.findOneAndDelete({ code }, (err, c) => {
+        if (err) {
+            console.log('query invitation code and delete error: ' + err)
+        } else {
+            console.log('invitation code deleted: ' + c)
+        }
+    })
 
     res.json({
         transaction: hash,
