@@ -57,6 +57,18 @@ const listAllPosts = async () => {
         ...p,
         comments: commentsByPostId[p.transactionHash] ?? [],
         votes: votesByPostId[p.transactionHash] ?? [],
+        posRep: votesByPostId[p.transactionHash]
+            ? votesByPostId[p.transactionHash].reduce(
+                  (acc, v) => acc + v.posRep,
+                  0
+              )
+            : 0,
+        negRep: votesByPostId[p.transactionHash]
+            ? votesByPostId[p.transactionHash].reduce(
+                  (acc, v) => acc + v.negRep,
+                  0
+              )
+            : 0,
     }))
 }
 
