@@ -1,8 +1,17 @@
 import { NextFunction, Request, Response, Router } from 'express'
 import CommentController from '../controllers/CommentController'
 import catchError from './catchError'
+import Comment from '../models/comment'
 
 const router = Router()
+
+router.get(
+    `/:id`,
+    catchError(async (req, res) => {
+        const comment = await Comment.findOne(req.params.id).lean()
+        res.json(comment)
+    })
+)
 
 router.get(
     '/',
