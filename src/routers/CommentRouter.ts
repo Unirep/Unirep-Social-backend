@@ -8,7 +8,9 @@ const router = Router()
 router.get(
     `/:id`,
     catchError(async (req, res) => {
-        const comment = await Comment.findOne(req.params.id).lean()
+        const comment = await Comment.findOne({
+            transactionHash: req.params.id,
+        }).lean()
         res.json(comment)
     })
 )
