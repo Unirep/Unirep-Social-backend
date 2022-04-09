@@ -57,6 +57,7 @@ import Record from '../models/record'
 import EpkRecord from '../models/epkRecord'
 import Post from '../models/post'
 import Comment from '../models/comment'
+import Vote from '../models/vote'
 import BlockNumber from '../models/blockNumber'
 import SynchronizerState from '../models/synchronizerState'
 
@@ -879,6 +880,9 @@ export class Synchronizer extends EventEmitter {
     }
 
     async voteSubmittedEvent(event: ethers.Event) {
+        const voteId = event.transactionHash
+        const findVote = await Vote.findOne({ transactionHash: voteId })
+
         const decodedData = this.unirepSocialContract.interface.decodeEventLog(
             'VoteSubmitted',
             event.data
@@ -976,6 +980,37 @@ export class Synchronizer extends EventEmitter {
             })),
             { session: this._session }
         )
+
+        if (findVote) {
+            console.log('find vote!')
+            findVote?.set('status', 1, {
+                new: true,
+                upsert: false,
+                session: this._session,
+            })
+            findVote?.set('transactionHash', _transactionHash, {
+                new: true,
+                upsert: false,
+                session: this._session,
+            })
+            await findVote?.save({ session: this._session })
+        } else {
+            const newVote = new Vote({
+                transactionHash: _transactionHash,
+                epoch: _epoch,
+                voter: _fromEpochKey,
+                receiver: _toEpochKey,
+                posRep: _posRep,
+                negRep: _negRep,
+                graffiti: '0',
+                overwriteGraffiti: false,
+                postId: '',
+                commentId: '',
+                status: 1,
+            })
+            newVote.set({ new: true, upsert: false, session: this._session })
+            await newVote.save({ session: this._session })
+        }
 
         await Record.deleteMany(
             {

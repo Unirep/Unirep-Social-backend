@@ -15,8 +15,9 @@ import {
     UNIREP_SOCIAL_ABI,
     ActionType,
 } from '../constants'
-import Post, { IPost } from '../models/post'
-import Comment, { IComment } from '../models/comment'
+import Post from '../models/post'
+import Comment from '../models/comment'
+import Vote from '../models/vote'
 import { verifyReputationProof } from '../controllers/utils'
 import TransactionManager from '../daemons/TransactionManager'
 import Nullifier from '../models/nullifiers'
@@ -28,7 +29,52 @@ const getCommentsByPostId = async (req, res) => {
 }
 
 const listAllPosts = async () => {
-    return Post.find({ status: 1 }).lean()
+    // load posts
+    const allPosts = await Post.find({ status: 1 }).lean()
+
+    // load comments
+    const comments = await Comment.find({
+        postId: {
+            $in: allPosts.map((p) => p.transactionHash),
+        },
+    }).lean()
+    const commentsByPostId = comments.reduce((acc, c) => {
+        return {
+            ...acc,
+            [c.postId]: [...(acc[c.postId] ?? []), c],
+        }
+    }, {})
+
+    // load votes
+    const votes = await Vote.find({
+        postId: {
+            $in: allPosts.map((p) => p.transactionHash),
+        },
+    }).lean()
+    const votesByPostId = votes.reduce((acc, v) => {
+        return {
+            ...acc,
+            [v.postId]: [...(acc[v.postId] ?? []), v],
+        }
+    }, {})
+
+    return allPosts.map((p) => ({
+        ...p,
+        comments: commentsByPostId[p.transactionHash] ?? [],
+        votes: votesByPostId[p.transactionHash] ?? [],
+        posRep: votesByPostId[p.transactionHash]
+            ? votesByPostId[p.transactionHash].reduce(
+                  (acc, v) => acc + v.posRep,
+                  0
+              )
+            : 0,
+        negRep: votesByPostId[p.transactionHash]
+            ? votesByPostId[p.transactionHash].reduce(
+                  (acc, v) => acc + v.negRep,
+                  0
+              )
+            : 0,
+    }))
 }
 
 const getPostsWithEpks = async (epks: string[]) => {

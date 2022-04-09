@@ -10,7 +10,7 @@ import {
     ActionType,
     UNIREP_SOCIAL_ATTESTER_ID,
 } from '../constants'
-import { IVote } from '../models/vote'
+import Vote from '../models/vote'
 import Proof from '../models/proof'
 import Post from '../models/post'
 import Comment from '../models/comment'
@@ -54,6 +54,7 @@ const vote = async (req: any, res: any) => {
             })
             return
         }
+
         console.log('find post proof index: ' + post.proofIndex)
         const validProof = await Proof.findOne({
             index: post.proofIndex,
@@ -140,35 +141,39 @@ const vote = async (req: any, res: any) => {
         }
     )
     // save to db data
-    const newVote: IVote = {
+    const newVote = await Vote.create({
         transactionHash: hash,
         epoch: currentEpoch,
         voter: epochKey,
+        receiver: req.body.receiver,
         posRep: req.body.upvote,
         negRep: req.body.downvote,
         graffiti: '0',
         overwriteGraffiti: false,
-    }
+        postId: isPost ? dataId : '',
+        commentId: isPost ? '' : dataId,
+        status: 0,
+    })
 
-    if (isPost) {
-        await Post.findOneAndUpdate(
-            { transactionHash: dataId },
-            {
-                $push: { votes: newVote },
-                $inc: { posRep: newVote.posRep, negRep: newVote.negRep },
-            },
-            { new: true, upsert: false }
-        )
-    } else {
-        await Comment.findOneAndUpdate(
-            { transactionHash: dataId },
-            {
-                $push: { votes: newVote },
-                $inc: { posRep: newVote.posRep, negRep: newVote.negRep },
-            },
-            { new: true, upsert: false }
-        )
-    }
+    // if (isPost) {
+    //     await Post.findOneAndUpdate(
+    //         { transactionHash: dataId },
+    //         {
+    //             $push: { votes: newVote },
+    //             $inc: { posRep: newVote.posRep, negRep: newVote.negRep },
+    //         },
+    //         { new: true, upsert: false }
+    //     )
+    // } else {
+    //     await Comment.findOneAndUpdate(
+    //         { transactionHash: dataId },
+    //         {
+    //             $push: { votes: newVote },
+    //             $inc: { posRep: newVote.posRep, negRep: newVote.negRep },
+    //         },
+    //         { new: true, upsert: false }
+    //     )
+    // }
     await Nullifier.create(
         reputationProof.repNullifiers
             .filter((n) => n.toString() !== '0')
@@ -187,11 +192,12 @@ const vote = async (req: any, res: any) => {
         epoch: currentEpoch,
         action: ActionType.Vote,
         transactionHash: hash,
-        data: '',
+        data: dataId,
         confirmed: false,
     })
     res.json({
         transaction: hash,
+        newVote,
     })
 }
 
