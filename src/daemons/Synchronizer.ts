@@ -659,6 +659,16 @@ export class Synchronizer extends EventEmitter {
 
             await newComment.save({ session: this._session })
         }
+        await Post.updateOne(
+            {
+                transactionHash: postId,
+            },
+            {
+                $inc: {
+                    commentCount: 1,
+                },
+            }
+        )
 
         await Record.deleteMany(
             {
