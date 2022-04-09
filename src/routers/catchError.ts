@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express'
 
-export default (fn: any) =>
+export default (fn: (req: Request, res: Response, next: NextFunction) => any) =>
     async (req: Request, res: Response, next: NextFunction) => {
         try {
             await fn(req, res, next)

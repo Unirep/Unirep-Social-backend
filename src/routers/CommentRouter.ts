@@ -17,7 +17,7 @@ router.get(
 
 router.get(
     '/',
-    catchError(async (req: Request, res: Response, next: NextFunction) => {
+    catchError(async (req, res, next) => {
         if (req.query.query === undefined) {
             const result = await CommentController.listAllComments()
             res.json(result)
