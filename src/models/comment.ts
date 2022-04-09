@@ -1,6 +1,5 @@
 import * as mongoose from 'mongoose'
 import { Schema, Document } from 'mongoose'
-import { IVote } from './vote'
 
 export interface IComment extends Document {
     postId: string
@@ -15,7 +14,7 @@ export interface IComment extends Document {
     minRep: number
     posRep: number
     negRep: number
-    votes: [IVote]
+    totalRep: number
     status: number // 0: pending, 1: on-chain, 2: disabled
 }
 
@@ -31,9 +30,9 @@ const CommentSchema: Schema = new Schema(
         proofIndex: { type: Number },
         proveMinRep: { type: Boolean },
         minRep: { type: Number },
-        posRep: { type: Number, required: true },
-        negRep: { type: Number, required: true },
-        votes: { type: [] },
+        posRep: { type: Number, default: 0 },
+        negRep: { type: Number, default: 0 },
+        totalRep: { type: Number, default: 0 },
         status: { type: Number, required: true },
     },
     {

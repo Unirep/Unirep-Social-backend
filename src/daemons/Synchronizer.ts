@@ -881,7 +881,6 @@ export class Synchronizer extends EventEmitter {
 
     async voteSubmittedEvent(event: ethers.Event) {
         const voteId = event.transactionHash
-        const findVote = await Vote.findOne({ transactionHash: voteId })
 
         const decodedData = this.unirepSocialContract.interface.decodeEventLog(
             'VoteSubmitted',
@@ -980,7 +979,7 @@ export class Synchronizer extends EventEmitter {
             })),
             { session: this._session }
         )
-
+        const findVote = await Vote.findOne({ transactionHash: voteId })
         if (findVote) {
             console.log('find vote!')
             findVote?.set('status', 1, {
@@ -1010,6 +1009,37 @@ export class Synchronizer extends EventEmitter {
             })
             newVote.set({ new: true, upsert: false, session: this._session })
             await newVote.save({ session: this._session })
+        }
+        const vote = await Vote.findOne({
+            transactionHash: _transactionHash,
+        })
+        if (!vote) throw new Error('Unable to find vote')
+        if (vote.postId) {
+            await Post.updateOne(
+                {
+                    transactionHash: vote.postId,
+                },
+                {
+                    $inc: {
+                        posRep: vote.posRep,
+                        negRep: vote.negRep,
+                        totalRep: vote.negRep + vote.posRep,
+                    },
+                }
+            )
+        } else if (vote.commentId) {
+            await Comment.updateOne(
+                {
+                    transactionHash: vote.commentId,
+                },
+                {
+                    $inc: {
+                        posRep: vote.posRep,
+                        negRep: vote.negRep,
+                        totalRep: vote.negRep + vote.posRep,
+                    },
+                }
+            )
         }
 
         await Record.deleteMany(

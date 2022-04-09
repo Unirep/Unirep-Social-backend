@@ -31,50 +31,7 @@ const getCommentsByPostId = async (req, res) => {
 const listAllPosts = async () => {
     // load posts
     const allPosts = await Post.find({ status: 1 }).lean()
-
-    // load comments
-    const comments = await Comment.find({
-        postId: {
-            $in: allPosts.map((p) => p.transactionHash),
-        },
-    }).lean()
-    const commentsByPostId = comments.reduce((acc, c) => {
-        return {
-            ...acc,
-            [c.postId]: [...(acc[c.postId] ?? []), c],
-        }
-    }, {})
-
-    // load votes
-    const votes = await Vote.find({
-        postId: {
-            $in: allPosts.map((p) => p.transactionHash),
-        },
-    }).lean()
-    const votesByPostId = votes.reduce((acc, v) => {
-        return {
-            ...acc,
-            [v.postId]: [...(acc[v.postId] ?? []), v],
-        }
-    }, {})
-
-    return allPosts.map((p) => ({
-        ...p,
-        comments: commentsByPostId[p.transactionHash] ?? [],
-        votes: votesByPostId[p.transactionHash] ?? [],
-        posRep: votesByPostId[p.transactionHash]
-            ? votesByPostId[p.transactionHash].reduce(
-                  (acc, v) => acc + v.posRep,
-                  0
-              )
-            : 0,
-        negRep: votesByPostId[p.transactionHash]
-            ? votesByPostId[p.transactionHash].reduce(
-                  (acc, v) => acc + v.negRep,
-                  0
-              )
-            : 0,
-    }))
+    return allPosts
 }
 
 const getPostsWithEpks = async (epks: string[]) => {
@@ -94,29 +51,32 @@ const getPostWithQuery = async (
 ) => {
     // get posts and sort
     let allPosts: any[] = []
-    if (epks.length === 0) {
-        allPosts = await listAllPosts()
-    } else {
-        allPosts = await getPostsWithEpks(epks)
+    const baseQuery = {
+        ...(epks.length > 0 ? { epochKey: { $in: epks } } : {}),
     }
     allPosts.sort((a, b) => (a.created_at > b.created_at ? -1 : 1))
     if (query === QueryType.New) {
         // allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
+        allPosts = await Post.find(baseQuery).sort({
+            created_at: -1,
+        })
     } else if (query === QueryType.Boost) {
-        allPosts.sort((a, b) => (a.posRep > b.posRep ? -1 : 1))
+        allPosts = await Post.find(baseQuery).sort({
+            posRep: -1,
+        })
     } else if (query === QueryType.Comments) {
-        allPosts.sort((a, b) =>
-            a.comments.length > b.comments.length ? -1 : 1
-        )
+        allPosts = await Post.find(baseQuery).sort({
+            commentCount: -1,
+        })
     } else if (query === QueryType.Squash) {
-        allPosts.sort((a, b) => (a.negRep > b.negRep ? -1 : 1))
+        allPosts = await Post.find(baseQuery).sort({
+            negRep: -1,
+        })
     } else if (query === QueryType.Rep) {
-        allPosts.sort((a, b) =>
-            a.posRep - a.negRep >= b.posRep - b.negRep ? -1 : 1
-        )
+        allPosts = await Post.find(baseQuery).sort({
+            totalRep: -1,
+        })
     }
-
-    // console.log(allPosts);
 
     // filter out posts more than loadPostCount
     if (lastRead === '0') {
