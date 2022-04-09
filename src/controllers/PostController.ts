@@ -22,24 +22,13 @@ import TransactionManager from '../daemons/TransactionManager'
 import Nullifier from '../models/nullifiers'
 import Record from '../models/record'
 
-const listAllPosts = async () => {
-    const allPosts = await Post.find({ status: 1 }).lean()
-    const comments = await Comment.find({
-        postId: {
-            $in: allPosts.map((p) => p.transactionHash),
-        },
-    }).lean()
-    const commentsByPostId = comments.reduce((acc, c) => {
-        return {
-            ...acc,
-            [c.postId]: [...(acc[c.postId] ?? []), c],
-        }
-    }, {})
+const getCommentsByPostId = async (req, res) => {
+    const { postId } = req.params
+    res.json(await Comment.find({ postId }).lean())
+}
 
-    return allPosts.map((p) => ({
-        ...p,
-        comments: commentsByPostId[p.transactionHash] ?? [],
-    }))
+const listAllPosts = async () => {
+    return Post.find({ status: 1 }).lean()
 }
 
 const getPostsWithEpks = async (epks: string[]) => {
@@ -49,15 +38,7 @@ const getPostsWithEpks = async (epks: string[]) => {
 const getPostWithId = async (postId: string) => {
     const post = await Post.findOne({ transactionHash: postId })
     if (!post) return null
-    const comments = await Comment.find({
-        postId,
-    })
-    return [
-        {
-            ...post.toObject(),
-            comments,
-        },
-    ]
+    return [post.toObject()]
 }
 
 const getPostWithQuery = async (
@@ -213,6 +194,7 @@ const publishPost = async (req: any, res: any) => {
 }
 
 export default {
+    getCommentsByPostId,
     listAllPosts,
     getPostWithQuery,
     getPostWithId,

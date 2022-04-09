@@ -42,6 +42,8 @@ router.get(
     })
 )
 
+router.get('/:postId/comments', catchError(PostController.getCommentsByPostId))
+
 router.post('/', catchError(PostController.publishPost))
 
 export default router
