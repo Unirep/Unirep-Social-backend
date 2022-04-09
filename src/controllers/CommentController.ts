@@ -18,6 +18,7 @@ import Nullifier from '../models/nullifiers'
 import { verifyReputationProof } from '../controllers/utils'
 import TransactionManager from '../daemons/TransactionManager'
 import Record from '../models/record'
+import Post from '../models/post'
 
 const listAllComments = async () => {
     const comments = await Comment.find({})
@@ -141,6 +142,16 @@ const leaveComment = async (req: any, res: any) => {
     })
 
     const comment = await newComment.save()
+    await Post.updateOne(
+        {
+            transactionHash: req.body.postId,
+        },
+        {
+            $inc: {
+                commentCount: 1,
+            },
+        }
+    )
 
     await Nullifier.create(
         reputationProof.repNullifiers

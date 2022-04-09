@@ -16,6 +16,7 @@ export interface IPost extends Document {
     negRep: number
     votes: [IVote]
     status: number // 0: pending, 1: on-chain, 2: disabled
+    commentCount: number
 }
 
 const PostSchema: Schema = new Schema(
@@ -34,6 +35,7 @@ const PostSchema: Schema = new Schema(
         negRep: { type: Number, required: true },
         votes: { type: [] },
         status: { type: Number, required: true },
+        commentCount: { type: Number, default: 0 },
     },
     {
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
