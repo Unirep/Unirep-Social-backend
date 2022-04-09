@@ -993,6 +993,33 @@ export class Synchronizer extends EventEmitter {
                 session: this._session,
             })
             await findVote?.save({ session: this._session })
+            if (findVote.postId) {
+                await Post.updateOne(
+                    {
+                        transactionHash: findVote.postId,
+                    },
+                    {
+                        $inc: {
+                            posRep: findVote.posRep,
+                            negRep: findVote.negRep,
+                            totalRep: findVote.negRep + findVote.posRep,
+                        },
+                    }
+                )
+            } else if (findVote.commentId) {
+                await Comment.updateOne(
+                    {
+                        transactionHash: findVote.commentId,
+                    },
+                    {
+                        $inc: {
+                            posRep: findVote.posRep,
+                            negRep: findVote.negRep,
+                            totalRep: findVote.negRep + findVote.posRep,
+                        },
+                    }
+                )
+            }
         } else {
             const newVote = new Vote({
                 transactionHash: _transactionHash,
@@ -1009,37 +1036,6 @@ export class Synchronizer extends EventEmitter {
             })
             newVote.set({ new: true, upsert: false, session: this._session })
             await newVote.save({ session: this._session })
-        }
-        const vote = await Vote.findOne({
-            transactionHash: _transactionHash,
-        })
-        if (!vote) throw new Error('Unable to find vote')
-        if (vote.postId) {
-            await Post.updateOne(
-                {
-                    transactionHash: vote.postId,
-                },
-                {
-                    $inc: {
-                        posRep: vote.posRep,
-                        negRep: vote.negRep,
-                        totalRep: vote.negRep + vote.posRep,
-                    },
-                }
-            )
-        } else if (vote.commentId) {
-            await Comment.updateOne(
-                {
-                    transactionHash: vote.commentId,
-                },
-                {
-                    $inc: {
-                        posRep: vote.posRep,
-                        negRep: vote.negRep,
-                        totalRep: vote.negRep + vote.posRep,
-                    },
-                }
-            )
         }
 
         await Record.deleteMany(
