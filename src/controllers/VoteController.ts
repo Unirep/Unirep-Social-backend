@@ -38,7 +38,7 @@ const vote = async (req: any, res: any) => {
         publicSignals,
         formatProofForSnarkjsVerification(proof)
     )
-    const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
+    const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16).padStart(16, '0')
     const receiver = parseInt(req.body.receiver, 16)
 
     const { isPost, dataId } = req.body

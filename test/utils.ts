@@ -27,7 +27,7 @@ export const waitForBackendBlock = async (t, blockNumber) => {
 export const signUp = async (t) => {
     const iden = genIdentity()
     const commitment = genIdentityCommitment(iden)
-        .toString(16)
+        .toString(16).padStart(16, '0')
         .padStart(64, '0')
     const currentEpoch = await t.context.unirep.currentEpoch()
 
@@ -110,7 +110,7 @@ export const getSpent = async (t, iden) => {
                 currentEpoch,
                 i,
                 t.context.epochTreeDepth
-            ).toString(16)
+            ).toString(16).padStart(16, '0')
         )
     }
     const paramStr = epks.join('_')

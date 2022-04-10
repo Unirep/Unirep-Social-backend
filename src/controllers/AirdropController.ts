@@ -62,7 +62,7 @@ export const getAirdrop = async (req, res) => {
         }
     )
     await Record.create({
-        to: publicSignals[1].toString(16),
+        to: publicSignals[1].toString(16).padStart(16, '0'),
         from: 'UnirepSocial',
         upvote: DEFAULT_AIRDROPPED_KARMA,
         downvote: 0,

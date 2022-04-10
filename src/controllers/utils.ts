@@ -85,7 +85,7 @@ const verifyAirdropProof = async (
     currentEpoch: number
 ): Promise<string | undefined> => {
     const epoch = Number(signUpProof.epoch)
-    const epk = signUpProof.epochKey.toString(16)
+    const epk = signUpProof.epochKey.toString(16).padStart(16, '0')
     const gstRoot = signUpProof.globalStateTree.toString()
     const attesterId = signUpProof.attesterId
     const userHasSignedUp = signUpProof.userHasSignedUp

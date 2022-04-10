@@ -25,7 +25,7 @@ test('should vote on a post', async (t: any) => {
         const upvote = 5
         const downvote = 0
         const dataId = transaction
-        const receiver = post.epochKey.toString(16)
+        const receiver = post.epochKey.toString(16).padStart(16, '0')
         await vote(t, user2.iden, receiver, dataId, true, upvote, downvote)
     }
 
@@ -34,7 +34,7 @@ test('should vote on a post', async (t: any) => {
         const upvote = 0
         const downvote = 2
         const dataId = transaction
-        const receiver = post.epochKey.toString(16)
+        const receiver = post.epochKey.toString(16).padStart(16, '0')
         await vote(t, user2.iden, receiver, dataId, true, upvote, downvote)
     }
     t.pass()
@@ -65,7 +65,7 @@ test('should vote on comment', async (t: any) => {
         const upvote = 4
         const downvote = 0
         const dataId = transaction
-        const receiver = comment.epochKey.toString(16)
+        const receiver = comment.epochKey.toString(16).padStart(16, '0')
         await vote(t, user2.iden, receiver, dataId, false, upvote, downvote)
     }
 
@@ -74,7 +74,7 @@ test('should vote on comment', async (t: any) => {
         const upvote = 0
         const downvote = 1
         const dataId = transaction
-        const receiver = comment.epochKey.toString(16)
+        const receiver = comment.epochKey.toString(16).padStart(16, '0')
         await vote(t, user2.iden, receiver, dataId, false, upvote, downvote)
     }
     t.pass()

@@ -557,7 +557,7 @@ export class Synchronizer extends EventEmitter {
         const commentId = event.transactionHash
         const postId = event.topics[2]
         const _epoch = Number(event.topics[1])
-        const _epochKey = BigInt(event.topics[3]).toString(16)
+        const _epochKey = BigInt(event.topics[3]).toString(16).padStart(16, '0')
         const _minRep = Number(decodedData.proofRelated.minRep._hex)
         const findComment = await Comment.findOne({
             transactionHash: commentId,
@@ -717,7 +717,7 @@ export class Synchronizer extends EventEmitter {
 
         const _transactionHash = event.transactionHash
         const _epoch = Number(event.topics[1])
-        const _epochKey = BigInt(event.topics[2]).toString(16)
+        const _epochKey = BigInt(event.topics[2]).toString(16).padStart(16, '0')
         const _minRep = Number(decodedData.proofRelated.minRep._hex)
 
         const findValidProof = await Proof.findOne({
@@ -875,8 +875,8 @@ export class Synchronizer extends EventEmitter {
         )
         const _transactionHash = event.transactionHash
         const _epoch = Number(event.topics[1])
-        const _fromEpochKey = BigInt(event.topics[2]).toString(16)
-        const _toEpochKey = BigInt(event.topics[3]).toString(16)
+        const _fromEpochKey = BigInt(event.topics[2]).toString(16).padStart(16, '0')
+        const _toEpochKey = BigInt(event.topics[3]).toString(16).padStart(16, '0')
         const _toEpochKeyProofIndex = Number(
             decodedData.toEpochKeyProofIndex._hex
         )
@@ -1026,7 +1026,7 @@ export class Synchronizer extends EventEmitter {
         )
         const _transactionHash = event.transactionHash
         const _epoch = Number(event.topics[1])
-        const _epochKey = BigInt(event.topics[2]).toString(16)
+        const _epochKey = BigInt(event.topics[2]).toString(16).padStart(16, '0')
         const signUpProof = decodedData.proofRelated
 
         const unirepContract = getUnirepContract(UNIREP, DEFAULT_ETH_PROVIDER)
@@ -1172,7 +1172,7 @@ export class Synchronizer extends EventEmitter {
             [
                 {
                     epoch: _epoch,
-                    epochKey: _epochKey.toString(16),
+                    epochKey: _epochKey.toString(16).padStart(16, '0'),
                     index: attestIndex,
                     transactionHash: event.transactionHash,
                     attester: _attester,
@@ -1199,7 +1199,7 @@ export class Synchronizer extends EventEmitter {
             await Attestation.findOneAndUpdate(
                 {
                     epoch: _epoch,
-                    epochKey: _epochKey.toString(16),
+                    epochKey: _epochKey.toString(16).padStart(16, '0'),
                     index: attestIndex,
                 },
                 {
@@ -1221,7 +1221,7 @@ export class Synchronizer extends EventEmitter {
                 await Attestation.findOneAndUpdate(
                     {
                         epoch: _epoch,
-                        epochKey: _epochKey.toString(16),
+                        epochKey: _epochKey.toString(16).padStart(16, '0'),
                         index: attestIndex,
                     },
                     {
@@ -1245,7 +1245,7 @@ export class Synchronizer extends EventEmitter {
         await Attestation.findOneAndUpdate(
             {
                 epoch: _epoch,
-                epochKey: _epochKey.toString(16),
+                epochKey: _epochKey.toString(16).padStart(16, '0'),
                 index: attestIndex,
             },
             {
@@ -1253,7 +1253,7 @@ export class Synchronizer extends EventEmitter {
             },
             { session: this._session }
         )
-        const epochKey = _epochKey.toString(16)
+        const epochKey = _epochKey.toString(16).padStart(16, '0')
         const attestations = this.epochKeyToAttestationsMap[epochKey]
         if (!attestations) this.epochKeyToAttestationsMap[epochKey] = []
         this.epochKeyToAttestationsMap[epochKey].push(attestation)

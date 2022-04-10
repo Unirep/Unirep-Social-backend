@@ -134,7 +134,7 @@ const publishPost = async (req: any, res: any) => {
         publicSignals,
         formatProofForSnarkjsVerification(proof)
     )
-    const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
+    const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16).padStart(16, '0')
     const minRep = Number(reputationProof.minRep)
 
     const error = await verifyReputationProof(
