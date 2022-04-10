@@ -39,7 +39,7 @@ const vote = async (req: any, res: any) => {
         formatProofForSnarkjsVerification(proof)
     )
     const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
-    const receiver = parseInt(req.body.receiver, 16)
+    const receiver = parseInt(req.body.receiver, 16).toString(10)
 
     const { isPost, dataId } = req.body
     let postProofIndex: number = 0
