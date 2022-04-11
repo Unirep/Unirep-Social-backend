@@ -1173,7 +1173,7 @@ export class Synchronizer extends EventEmitter {
             }
             const sealedHashChainResult = hashLeftRight(BigInt(1), hashChain)
             const epochTreeLeaf = {
-                epochKey: BigInt(parseInt(epochKey, 16)),
+                epochKey: BigInt('0x' + epochKey),
                 hashchainResult: sealedHashChainResult,
             }
             epochTreeLeaves.push(epochTreeLeaf)
