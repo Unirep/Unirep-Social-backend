@@ -127,7 +127,7 @@ const vote = async (req: any, res: any) => {
     const calldata = unirepSocialContract.interface.encodeFunctionData('vote', [
         req.body.upvote,
         req.body.downvote,
-        receiver,
+        ethers.BigNumber.from(`0x${req.body.receiver.replace('0x', '')}`),
         postProofIndex,
         reputationProof,
     ])
