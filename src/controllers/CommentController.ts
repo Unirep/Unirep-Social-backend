@@ -18,6 +18,12 @@ import Nullifier from '../models/nullifiers'
 import { verifyReputationProof } from '../controllers/utils'
 import TransactionManager from '../daemons/TransactionManager'
 import Record from '../models/record'
+import Vote from '../models/vote'
+
+const getVotesByCommentId = async (req, res) => {
+    const { commentId } = req.params
+    res.json(await Vote.find({ commentId }).lean())
+}
 
 const listAllComments = async () => {
     const comments = await Comment.find({})
@@ -173,6 +179,7 @@ const leaveComment = async (req: any, res: any) => {
 }
 
 export default {
+    getVotesByCommentId,
     leaveComment,
     getCommentsWithQuery,
     getCommentsWithEpks,

@@ -49,5 +49,9 @@ router.get(
 )
 
 router.post('/', catchError(CommentController.leaveComment))
+router.get(
+    '/:commentId/votes',
+    catchError(CommentController.getVotesByCommentId)
+)
 
 export default router

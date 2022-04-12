@@ -43,6 +43,7 @@ router.get(
 )
 
 router.get('/:postId/comments', catchError(PostController.getCommentsByPostId))
+router.get('/:postId/votes', catchError(PostController.getVotesByPostId))
 
 router.post('/', catchError(PostController.publishPost))
 

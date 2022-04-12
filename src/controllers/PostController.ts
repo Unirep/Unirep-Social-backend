@@ -28,6 +28,11 @@ const getCommentsByPostId = async (req, res) => {
     res.json(await Comment.find({ postId }).lean())
 }
 
+const getVotesByPostId = async (req, res) => {
+    const { postId } = req.params
+    res.json(await Vote.find({ postId }).lean())
+}
+
 const listAllPosts = async () => {
     // load posts
     const allPosts = await Post.find({ status: 1 }).lean()
@@ -200,6 +205,7 @@ const publishPost = async (req: any, res: any) => {
 }
 
 export default {
+    getVotesByPostId,
     getCommentsByPostId,
     listAllPosts,
     getPostWithQuery,
