@@ -1,12 +1,23 @@
 import { NextFunction, Request, Response, Router } from 'express'
 import CommentController from '../controllers/CommentController'
 import catchError from './catchError'
+import Comment from '../models/comment'
 
 const router = Router()
 
 router.get(
+    `/:id`,
+    catchError(async (req, res) => {
+        const comment = await Comment.findOne({
+            transactionHash: req.params.id,
+        }).lean()
+        res.json(comment)
+    })
+)
+
+router.get(
     '/',
-    catchError(async (req: Request, res: Response, next: NextFunction) => {
+    catchError(async (req, res, next) => {
         if (req.query.query === undefined) {
             const result = await CommentController.listAllComments()
             res.json(result)
@@ -38,5 +49,9 @@ router.get(
 )
 
 router.post('/', catchError(CommentController.leaveComment))
+router.get(
+    '/:commentId/votes',
+    catchError(CommentController.getVotesByCommentId)
+)
 
 export default router

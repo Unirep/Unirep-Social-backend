@@ -57,6 +57,7 @@ import Record from '../models/record'
 import EpkRecord from '../models/epkRecord'
 import Post from '../models/post'
 import Comment from '../models/comment'
+import Vote from '../models/vote'
 import BlockNumber from '../models/blockNumber'
 import SynchronizerState from '../models/synchronizerState'
 
@@ -659,6 +660,16 @@ export class Synchronizer extends EventEmitter {
 
             await newComment.save({ session: this._session })
         }
+        await Post.updateOne(
+            {
+                transactionHash: postId,
+            },
+            {
+                $inc: {
+                    commentCount: 1,
+                },
+            }
+        )
 
         await Record.deleteMany(
             {
@@ -869,6 +880,8 @@ export class Synchronizer extends EventEmitter {
     }
 
     async voteSubmittedEvent(event: ethers.Event) {
+        const voteId = event.transactionHash
+
         const decodedData = this.unirepSocialContract.interface.decodeEventLog(
             'VoteSubmitted',
             event.data
@@ -966,6 +979,64 @@ export class Synchronizer extends EventEmitter {
             })),
             { session: this._session }
         )
+        const findVote = await Vote.findOne({ transactionHash: voteId })
+        if (findVote) {
+            console.log('find vote!')
+            findVote?.set('status', 1, {
+                new: true,
+                upsert: false,
+                session: this._session,
+            })
+            findVote?.set('transactionHash', _transactionHash, {
+                new: true,
+                upsert: false,
+                session: this._session,
+            })
+            await findVote?.save({ session: this._session })
+            if (findVote.postId) {
+                await Post.updateOne(
+                    {
+                        transactionHash: findVote.postId,
+                    },
+                    {
+                        $inc: {
+                            posRep: findVote.posRep,
+                            negRep: findVote.negRep,
+                            totalRep: findVote.negRep + findVote.posRep,
+                        },
+                    }
+                )
+            } else if (findVote.commentId) {
+                await Comment.updateOne(
+                    {
+                        transactionHash: findVote.commentId,
+                    },
+                    {
+                        $inc: {
+                            posRep: findVote.posRep,
+                            negRep: findVote.negRep,
+                            totalRep: findVote.negRep + findVote.posRep,
+                        },
+                    }
+                )
+            }
+        } else {
+            const newVote = new Vote({
+                transactionHash: _transactionHash,
+                epoch: _epoch,
+                voter: _fromEpochKey,
+                receiver: _toEpochKey,
+                posRep: _posRep,
+                negRep: _negRep,
+                graffiti: '0',
+                overwriteGraffiti: false,
+                postId: '',
+                commentId: '',
+                status: 1,
+            })
+            newVote.set({ new: true, upsert: false, session: this._session })
+            await newVote.save({ session: this._session })
+        }
 
         await Record.deleteMany(
             {
@@ -1102,7 +1173,7 @@ export class Synchronizer extends EventEmitter {
             }
             const sealedHashChainResult = hashLeftRight(BigInt(1), hashChain)
             const epochTreeLeaf = {
-                epochKey: BigInt(parseInt(epochKey, 16)),
+                epochKey: BigInt('0x' + epochKey),
                 hashchainResult: sealedHashChainResult,
             }
             epochTreeLeaves.push(epochTreeLeaf)

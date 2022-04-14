@@ -33,6 +33,7 @@ export const signUp = async (t) => {
 
     const params = new URLSearchParams({
         commitment,
+        invitationCode: 'ic',
     })
     const r = await fetch(`${t.context.url}/api/signup?${params}`)
     const data = await r.json()

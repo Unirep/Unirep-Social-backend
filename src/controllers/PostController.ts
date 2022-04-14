@@ -15,31 +15,28 @@ import {
     UNIREP_SOCIAL_ABI,
     ActionType,
 } from '../constants'
-import Post, { IPost } from '../models/post'
-import Comment, { IComment } from '../models/comment'
+import Post from '../models/post'
+import Comment from '../models/comment'
+import Vote from '../models/vote'
 import { verifyReputationProof } from '../controllers/utils'
 import TransactionManager from '../daemons/TransactionManager'
 import Nullifier from '../models/nullifiers'
 import Record from '../models/record'
 
-const listAllPosts = async () => {
-    const allPosts = await Post.find({ status: 1 }).lean()
-    const comments = await Comment.find({
-        postId: {
-            $in: allPosts.map((p) => p.transactionHash),
-        },
-    }).lean()
-    const commentsByPostId = comments.reduce((acc, c) => {
-        return {
-            ...acc,
-            [c.postId]: [...(acc[c.postId] ?? []), c],
-        }
-    }, {})
+const getCommentsByPostId = async (req, res) => {
+    const { postId } = req.params
+    res.json(await Comment.find({ postId }).lean())
+}
 
-    return allPosts.map((p) => ({
-        ...p,
-        comments: commentsByPostId[p.transactionHash] ?? [],
-    }))
+const getVotesByPostId = async (req, res) => {
+    const { postId } = req.params
+    res.json(await Vote.find({ postId }).lean())
+}
+
+const listAllPosts = async () => {
+    // load posts
+    const allPosts = await Post.find({ status: 1 }).lean()
+    return allPosts
 }
 
 const getPostsWithEpks = async (epks: string[]) => {
@@ -49,15 +46,7 @@ const getPostsWithEpks = async (epks: string[]) => {
 const getPostWithId = async (postId: string) => {
     const post = await Post.findOne({ transactionHash: postId })
     if (!post) return null
-    const comments = await Comment.find({
-        postId,
-    })
-    return [
-        {
-            ...post.toObject(),
-            comments,
-        },
-    ]
+    return [post.toObject()]
 }
 
 const getPostWithQuery = async (
@@ -67,29 +56,32 @@ const getPostWithQuery = async (
 ) => {
     // get posts and sort
     let allPosts: any[] = []
-    if (epks.length === 0) {
-        allPosts = await listAllPosts()
-    } else {
-        allPosts = await getPostsWithEpks(epks)
+    const baseQuery = {
+        ...(epks.length > 0 ? { epochKey: { $in: epks } } : {}),
     }
     allPosts.sort((a, b) => (a.created_at > b.created_at ? -1 : 1))
     if (query === QueryType.New) {
         // allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
+        allPosts = await Post.find(baseQuery).sort({
+            created_at: -1,
+        })
     } else if (query === QueryType.Boost) {
-        allPosts.sort((a, b) => (a.posRep > b.posRep ? -1 : 1))
+        allPosts = await Post.find(baseQuery).sort({
+            posRep: -1,
+        })
     } else if (query === QueryType.Comments) {
-        allPosts.sort((a, b) =>
-            a.comments.length > b.comments.length ? -1 : 1
-        )
+        allPosts = await Post.find(baseQuery).sort({
+            commentCount: -1,
+        })
     } else if (query === QueryType.Squash) {
-        allPosts.sort((a, b) => (a.negRep > b.negRep ? -1 : 1))
+        allPosts = await Post.find(baseQuery).sort({
+            negRep: -1,
+        })
     } else if (query === QueryType.Rep) {
-        allPosts.sort((a, b) =>
-            a.posRep - a.negRep >= b.posRep - b.negRep ? -1 : 1
-        )
+        allPosts = await Post.find(baseQuery).sort({
+            totalRep: -1,
+        })
     }
-
-    // console.log(allPosts);
 
     // filter out posts more than loadPostCount
     if (lastRead === '0') {
@@ -213,6 +205,8 @@ const publishPost = async (req: any, res: any) => {
 }
 
 export default {
+    getVotesByPostId,
+    getCommentsByPostId,
     listAllPosts,
     getPostWithQuery,
     getPostWithId,
