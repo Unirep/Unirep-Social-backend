@@ -5,6 +5,7 @@
     "scripts": {
         "start": "nodemon src/app.ts",
         "start:daemon": "ts-node src/app.ts",
+        "keys": "rm -rf keys ; cp -r node_modules/@unirep/circuits/build ./keys",
         "build": "tsc",
         "lint": "prettier .",
         "test": "sh scripts/pretest.sh && ava test/*.test.ts -T 5m --verbose"

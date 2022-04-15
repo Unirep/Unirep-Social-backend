@@ -1,4 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express'
+import path from 'path'
 import cors from 'cors'
 import mongoose from 'mongoose'
 import dotenv from 'dotenv'
@@ -26,9 +27,6 @@ async function main() {
         console.error.bind(console, 'MongoDB connection error:')
     )
 
-    // now start listening for eth events
-    // await startEventListeners()
-
     // start watching for epoch transitions
     await EpochManager.updateWatch()
     TransactionManager.configure(DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER)
@@ -38,6 +36,7 @@ async function main() {
     // now start the http server
     const app = express()
     app.use(cors())
+    app.use('/build', express.static(path.join(__dirname, '../keys')))
     app.use(express.json())
     app.use('/api', MasterRouter)
     const port = process.env.APP_PORT ?? 5000
