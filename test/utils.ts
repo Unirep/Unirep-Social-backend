@@ -31,9 +31,10 @@ export const signUp = async (t) => {
         .padStart(64, '0')
     const currentEpoch = await t.context.unirep.currentEpoch()
 
+    const invitationCode = await getInvitationCode(t)
     const params = new URLSearchParams({
         commitment,
-        invitationCode: 'ic',
+        invitationCode,
     })
     const r = await fetch(`${t.context.url}/api/signup?${params}`)
     const data = await r.json()
