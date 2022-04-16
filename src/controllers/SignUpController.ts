@@ -28,6 +28,14 @@ const signUp = async (req: any, res: any) => {
         })
         return
     }
+
+    const code = req.query.invitationCode.toString()
+    const deleted = await InvitationCode.findOneAndDelete({ code })
+    if (deleted === null) {
+        res.status(403).json({ error: 'Invalid invitation code' })
+        return
+    }
+
     const commitment = `0x${uploadedCommitment.replace('0x', '')}`
 
     const calldata = unirepSocialContract.interface.encodeFunctionData(
@@ -41,15 +49,6 @@ const signUp = async (req: any, res: any) => {
 
     const epoch = await unirepContract.currentEpoch()
     console.log('transaction: ' + hash + ', sign up epoch: ' + epoch.toString())
-
-    const code = req.query.invitationCode.toString()
-    InvitationCode.findOneAndDelete({ code }, (err, c) => {
-        if (err) {
-            console.log('query invitation code and delete error: ' + err)
-        } else {
-            console.log('invitation code deleted: ' + c)
-        }
-    })
 
     res.json({
         transaction: hash,
