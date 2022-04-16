@@ -5,6 +5,7 @@ import {
     DEFAULT_ETH_PROVIDER,
     UNIREP_SOCIAL,
     UNIREP_SOCIAL_ABI,
+    ADMIN_SESSION_CODE,
 } from '../constants'
 import TransactionManager from '../daemons/TransactionManager'
 import InvitationCode from '../models/invitationCode'
@@ -31,7 +32,7 @@ const signUp = async (req: any, res: any) => {
 
     const code = req.query.invitationCode.toString()
     const deleted = await InvitationCode.findOneAndDelete({ code })
-    if (deleted === null) {
+    if (deleted === null && code !== ADMIN_SESSION_CODE) {
         res.status(403).json({ error: 'Invalid invitation code' })
         return
     }
