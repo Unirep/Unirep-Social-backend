@@ -218,8 +218,8 @@ export class Synchronizer extends EventEmitter {
             // first process historical ones then listen
             await this.processEvents(
                 allEvents.filter((e) => {
+                    if (e.blockNumber > state.latestProcessedBlock) return true
                     return (
-                        e.blockNumber > state.latestProcessedBlock ||
                         e.transactionIndex >
                             state.latestProcessedTransactionIndex ||
                         e.logIndex > state.latestProcessedEventIndex
