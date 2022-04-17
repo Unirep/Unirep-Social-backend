@@ -5,6 +5,7 @@
     "scripts": {
         "start": "nodemon src/app.ts",
         "start:daemon": "ts-node src/app.ts",
+        "codes": "ts-node scripts/create_invitation_codes.ts",
         "build": "tsc",
         "lint": "prettier .",
         "test": "sh scripts/pretest.sh && ava test/*.test.ts -T 5m --verbose"
