@@ -27,7 +27,7 @@ router.get(
             res.status(204).end()
             return
         }
-        const code = InvitationCode.findOne({ code: req.params.ic })
+        const code = await InvitationCode.findOne({ code: req.params.ic })
         if (code === null) {
             console.log('code is null')
             res.status(403).json({ error: 'Not available invitation code' })
