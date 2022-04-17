@@ -6,6 +6,6 @@ RUN apk add --no-cache git nodejs npm && \
 COPY . /src
 WORKDIR /src
 
-RUN yarn
+RUN yarn && yarn keys
 
 CMD ["yarn", "start:daemon"]
