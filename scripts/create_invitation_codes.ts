@@ -24,7 +24,7 @@ const [,,invitationCodePath] = process.argv
   const codes = fs.readFileSync(finalPath).toString().split('\n')
   console.log(`Creating ${codes.length} codes in 3 seconds`)
   await new Promise(r => setTimeout(r, 3000))
-  await InvitationCode.insertMany(codes.map(code => ({ code })))
+  await InvitationCode.insertMany(codes.map(code => ({ code: code.replace('\r', '') })))
   console.log(`Created ${codes.length} codes`)
   process.exit(0)
 })()
