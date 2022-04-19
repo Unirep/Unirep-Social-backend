@@ -41,13 +41,24 @@ const vote = async (req: any, res: any) => {
     const epochKey = BigInt(reputationProof.epochKey.toString()).toString(16)
     const receiver = BigInt('0x' + req.body.receiver)
 
-    const { isPost, dataId } = req.body
+    const { dataId } = req.body
+    const [post, comment] = await Promise.all([
+        Post.findOne({ transactionHash: dataId }),
+        Comment.findOne({ transactionHash: dataId }),
+    ])
+    if (post && comment) {
+        res.status(500).json({
+            error: 'Found post and comment with same id',
+        })
+        return
+    } else if (!post && !comment) {
+        res.status(404).json({
+            error: `Unable to find object with id ${dataId}`,
+        })
+        return
+    }
     let postProofIndex: number = 0
-    if (isPost) {
-        const post = await Post.findOne({ transactionHash: dataId })
-        if (!post) {
-            throw new Error('Post not found')
-        }
+    if (post) {
         if (post.epoch !== currentEpoch) {
             res.status(422).json({
                 info: 'The epoch key is expired',
@@ -55,7 +66,6 @@ const vote = async (req: any, res: any) => {
             return
         }
 
-        console.log('find post proof index: ' + post.proofIndex)
         const validProof = await Proof.findOne({
             index: post.proofIndex,
             epoch: currentEpoch,
@@ -68,21 +78,13 @@ const vote = async (req: any, res: any) => {
             return
         }
         postProofIndex = post.proofIndex
-    } else {
-        const comment = await Comment.findOne({ transactionHash: dataId })
-        if (!comment) {
-            res.status(404).json({
-                info: 'Comment not found',
-            })
-            return
-        }
+    } else if (comment) {
         if (comment.epoch !== currentEpoch) {
             res.status(422).json({
                 info: 'Epoch key is expired',
             })
             return
         }
-        console.log('find comment proof index: ' + comment.proofIndex)
         const validProof = await Proof.findOne({
             index: comment.proofIndex,
             epoch: currentEpoch,
@@ -95,6 +97,8 @@ const vote = async (req: any, res: any) => {
             return
         }
         postProofIndex = comment.proofIndex
+    } else {
+        throw new Error('unreachable')
     }
 
     if (Number(postProofIndex) === 0) {
@@ -150,30 +154,11 @@ const vote = async (req: any, res: any) => {
         negRep: req.body.downvote,
         graffiti: '0',
         overwriteGraffiti: false,
-        postId: isPost ? dataId : '',
-        commentId: isPost ? '' : dataId,
+        postId: post ? dataId : '',
+        commentId: comment ? dataId : '',
         status: 0,
     })
 
-    // if (isPost) {
-    //     await Post.findOneAndUpdate(
-    //         { transactionHash: dataId },
-    //         {
-    //             $push: { votes: newVote },
-    //             $inc: { posRep: newVote.posRep, negRep: newVote.negRep },
-    //         },
-    //         { new: true, upsert: false }
-    //     )
-    // } else {
-    //     await Comment.findOneAndUpdate(
-    //         { transactionHash: dataId },
-    //         {
-    //             $push: { votes: newVote },
-    //             $inc: { posRep: newVote.posRep, negRep: newVote.negRep },
-    //         },
-    //         { new: true, upsert: false }
-    //     )
-    // }
     await Nullifier.create(
         reputationProof.repNullifiers
             .filter((n) => n.toString() !== '0')
