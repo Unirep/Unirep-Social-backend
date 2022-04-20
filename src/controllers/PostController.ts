@@ -39,10 +39,6 @@ const listAllPosts = async () => {
     return allPosts
 }
 
-const getPostsWithEpks = async (epks: string[]) => {
-    return Post.find({ epochKey: { $in: epks } })
-}
-
 const getPostWithId = async (postId: string) => {
     const post = await Post.findOne({ transactionHash: postId })
     if (!post) return null
