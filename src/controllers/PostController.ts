@@ -59,9 +59,7 @@ const getPostWithQuery = async (
     const baseQuery = {
         ...(epks.length > 0 ? { epochKey: { $in: epks } } : {}),
     }
-    allPosts.sort((a, b) => (a.created_at > b.created_at ? -1 : 1))
     if (query === QueryType.New) {
-        // allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
         allPosts = await Post.find(baseQuery).sort({
             created_at: -1,
         })
