@@ -677,13 +677,12 @@
   resolved "https://registry.yarnpkg.com/@ungap/promise-all-settled/-/promise-all-settled-1.1.2.tgz#aa58042711d6e3275dd37dc597e5d31e8c290a44"
   integrity sha512-sL/cEvJWAnClXw0wHk85/2L0G6Sj8UB0Ctc1TEMbKSsmpRosqhwj9gWgFRZSrBr2f9tiXISwNhCPmlfqUqyb9Q==
 
-"@unirep/circuits@1.0.4-alpha-1":
-  version "1.0.4-alpha-1"
-  resolved "https://registry.yarnpkg.com/@unirep/circuits/-/circuits-1.0.4-alpha-1.tgz#0b8123e30f9fb43729b23e3eaee6a49c30dcbac4"
-  integrity sha512-xqyeXZ3ZfP0styVtEaAMMSg/WMbEqPLI1rYDNVo2Or6hVL81Z6+SwCqqrmSUfAYbW6N4aygNDeiVBdFnmR1L8A==
+"@unirep/circuits@1.0.0-alpha-2":
+  version "1.0.0-alpha-2"
+  resolved "https://registry.yarnpkg.com/@unirep/circuits/-/circuits-1.0.0-alpha-2.tgz#aff9e437f0f7c34472c039feacdd385a2b560749"
+  integrity sha512-3FCkQhIP+2c4EeVJZg/Qg02s/W43Tsa7S2izPd1I2bHSAU+6hyx4XsJg0Ecoxrpsd+FgXSGy0B9fhwhdDYRyLw==
   dependencies:
-    "@unirep/config" "1.0.0-alpha-1"
-    "@unirep/crypto" "1.0.0-alpha-1"
+    "@unirep/crypto" "1.0.0-alpha-2"
     argparse "^2.0.1"
     circom "0.5.45"
     circomlib "0.5.3"
@@ -701,22 +700,16 @@
     snarkjs "^0.4.7"
     typescript "^4.4.2"
 
-"@unirep/config@1.0.0-alpha-1", "@unirep/config@^1.0.0-alpha-1":
-  version "1.0.0-alpha-1"
-  resolved "https://registry.yarnpkg.com/@unirep/config/-/config-1.0.0-alpha-1.tgz#e2c466396c92e302e074f98db71cbdd525bff35d"
-  integrity sha512-YBTy48+NQZ7U7/fzpK5LmOXrvduJh1WWri4cshr0zN4Rfp3BqSKddGR31YA+vIYCbcyaScQ4KM/VvEm8jzL7wg==
-
-"@unirep/contracts@1.0.6-alpha-1":
-  version "1.0.6-alpha-1"
-  resolved "https://registry.yarnpkg.com/@unirep/contracts/-/contracts-1.0.6-alpha-1.tgz#21c888b6ce52da56ef77996c1907af901d2de184"
-  integrity sha512-Jk+N/R44zGLSfZ7XVq7C9385+H7ST2+4g6Jrj3XWTyHvRNaWXamCYxtzWXxvt0y/1Vs9kffRgh9DMexgmS5KmQ==
+"@unirep/contracts@1.0.0-alpha-2":
+  version "1.0.0-alpha-2"
+  resolved "https://registry.yarnpkg.com/@unirep/contracts/-/contracts-1.0.0-alpha-2.tgz#0640a76497e9d8480fd4823795d74ccb85e9525b"
+  integrity sha512-fQu50H7Ra7EEVhI+qgsDh7pPxOIjGo9Mlr/itFD7tH6He6QWcepaMDZ4Cmxd9XZddjk+/2WaA1tc6L83Roesgw==
   dependencies:
     "@openzeppelin/contracts" "4.4.2"
     "@typechain/ethers-v5" "^9.0.0"
     "@typechain/hardhat" "^5.0.0"
-    "@unirep/circuits" "1.0.4-alpha-1"
-    "@unirep/config" "1.0.0-alpha-1"
-    "@unirep/crypto" "1.0.0-alpha-1"
+    "@unirep/circuits" "1.0.0-alpha-2"
+    "@unirep/crypto" "1.0.0-alpha-2"
     argparse "^2.0.1"
     ethers "^5.5.3"
     typescript "^4.4.3"
@@ -732,24 +725,24 @@
     ethers "^5.5.3"
     typescript "^4.4.3"
 
-"@unirep/core@1.0.0-alpha-1":
-  version "1.0.0-alpha-1"
-  resolved "https://registry.yarnpkg.com/@unirep/core/-/core-1.0.0-alpha-1.tgz#9aadbc338a1468bd7a48e5375789caa06265c17d"
-  integrity sha512-TYj7WET3+FPzzDRcZbdQY3iinpDnsjlHQb8FZOj6uacnaG7CXoWUPt55/NMghMhvmicbot2ot+VQoF3ljyI1yg==
+"@unirep/core@1.0.0-alpha-2":
+  version "1.0.0-alpha-2"
+  resolved "https://registry.yarnpkg.com/@unirep/core/-/core-1.0.0-alpha-2.tgz#50b5a1960d1877fa0da2fe85e6719bad87486531"
+  integrity sha512-u9U3e9o1ncO6ecozW+Aum/g2qMYoerNs8v3WBub/bps1kgllfu1LSgKzmP/QLGsi3+9SAA9Xd12foslZrpgPkg==
   dependencies:
     "@typechain/ethers-v5" "^9.0.0"
-    "@unirep/circuits" "1.0.4-alpha-1"
-    "@unirep/contracts" "1.0.6-alpha-1"
-    "@unirep/crypto" "1.0.0-alpha-1"
+    "@unirep/circuits" "1.0.0-alpha-2"
+    "@unirep/contracts" "1.0.0-alpha-2"
+    "@unirep/crypto" "1.0.0-alpha-2"
     argparse "^2.0.1"
     base64url "^3.0.1"
     ethers "^5.4.6"
     typescript "^4.5.4"
 
-"@unirep/crypto@1.0.0-alpha-1":
-  version "1.0.0-alpha-1"
-  resolved "https://registry.yarnpkg.com/@unirep/crypto/-/crypto-1.0.0-alpha-1.tgz#34d863ddcb1f7f63764889fe90ffb0a753d03c8b"
-  integrity sha512-WFlkfKq1U3StdK2vONwBwLgZp7YWSVQv4SXGzRvqnf8gCN22iWStciZl0imUy1Plsqk0lKpJMEA2WAtzRXV9Lw==
+"@unirep/crypto@1.0.0-alpha-2":
+  version "1.0.0-alpha-2"
+  resolved "https://registry.yarnpkg.com/@unirep/crypto/-/crypto-1.0.0-alpha-2.tgz#ab18d90228612f84a38f1e6a812fbb326b9a3890"
+  integrity sha512-/Eluk+50xKRtGnnpdSrniOVwra98UsE0K/izxprbM+vqgdlSh05/eV1CMv4B/8Er8HMUwk8xfC5Ae5aGC6P8ww==
   dependencies:
     "@zk-kit/incremental-merkle-tree" "^0.4.3"
     bigint-conversion "^2.1.12"
