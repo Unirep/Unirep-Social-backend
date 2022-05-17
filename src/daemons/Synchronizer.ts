@@ -37,7 +37,7 @@ import {
     GLOBAL_STATE_TREE_DEPTH,
     USER_STATE_TREE_DEPTH,
     EPOCH_TREE_DEPTH,
-} from '@unirep/config'
+} from '@unirep/circuits/config'
 import {
     getUnirepContract,
     EpochKeyProof,
