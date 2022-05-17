@@ -5,7 +5,7 @@ import {
     verifyProof,
 } from '@unirep/circuits'
 import { genIdentity, genIdentityCommitment } from '@unirep/crypto'
-import { genEpochKey, genUserStateFromContract } from '@unirep/unirep'
+import { genEpochKey, genUserStateFromContract } from '@unirep/core'
 
 export const getInvitationCode = async (t) => {
     const r = await fetch(`${t.context.url}/api/genInvitationCode?code=ffff`)

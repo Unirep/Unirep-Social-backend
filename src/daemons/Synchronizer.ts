@@ -15,10 +15,10 @@ import {
     MONGO_URL,
 } from '../constants'
 import {
-    IncrementalQuinTree,
+    IncrementalMerkleTree,
     hash5,
     hashLeftRight,
-    SparseMerkleTreeImpl,
+    SparseMerkleTree,
     stringifyBigInts,
     unstringifyBigInts,
 } from '@unirep/crypto'
@@ -27,17 +27,17 @@ import {
     computeInitUserStateRoot,
     genNewSMT,
     SMT_ONE_LEAF,
-} from '@unirep/unirep'
+} from '@unirep/core'
 import {
     Circuit,
     formatProofForSnarkjsVerification,
     verifyProof,
 } from '@unirep/circuits'
 import {
-    circuitGlobalStateTreeDepth,
-    circuitUserStateTreeDepth,
-    circuitEpochTreeDepth,
-} from '@unirep/circuits/config'
+    GLOBAL_STATE_TREE_DEPTH,
+    USER_STATE_TREE_DEPTH,
+    EPOCH_TREE_DEPTH,
+} from '@unirep/config'
 import {
     getUnirepContract,
     EpochKeyProof,
@@ -134,8 +134,8 @@ export class Synchronizer extends EventEmitter {
     private GSTLeaves: { [key: number]: BigInt[] } = {}
     private epochTreeLeaves: { [key: number]: any[] } = {}
     private nullifiers: { [key: string]: boolean } = {}
-    private globalStateTree: { [key: number]: IncrementalQuinTree } = {}
-    private epochTree: { [key: number]: SparseMerkleTreeImpl } = {}
+    private globalStateTree: { [key: number]: IncrementalMerkleTree } = {}
+    private epochTree: { [key: number]: SparseMerkleTree } = {}
     private defaultGSTLeaf: BigInt
     private userNum: number = 0
     _session: any
@@ -161,12 +161,12 @@ export class Synchronizer extends EventEmitter {
         this.epochKeyInEpoch[this.currentEpoch] = new Map()
         this.epochTreeRoot[this.currentEpoch] = BigInt(0)
         const emptyUserStateRoot = computeEmptyUserStateRoot(
-            circuitUserStateTreeDepth
+            USER_STATE_TREE_DEPTH
         )
         this.defaultGSTLeaf = hashLeftRight(BigInt(0), emptyUserStateRoot)
         this.GSTLeaves[this.currentEpoch] = []
-        this.globalStateTree[this.currentEpoch] = new IncrementalQuinTree(
-            circuitGlobalStateTreeDepth,
+        this.globalStateTree[this.currentEpoch] = new IncrementalMerkleTree(
+            GLOBAL_STATE_TREE_DEPTH,
             this.defaultGSTLeaf,
             2
         )
@@ -1156,10 +1156,7 @@ export class Synchronizer extends EventEmitter {
         // console.log(event);
         // update Unirep state
         const epoch = Number(event?.topics[1])
-        this.epochTree[epoch] = await genNewSMT(
-            circuitEpochTreeDepth,
-            SMT_ONE_LEAF
-        )
+        this.epochTree[epoch] = await genNewSMT(EPOCH_TREE_DEPTH, SMT_ONE_LEAF)
         const epochTreeLeaves = [] as any[]
 
         // seal all epoch keys in current epoch
@@ -1199,8 +1196,8 @@ export class Synchronizer extends EventEmitter {
         this.currentEpoch++
         this.GSTLeaves[this.currentEpoch] = []
         this.epochKeyInEpoch[this.currentEpoch] = new Map()
-        this.globalStateTree[this.currentEpoch] = new IncrementalQuinTree(
-            circuitGlobalStateTreeDepth,
+        this.globalStateTree[this.currentEpoch] = new IncrementalMerkleTree(
+            GLOBAL_STATE_TREE_DEPTH,
             this.defaultGSTLeaf,
             2
         )
@@ -1565,7 +1562,7 @@ export class Synchronizer extends EventEmitter {
         const airdrop = Number(decodedData._airdropAmount)
 
         const USTRoot = await computeInitUserStateRoot(
-            circuitUserStateTreeDepth,
+            USER_STATE_TREE_DEPTH,
             attesterId,
             airdrop
         )
