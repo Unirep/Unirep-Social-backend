@@ -133,9 +133,6 @@ const genReputationProof = async (t, iden, proveAmount) => {
         t.context.unirep.address,
         iden
     )
-    console.log(
-        (userState.getUnirepState() as unknown as any).epochGSTRootMap[1]
-    )
     // find valid nonce starter
     // gen proof
     const nonceList = [] as any[]
