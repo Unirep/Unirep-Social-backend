@@ -65,7 +65,7 @@ const encodeBigIntArray = (arr: BigInt[]): string => {
     return JSON.stringify(stringifyBigInts(arr))
 }
 
-const decodeBigIntArray = (input: string): BigInt[] => {
+const decodeBigIntArray = (input: string): bigint[] => {
     return unstringifyBigInts(JSON.parse(input))
 }
 
