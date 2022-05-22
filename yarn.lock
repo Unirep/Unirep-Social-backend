@@ -689,6 +689,18 @@
     snarkjs "^0.4.7"
     typescript "^4.4.2"
 
+"@unirep/circuits@1.0.0-alpha-3":
+  version "1.0.0-alpha-3"
+  resolved "https://registry.yarnpkg.com/@unirep/circuits/-/circuits-1.0.0-alpha-3.tgz#abe7ace6348fee533860ae8b9041c6c3489d1ea3"
+  integrity sha512-C8ld4zQ+311AtmFJMrqz9vSLiLnvLpDDf+/AymloTN4KkyFqnkIS8qZAXLIOCt6VGFsU//LK2/pQgkWknhUOCg==
+  dependencies:
+    "@unirep/crypto" "1.0.0-alpha-3"
+    argparse "^2.0.1"
+    circom "0.5.45"
+    circomlib "0.5.3"
+    snarkjs "^0.4.7"
+    typescript "^4.4.2"
+
 "@unirep/circuits@git+https://github.com/Unirep/circuits.git#alpha":
   version "1.0.4"
   resolved "git+https://github.com/Unirep/circuits.git#e1ef130b49e94a5d69ecd57ff4f63c177d23798a"
@@ -700,16 +712,16 @@
     snarkjs "^0.4.7"
     typescript "^4.4.2"
 
-"@unirep/contracts@1.0.0-alpha-2":
-  version "1.0.0-alpha-2"
-  resolved "https://registry.yarnpkg.com/@unirep/contracts/-/contracts-1.0.0-alpha-2.tgz#0640a76497e9d8480fd4823795d74ccb85e9525b"
-  integrity sha512-fQu50H7Ra7EEVhI+qgsDh7pPxOIjGo9Mlr/itFD7tH6He6QWcepaMDZ4Cmxd9XZddjk+/2WaA1tc6L83Roesgw==
+"@unirep/contracts@1.0.0-alpha-4":
+  version "1.0.0-alpha-4"
+  resolved "https://registry.yarnpkg.com/@unirep/contracts/-/contracts-1.0.0-alpha-4.tgz#069a0f227be2b8d3281a06a5665e993833fb76eb"
+  integrity sha512-LwQKtJk0IKmG7kaY9GjL7XST5uf94szH7xRmxER+8LIxpt1cHvodABQxhNq3wPH3pwPOlYDqAalGdR/A5AR4vA==
   dependencies:
     "@openzeppelin/contracts" "4.4.2"
     "@typechain/ethers-v5" "^9.0.0"
     "@typechain/hardhat" "^5.0.0"
     "@unirep/circuits" "1.0.0-alpha-2"
-    "@unirep/crypto" "1.0.0-alpha-2"
+    "@unirep/crypto" "1.0.0-alpha-3"
     argparse "^2.0.1"
     ethers "^5.5.3"
     typescript "^4.4.3"
@@ -725,15 +737,15 @@
     ethers "^5.5.3"
     typescript "^4.4.3"
 
-"@unirep/core@1.0.0-alpha-2":
-  version "1.0.0-alpha-2"
-  resolved "https://registry.yarnpkg.com/@unirep/core/-/core-1.0.0-alpha-2.tgz#50b5a1960d1877fa0da2fe85e6719bad87486531"
-  integrity sha512-u9U3e9o1ncO6ecozW+Aum/g2qMYoerNs8v3WBub/bps1kgllfu1LSgKzmP/QLGsi3+9SAA9Xd12foslZrpgPkg==
+"@unirep/core@1.0.0-alpha-4":
+  version "1.0.0-alpha-4"
+  resolved "https://registry.yarnpkg.com/@unirep/core/-/core-1.0.0-alpha-4.tgz#6d5d5694a8ef2d9c5261084eee0f8711d4848d9b"
+  integrity sha512-/IVvF3Er0tp+dSQDguDQZrsq614LwtbPCdkpEKQoWB9scPhwZeiVNbeqjdkyY2rs/suCTypzWV+Rzmfv13NmUw==
   dependencies:
     "@typechain/ethers-v5" "^9.0.0"
-    "@unirep/circuits" "1.0.0-alpha-2"
-    "@unirep/contracts" "1.0.0-alpha-2"
-    "@unirep/crypto" "1.0.0-alpha-2"
+    "@unirep/circuits" "1.0.0-alpha-3"
+    "@unirep/contracts" "1.0.0-alpha-4"
+    "@unirep/crypto" "1.0.0-alpha-3"
     argparse "^2.0.1"
     base64url "^3.0.1"
     ethers "^5.4.6"
@@ -743,6 +755,19 @@
   version "1.0.0-alpha-2"
   resolved "https://registry.yarnpkg.com/@unirep/crypto/-/crypto-1.0.0-alpha-2.tgz#ab18d90228612f84a38f1e6a812fbb326b9a3890"
   integrity sha512-/Eluk+50xKRtGnnpdSrniOVwra98UsE0K/izxprbM+vqgdlSh05/eV1CMv4B/8Er8HMUwk8xfC5Ae5aGC6P8ww==
+  dependencies:
+    "@zk-kit/incremental-merkle-tree" "^0.4.3"
+    bigint-conversion "^2.1.12"
+    circomlibjs "0.0.8"
+    crypto-js "^4.1.1"
+    maci-config "^0.9.1"
+    maci-crypto "^0.9.1"
+    typescript "^4.4.2"
+
+"@unirep/crypto@1.0.0-alpha-3":
+  version "1.0.0-alpha-3"
+  resolved "https://registry.yarnpkg.com/@unirep/crypto/-/crypto-1.0.0-alpha-3.tgz#58a7eb4401d035386df1067fdf285aac8f4dea34"
+  integrity sha512-LJnTttEHmAKQHP1d/P3yutOdadOOg7XkOYXOcaqRzB4G/PCGTkl8wED8T/pa3NB274Yd1bPkGtDCeU4e7PF/Kw==
   dependencies:
     "@zk-kit/incremental-merkle-tree" "^0.4.3"
     bigint-conversion "^2.1.12"
