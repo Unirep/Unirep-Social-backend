@@ -6,7 +6,7 @@ export interface IAttestation extends Document {
     epochKey: string
     epochKeyToHashchainMap: string
     // attestation info
-    index: number
+    // index: number
     transactionHash: string
     attester: string
     proofIndex: number
@@ -24,7 +24,7 @@ const AttestationSchema: Schema = new Schema(
         epoch: { type: Number },
         epochKey: { type: String },
         epochKeyToHashchainMap: { type: String },
-        index: { type: Number },
+        index: { type: Number, required: false },
         transactionHash: { type: String },
         attester: { type: String },
         proofIndex: { type: Number },

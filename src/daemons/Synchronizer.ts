@@ -653,7 +653,7 @@ export class Synchronizer extends EventEmitter {
             const newComment = new Comment({
                 transactionHash: _transactionHash,
                 postId,
-                content: decodedData?._commentContent, // TODO: hashedContent
+                content: decodedData?.commentContent, // TODO: hashedContent
                 epochKey: _epochKey,
                 proofIndex: proofIndex,
                 epoch: _epoch,
@@ -812,20 +812,20 @@ export class Synchronizer extends EventEmitter {
             let content: string = ''
             let title: string = ''
             if (decodedData !== null) {
-                let i: number = decodedData._postContent.indexOf(titlePrefix)
+                let i: number = decodedData.postContent.indexOf(titlePrefix)
                 if (i === -1) {
-                    content = decodedData._postContent
+                    content = decodedData.postContent
                 } else {
                     i = i + titlePrefix.length
-                    let j: number = decodedData._postContent.indexOf(
+                    let j: number = decodedData.postContent.indexOf(
                         titlePostfix,
                         i + 1
                     )
                     if (j === -1) {
-                        content = decodedData._postContent
+                        content = decodedData.postContent
                     } else {
-                        title = decodedData._postContent.substring(i, j)
-                        content = decodedData._postContent.substring(
+                        title = decodedData.postContent.substring(i, j)
+                        content = decodedData.postContent.substring(
                             j + titlePostfix.length
                         )
                     }
@@ -988,7 +988,6 @@ export class Synchronizer extends EventEmitter {
         )
         const findVote = await Vote.findOne({ transactionHash: voteId })
         if (findVote) {
-            console.log('find vote!')
             findVote?.set('status', 1, {
                 new: true,
                 upsert: false,
@@ -1228,35 +1227,34 @@ export class Synchronizer extends EventEmitter {
         )
         const toProofIndex = Number(decodedData.toProofIndex)
         const fromProofIndex = Number(decodedData.fromProofIndex)
-        const attestIndex = Number(decodedData.attestIndex)
-        {
-            const existing = await Attestation.exists({
-                index: attestIndex,
-            })
-            if (existing) return
-        }
-
+        // const attestIndex = Number(decodedData.attestIndex)
+        // {
+        //     const existing = await Attestation.exists({
+        //         index: attestIndex,
+        //     })
+        //     if (existing) return
+        // }
         const attestation = new HAttestation(
-            BigInt(decodedData._attestation.attesterId),
-            BigInt(decodedData._attestation.posRep),
-            BigInt(decodedData._attestation.negRep),
-            BigInt(decodedData._attestation.graffiti._hex),
-            BigInt(decodedData._attestation.signUp)
+            BigInt(decodedData.attestation.attesterId),
+            BigInt(decodedData.attestation.posRep),
+            BigInt(decodedData.attestation.negRep),
+            BigInt(decodedData.attestation.graffiti._hex),
+            BigInt(decodedData.attestation.signUp)
         )
         await Attestation.create(
             [
                 {
                     epoch: _epoch,
                     epochKey: _epochKey.toString(16),
-                    index: attestIndex,
+                    // index: attestIndex,
                     transactionHash: event.transactionHash,
                     attester: _attester,
                     proofIndex: toProofIndex,
-                    attesterId: Number(decodedData._attestation.attesterId),
-                    posRep: Number(decodedData._attestation.posRep),
-                    negRep: Number(decodedData._attestation.negRep),
-                    graffiti: decodedData._attestation.graffiti._hex,
-                    signUp: Boolean(Number(decodedData._attestation?.signUp)),
+                    attesterId: Number(decodedData.attestation.attesterId),
+                    posRep: Number(decodedData.attestation.posRep),
+                    negRep: Number(decodedData.attestation.negRep),
+                    graffiti: decodedData.attestation.graffiti._hex,
+                    signUp: Boolean(Number(decodedData.attestation?.signUp)),
                     hash: attestation.hash().toString(),
                 },
             ],
@@ -1275,7 +1273,7 @@ export class Synchronizer extends EventEmitter {
                 {
                     epoch: _epoch,
                     epochKey: _epochKey.toString(16),
-                    index: attestIndex,
+                    // index: attestIndex,
                 },
                 {
                     valid: false,
@@ -1297,7 +1295,7 @@ export class Synchronizer extends EventEmitter {
                     {
                         epoch: _epoch,
                         epochKey: _epochKey.toString(16),
-                        index: attestIndex,
+                        // index: attestIndex,
                     },
                     {
                         valid: false,
@@ -1321,7 +1319,7 @@ export class Synchronizer extends EventEmitter {
             {
                 epoch: _epoch,
                 epochKey: _epochKey.toString(16),
-                index: attestIndex,
+                // index: attestIndex,
             },
             {
                 valid: true,
@@ -1344,7 +1342,7 @@ export class Synchronizer extends EventEmitter {
         const transactionHash = event.transactionHash
         const epoch = Number(event.topics[1])
         const leaf = BigInt(event.topics[2])
-        const proofIndex = Number(decodedData._proofIndex)
+        const proofIndex = Number(decodedData.proofIndex)
 
         // verify the transition
         const transitionProof = await Proof.findOne({
@@ -1558,8 +1556,8 @@ export class Synchronizer extends EventEmitter {
         const transactionHash = event.transactionHash
         const epoch = Number(event.topics[1])
         const idCommitment = BigInt(event.topics[2])
-        const attesterId = Number(decodedData._attesterId)
-        const airdrop = Number(decodedData._airdropAmount)
+        const attesterId = Number(decodedData.attesterId)
+        const airdrop = Number(decodedData.airdropAmount)
 
         const USTRoot = await computeInitUserStateRoot(
             USER_STATE_TREE_DEPTH,
@@ -1612,8 +1610,8 @@ export class Synchronizer extends EventEmitter {
         if (!decodedData) {
             throw new Error('Failed to decode data')
         }
-        const args = decodedData._proof
-        const proofIndexRecords = decodedData._proofIndexRecords.map((n) =>
+        const args = decodedData.proof
+        const proofIndexRecords = decodedData.proofIndexRecords.map((n) =>
             Number(n)
         )
 
@@ -1667,10 +1665,10 @@ export class Synchronizer extends EventEmitter {
             throw new Error('Failed to decode data')
         }
         const _outputBlindedUserState = BigInt(
-            decodedData._outputBlindedUserState
+            decodedData.outputBlindedUserState
         )
         const _outputBlindedHashChain = BigInt(
-            decodedData._outputBlindedHashChain
+            decodedData.outputBlindedHashChain
         )
 
         const formatPublicSignals = [
@@ -1678,7 +1676,7 @@ export class Synchronizer extends EventEmitter {
             _outputBlindedHashChain,
             _inputBlindedUserState,
         ]
-        const formattedProof = decodedData._proof.map((n) => BigInt(n))
+        const formattedProof = decodedData.proof.map((n) => BigInt(n))
         const isValid = await verifyProof(
             Circuit.processAttestations,
             formatProofForSnarkjsVerification(formattedProof),
@@ -1715,13 +1713,13 @@ export class Synchronizer extends EventEmitter {
         if (!decodedData) {
             throw new Error('Failed to decode data')
         }
-        const _blindedHashChain = BigInt(decodedData._blindedHashChain)
+        const _blindedHashChain = BigInt(decodedData.blindedHashChain)
         const formatPublicSignals = [
             _blindedUserState,
             _blindedHashChain,
             _globalStateTree,
         ]
-        const formattedProof = decodedData._proof.map((n) => BigInt(n))
+        const formattedProof = decodedData.proof.map((n) => BigInt(n))
         const isValid = await verifyProof(
             Circuit.startTransition,
             formatProofForSnarkjsVerification(formattedProof),
@@ -1758,7 +1756,7 @@ export class Synchronizer extends EventEmitter {
         if (!decodedData) {
             throw new Error('Failed to decode data')
         }
-        const args = decodedData._proof
+        const args = decodedData.proof
 
         const emptyArray = []
         const formatPublicSignals = emptyArray
@@ -1805,7 +1803,7 @@ export class Synchronizer extends EventEmitter {
         if (!decodedData) {
             throw new Error('Failed to decode data')
         }
-        const args = decodedData._proof
+        const args = decodedData.proof
         const emptyArray = []
         const formatPublicSignals = emptyArray
             .concat(
@@ -1855,7 +1853,7 @@ export class Synchronizer extends EventEmitter {
         if (!decodedData) {
             throw new Error('Failed to decode data')
         }
-        const args = decodedData._proof
+        const args = decodedData.proof
 
         const emptyArray = []
         const formatPublicSignals = emptyArray
