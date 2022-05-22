@@ -6,7 +6,7 @@ import cors from 'cors'
 import mongoose from 'mongoose'
 import getPort from 'get-port'
 
-import { settings, treeDepth } from './config'
+import { settings } from './config'
 
 // const GANACHE_URL = 'https://hardhat.unirep.social'
 const GANACHE_URL = 'http://127.0.0.1:18545'
@@ -26,8 +26,8 @@ async function waitForGanache() {
 
 async function deploy(wallet: ethers.Wallet, overrides = {}) {
     const provider = new ethers.providers.JsonRpcProvider(GANACHE_URL)
-    const unirep = await deployUnirep(wallet, treeDepth, {
-        ...settings,
+    const unirep = await deployUnirep(wallet, {
+        epochLength: settings.epochLength,
         ...overrides,
     })
     const UnirepSocialF = new ethers.ContractFactory(
@@ -108,7 +108,9 @@ export async function startServer(contractOverrides = {}) {
     // make server app handle any error
     const port = await getPort()
     const url = `http://127.0.0.1:${port}`
-    const attesterId = BigInt(await unirep.attesters(unirepSocial.address))
+    const attesterId = BigInt(
+        (await unirep.attesters(unirepSocial.address)).toNumber()
+    )
     await new Promise((r) => app.listen(port, r as any))
     return { ...data, constants, url, attesterId }
 }
