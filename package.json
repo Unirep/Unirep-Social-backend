@@ -5,6 +5,7 @@
     "scripts": {
         "start": "nodemon src/app.ts",
         "start:daemon": "ts-node src/app.ts",
+        "synct": "ts-node src/sync-test.ts",
         "keys": "rm -rf keys ; cp -r node_modules/@unirep/circuits/build ./keys",
         "build": "tsc",
         "lint": "prettier .",
@@ -30,14 +31,16 @@
     "dependencies": {
         "@unirep/circuits": "1.0.0-alpha-3",
         "@unirep/contracts": "1.0.0-alpha-4",
-        "@unirep/crypto": "1.0.0-alpha-3",
         "@unirep/core": "1.0.0-alpha-4",
+        "@unirep/crypto": "1.0.0-alpha-3",
         "@unirep/unirep-social": "git+https://github.com/Unirep/unirep-social.git#alpha",
+        "anondb": "^0.0.6",
         "cors": "^2.8.5",
         "dotenv": "^10.0.0",
         "express": "^4.17.1",
         "global": "^4.4.0",
         "mongoose": "^6.0.10",
+        "nanoid": "^3.3.4",
         "randomstring": "^1.2.1"
     },
     "ava": {
