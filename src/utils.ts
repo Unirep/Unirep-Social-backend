@@ -27,7 +27,7 @@ const verifyEpochTreeRoot = async (
 ) => {
     const exists = await db.findOne('Epoch', {
         where: {
-            epoch,
+            number: epoch,
             epochRoot: epochTreeRoot,
         },
     })

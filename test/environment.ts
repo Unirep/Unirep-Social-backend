@@ -3,10 +3,13 @@ import UnirepSocial from '@unirep/unirep-social/artifacts/contracts/UnirepSocial
 import { deployUnirep } from '@unirep/contracts'
 import express from 'express'
 import cors from 'cors'
-import mongoose from 'mongoose'
 import getPort from 'get-port'
+import { SQLiteConnector, SQLiteMemoryConnector } from 'anondb/node'
+import schema from '../src/schema'
 
 import { settings } from './config'
+
+const sharedDB = SQLiteConnector.create(schema, `testdb.sqlite`)
 
 // const GANACHE_URL = 'https://hardhat.unirep.social'
 const GANACHE_URL = 'http://127.0.0.1:18545'
@@ -51,25 +54,13 @@ async function deploy(wallet: ethers.Wallet, overrides = {}) {
 export async function startServer(contractOverrides = {}) {
     await waitForGanache()
 
-    const sharedName = `unirep_test`
-
-    const dbName = `${Math.floor(Math.random() * 100000000)}`
-    const sharedDB = `mongodb://localhost:27017/${sharedName}`
-    const mongoDB = `mongodb://127.0.0.1:27017/${dbName}`
-    mongoose.connect(mongoDB)
-    // Bind connection to error event (to get notification of connection errors)
-    mongoose.connection.on(
-        'error',
-        console.error.bind(console, 'MongoDB connection error:')
-    )
-
     const { TransactionManager } = require('../src/daemons/TransactionManager')
 
     const provider = new ethers.providers.JsonRpcProvider(GANACHE_URL)
     // this is the global manager shared across test processes
     const txManager = new TransactionManager()
-    txManager.configure(FUNDED_PRIVATE_KEY, provider)
-    await txManager.start(sharedDB)
+    txManager.configure(FUNDED_PRIVATE_KEY, provider, await sharedDB)
+    await txManager.start()
 
     const wallet = ethers.Wallet.createRandom().connect(provider)
 
@@ -91,20 +82,29 @@ export async function startServer(contractOverrides = {}) {
         ...process.env,
     })
 
-    const MasterRouter = require('../src/routers/MasterRouter').default
     const constants = require('../src/constants')
     const appTxManager = require('../src/daemons/TransactionManager').default
-    const Synchronizer = require('../src/daemons/Synchronizer').default
+    const { Synchronizer } = require('../src/daemons/NewSynchronizer')
 
-    appTxManager.configure(wallet.privateKey, provider)
+    const appDB = await SQLiteMemoryConnector.create(schema)
+    appTxManager.configure(wallet.privateKey, provider, appDB)
     await appTxManager.start()
 
-    await Synchronizer.start()
+    const sync = new Synchronizer(appDB)
+    await sync.start()
 
     const app = express()
     app.use(cors())
     app.use(express.json())
-    app.use('/api', MasterRouter)
+    app.use('/api', (req, _, next) => {
+        // put a db object for use in the route handler
+        ;(req as any).db = appDB
+        next()
+    })
+    require('not-index')(
+        [__dirname, '../src/routes'],
+        /[a-zA-Z0-9]\.(ts|js)/
+    ).map((r) => r.default(app))
     // make server app handle any error
     const port = await getPort()
     const url = `http://127.0.0.1:${port}`
@@ -112,5 +112,5 @@ export async function startServer(contractOverrides = {}) {
         (await unirep.attesters(unirepSocial.address)).toNumber()
     )
     await new Promise((r) => app.listen(port, r as any))
-    return { ...data, constants, url, attesterId }
+    return { ...data, constants, url, attesterId, db: appDB }
 }

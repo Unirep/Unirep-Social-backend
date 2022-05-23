@@ -139,7 +139,6 @@ export class Synchronizer extends EventEmitter {
 
     async setup() {
         const treeDepths = await this.unirepContract.treeDepths()
-        console.log(treeDepths)
         this.epochKeyInEpoch[this.currentEpoch] = new Map()
         this.epochTreeRoot[this.currentEpoch] = BigInt(0)
         const emptyUserStateRoot = computeEmptyUserStateRoot(
@@ -165,6 +164,7 @@ export class Synchronizer extends EventEmitter {
                 latestProcessedBlock: 0,
                 latestProcessedTransactionIndex: 0,
                 latestProcessedEventIndex: 0,
+                latestCompleteBlock: 0,
             })
         }
         this.startDaemon()
@@ -220,7 +220,13 @@ export class Synchronizer extends EventEmitter {
                 }
                 return e.blockNumber > state.latestProcessedBlock
             })
-            this.processEvents(unprocessedEvents)
+            await this.processEvents(unprocessedEvents)
+            await this._db.update('SynchronizerState', {
+                where: {},
+                update: {
+                    latestCompleteBlock: newLatest,
+                },
+            })
             latestProcessed = newLatest
         }
     }
@@ -597,7 +603,7 @@ export class Synchronizer extends EventEmitter {
         // everything checks out, lets start mutating the db
         db.delete('Nulliifer', {
             where: {
-                nullfier: repNullifiers,
+                nullifier: repNullifiers,
                 confirmed: false,
             },
         })
@@ -754,7 +760,7 @@ export class Synchronizer extends EventEmitter {
         // everything checks out, lets start mutating the db
         db.delete('Nullifier', {
             where: {
-                nullfier: repNullifiers,
+                nullifier: repNullifiers,
                 confirmed: false,
             },
         })
@@ -836,6 +842,7 @@ export class Synchronizer extends EventEmitter {
                 epoch: _epoch,
             },
         })
+        if (!existingEpkRecord) return
         // TODO: use upsert here
         db.update('EpkRecord', {
             where: {
@@ -939,7 +946,7 @@ export class Synchronizer extends EventEmitter {
         // everything checks out, lets start mutating the db
         db.delete('Nullifier', {
             where: {
-                nullfier: repNullifiers,
+                nullifier: repNullifiers,
                 confirmed: false,
             },
         })
@@ -1465,7 +1472,7 @@ export class Synchronizer extends EventEmitter {
         // everything checks out, lets start mutating the db
         db.delete('Nullifier', {
             where: {
-                nullfier: epkNullifiers,
+                nullifier: epkNullifiers,
                 confirmed: false,
             },
         })
@@ -1558,9 +1565,9 @@ export class Synchronizer extends EventEmitter {
             throw new Error('Failed to decode data')
         }
         const args = decodedData.proof
-        // const proofIndexRecords = decodedData.proofIndexRecords.map((n) =>
-        //     Number(n)
-        // )
+        const proofIndexRecords = decodedData.proofIndexRecords.map((n) =>
+            Number(n)
+        )
 
         const emptyArray = []
         const formatPublicSignals = emptyArray
@@ -1589,7 +1596,7 @@ export class Synchronizer extends EventEmitter {
             publicSignals: publicSignals,
             blindedUserState: args.blindedUserStates[0].toString(),
             globalStateTree: args.fromGlobalStateTree.toString(),
-            // proofIndexRecords: proofIndexRecords,
+            proofIndexRecords: proofIndexRecords,
             transactionHash: event.transactionHash,
             event: 'IndexedUserStateTransitionProof',
             valid: isValid,

@@ -8,6 +8,7 @@ const schema = [
             ['latestProcessedBlock', 'Int'],
             ['latestProcessedTransactionIndex', 'Int'],
             ['latestProcessedEventIndex', 'Int'],
+            ['latestCompleteBlock', 'Int'],
         ],
     },
     {
@@ -33,6 +34,7 @@ const schema = [
             ['outputBlindedUserState', 'String', { optional: true }],
             ['outputBlindedHashChain', 'String', { optional: true }],
             ['inputBlindedUserState', 'String', { optional: true }],
+            ['proofIndexRecords', 'Object', { optional: true }],
         ],
     },
     {
@@ -41,7 +43,7 @@ const schema = [
             ['epoch', 'Int', { optional: true }],
             ['epochKey', 'String', { optional: true }],
             ['epochKeyToHashchainMap', 'String', { optional: true }],
-            ['index', 'Int'],
+            // ['index', 'Int'],
             ['transactionHash', 'String', { optional: true }],
             ['attester', 'String', { optional: true }],
             ['proofIndex', 'Int', { optional: true }],

@@ -21,9 +21,7 @@ export class TransactionManager {
                 address: this.wallet.address,
                 nonce: latestNonce,
             },
-            update: {
-                nonce: latestNonce,
-            },
+            update: {},
         })
         this.startDaemon()
     }
@@ -49,7 +47,8 @@ export class TransactionManager {
                     },
                 })
             } else {
-                await new Promise((r) => setTimeout(r, 2000))
+                const randWait = Math.random() * 2000
+                await new Promise((r) => setTimeout(r, 1000 + randWait))
             }
         }
     }
@@ -91,6 +90,7 @@ export class TransactionManager {
             },
         })
         if (updated === 0) {
+            await new Promise((r) => setTimeout(r, Math.random() * 500))
             return this.getNonce(address)
         }
         return latest.nonce

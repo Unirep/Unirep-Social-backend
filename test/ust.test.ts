@@ -1,8 +1,7 @@
 import test from 'ava'
 import { startServer } from './environment'
-import Epoch from '../src/models/epoch'
 
-import { epochTransition, signUp, userStateTransition } from '../utils'
+import { epochTransition, signUp, userStateTransition } from './utils'
 
 const EPOCH_LENGTH = 20000
 
@@ -22,7 +21,9 @@ test('should do user state transition', async (t: any) => {
     await epochTransition(t)
     for (;;) {
         await new Promise((r) => setTimeout(r, 1000))
-        const findEpoch = await Epoch.exists({ number: Number(prevEpoch) })
+        const findEpoch = await t.context.db.findOne('Epoch', {
+            where: { number: Number(prevEpoch) },
+        })
         if (findEpoch) break
     }
     // user state transition
