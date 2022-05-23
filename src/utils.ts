@@ -4,31 +4,38 @@ import {
     SignUpProof,
     UserTransitionProof,
 } from '@unirep/contracts'
-import Record from '../models/record'
-import Nullifier from '../models/nullifiers'
-import Epoch from '../models/epoch'
-import GSTRoot from '../models/GSTRoots'
+import { DB } from 'anondb'
 
 const verifyGSTRoot = async (
+    db: DB,
     epoch: number,
     gstRoot: string
 ): Promise<boolean> => {
-    const exists = await GSTRoot.exists({
-        epoch,
-        root: gstRoot,
+    const exists = await db.findOne('GSTRoot', {
+        where: {
+            epoch,
+            root: gstRoot,
+        },
     })
     return !!exists
 }
 
-const verifyEpochTreeRoot = async (epoch: number, epochTreeRoot: string) => {
-    const exists = await Epoch.exists({
-        epoch,
-        epochRoot: epochTreeRoot,
+const verifyEpochTreeRoot = async (
+    db: DB,
+    epoch: number,
+    epochTreeRoot: string
+) => {
+    const exists = await db.findOne('Epoch', {
+        where: {
+            epoch,
+            epochRoot: epochTreeRoot,
+        },
     })
     return !!exists
 }
 
 const verifyReputationProof = async (
+    db: DB,
     reputationProof: ReputationProof,
     spendReputation: number,
     unirepSocialId: number,
@@ -62,16 +69,16 @@ const verifyReputationProof = async (
 
     // check GST root
     {
-        const exists = await verifyGSTRoot(epoch, gstRoot)
+        const exists = await verifyGSTRoot(db, epoch, gstRoot)
         if (!exists) {
             return `Global state tree root ${gstRoot} is not in epoch ${epoch}`
         }
     }
 
     // check nullifiers
-    const exists = await Nullifier.exists({
-        nullifier: {
-            $in: reputationProof.repNullifiers.map((n) => n.toString()),
+    const exists = await db.findOne('Nullifier', {
+        where: {
+            nullifier: reputationProof.repNullifiers.map((n) => n.toString()),
         },
     })
     if (exists) {
@@ -80,6 +87,7 @@ const verifyReputationProof = async (
 }
 
 const verifyAirdropProof = async (
+    db: DB,
     signUpProof: SignUpProof,
     unirepSocialId: number,
     currentEpoch: number
@@ -112,20 +120,23 @@ const verifyAirdropProof = async (
 
     // check GST root
     {
-        const exists = await verifyGSTRoot(epoch, gstRoot)
+        const exists = await verifyGSTRoot(db, epoch, gstRoot)
         if (!exists) {
             return `Global state tree root ${gstRoot} is not in epoch ${epoch}`
         }
     }
 
     // Has been airdropped before
-    const findRecord = await Record.findOne({ to: epk, from: 'UnirepSocial' })
+    const findRecord = await db.findOne('Record', {
+        where: { to: epk, from: 'UnirepSocial' },
+    })
     if (findRecord) {
         return `Error: the epoch key has been airdropped`
     }
 }
 
 const verifyUSTProof = async (
+    db: DB,
     results: any,
     currentEpoch: number
 ): Promise<string | undefined> => {
@@ -179,14 +190,14 @@ const verifyUSTProof = async (
     const gstRoot = results?.finalTransitionProof?.fromGSTRoot
     const epochTreeRoot = results.finalTransitionProof.fromEpochTree
     {
-        const exists = await verifyGSTRoot(epoch, gstRoot)
+        const exists = await verifyGSTRoot(db, epoch, gstRoot)
         if (!exists) {
             error = `Global state tree root ${gstRoot} is not in epoch ${epoch}`
             return error
         }
     }
     {
-        const exists = await verifyEpochTreeRoot(epoch, epochTreeRoot)
+        const exists = await verifyEpochTreeRoot(db, epoch, epochTreeRoot)
         if (!exists) {
             error = `Epoch tree root ${epochTreeRoot} is not in epoch ${epoch}`
             return error
@@ -194,9 +205,9 @@ const verifyUSTProof = async (
     }
 
     // check nullifiers
-    const exists = await Nullifier.exists({
-        nullifier: {
-            $in: results.finalTransitionProof.epochKeyNullifiers,
+    const exists = await db.findOne('Nullifier', {
+        where: {
+            nullifier: results.finalTransitionProof.epochKeyNullifiers,
         },
     })
     if (exists) {

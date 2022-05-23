@@ -1,3 +1,5 @@
+import { Express } from 'express'
+import catchError from '../catchError'
 import { formatProofForSnarkjsVerification } from '@unirep/circuits'
 import { SignUpProof } from '@unirep/contracts'
 import {
@@ -9,12 +11,15 @@ import {
     UNIREP_SOCIAL_ABI,
     DEFAULT_AIRDROPPED_KARMA,
 } from '../constants'
-import { verifyAirdropProof } from './utils'
+import { verifyAirdropProof } from '../utils'
 import { ethers } from 'ethers'
 import TransactionManager from '../daemons/TransactionManager'
-import Record from '../models/record'
 
-export const getAirdrop = async (req, res) => {
+export default (app: Express) => {
+    app.post('/api/airdrop', catchError(getAirdrop))
+}
+
+async function getAirdrop(req, res) {
     // Unirep Social contract
     const unirepContract = new ethers.Contract(
         UNIREP,
@@ -40,6 +45,7 @@ export const getAirdrop = async (req, res) => {
 
     // Verify proof
     const error = await verifyAirdropProof(
+        req.db,
         signUpProof,
         Number(unirepSocialId),
         currentEpoch
@@ -62,7 +68,7 @@ export const getAirdrop = async (req, res) => {
             value: attestingFee,
         }
     )
-    await Record.create({
+    await req.db.create('Record', {
         to: publicSignals[1].toString(16),
         from: 'UnirepSocial',
         upvote: DEFAULT_AIRDROPPED_KARMA,
@@ -74,8 +80,4 @@ export const getAirdrop = async (req, res) => {
         confirmed: false,
     })
     res.json({ transaction: hash })
-}
-
-export default {
-    getAirdrop,
 }

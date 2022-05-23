@@ -2,7 +2,7 @@ import test from 'ava'
 import { startServer } from './environment'
 import Epoch from '../src/models/epoch'
 
-import { epochTransition, signUp, userStateTransition } from './utils'
+import { epochTransition, signUp, userStateTransition } from '../utils'
 
 const EPOCH_LENGTH = 20000
 
