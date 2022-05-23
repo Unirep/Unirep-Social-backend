@@ -160,15 +160,7 @@ const schema = [
                 type: 'Int',
                 default: () => +new Date(),
             },
-            {
-                name: 'postId',
-                type: 'String',
-                relation: {
-                    localField: 'postId',
-                    foreignField: 'transactionHash',
-                    foreignTable: 'Post',
-                },
-            },
+            ['postId', 'String'],
             ['transactionHash', 'String', { optional: true }],
             ['content', 'String', { optional: true }],
             ['hashedContent', 'String', { optional: true }],

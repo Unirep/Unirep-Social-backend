@@ -601,7 +601,7 @@ export class Synchronizer extends EventEmitter {
             return
         }
         // everything checks out, lets start mutating the db
-        db.delete('Nulliifer', {
+        db.delete('Nullifier', {
             where: {
                 nullifier: repNullifiers,
                 confirmed: false,
@@ -641,12 +641,6 @@ export class Synchronizer extends EventEmitter {
                 status: 1,
             })
         }
-        db.update('Post', {
-            where: {
-                transactionHash: postId,
-            },
-            update: {},
-        })
         // we can safely increment the comment count by finding all comments
         // and setting the value here because we're in a tx lock
         const commentCount = await this._db.count('Comment', {
@@ -683,16 +677,25 @@ export class Synchronizer extends EventEmitter {
                 epoch: _epoch,
             },
         })
-        // TODO: maybe need to upsert here
-        db.update('EpkRecord', {
-            where: {
+        if (existingEpkRecord) {
+            db.update('EpkRecord', {
+                where: {
+                    _id: existingEpkRecord._id,
+                },
+                update: {
+                    spent:
+                        (existingEpkRecord?.spent ?? 0) + DEFAULT_COMMENT_KARMA,
+                },
+            })
+        } else {
+            db.create('EpkRecord', {
                 epk: _epochKey,
                 epoch: _epoch,
-            },
-            update: {
-                spent: existingEpkRecord.spent + DEFAULT_COMMENT_KARMA,
-            },
-        })
+                spent: DEFAULT_COMMENT_KARMA,
+                posRep: 0,
+                negRep: 0,
+            })
+        }
     }
     async postSubmittedEvent(event: ethers.Event, db: TransactionDB) {
         const postId = event.transactionHash
@@ -842,16 +845,24 @@ export class Synchronizer extends EventEmitter {
                 epoch: _epoch,
             },
         })
-        if (!existingEpkRecord) return
-        // TODO: use upsert here
-        db.update('EpkRecord', {
-            where: {
-                _id: existingEpkRecord._id,
-            },
-            update: {
-                spent: (existingEpkRecord?.spent ?? 0) + DEFAULT_POST_KARMA,
-            },
-        })
+        if (existingEpkRecord) {
+            db.update('EpkRecord', {
+                where: {
+                    _id: existingEpkRecord._id,
+                },
+                update: {
+                    spent: (existingEpkRecord?.spent ?? 0) + DEFAULT_POST_KARMA,
+                },
+            })
+        } else {
+            db.create('EpkRecord', {
+                epk: _epochKey,
+                epoch: _epoch,
+                spent: DEFAULT_POST_KARMA,
+                posRep: 0,
+                negRep: 0,
+            })
+        }
     }
 
     async voteSubmittedEvent(event: ethers.Event, db: TransactionDB) {
@@ -1037,15 +1048,24 @@ export class Synchronizer extends EventEmitter {
                     epoch: _epoch,
                 },
             })
-            db.update('EpkRecord', {
-                where: {
+            if (epkRecord) {
+                db.update('EpkRecord', {
+                    where: {
+                        _id: epkRecord._id,
+                    },
+                    update: {
+                        spent: (epkRecord?.spent ?? 0) + _posRep + _negRep,
+                    },
+                })
+            } else {
+                db.create('EpkRecord', {
                     epk: _fromEpochKey,
                     epoch: _epoch,
-                },
-                update: {
-                    spent: (epkRecord?.spent ?? 0) + _posRep + _negRep,
-                },
-            })
+                    spent: _posRep + _negRep,
+                    posRep: 0,
+                    negRep: 0,
+                })
+            }
         }
         {
             const epkRecord = await this._db.findOne('EpkRecord', {
@@ -1054,16 +1074,25 @@ export class Synchronizer extends EventEmitter {
                     epoch: _epoch,
                 },
             })
-            db.update('EpkRecord', {
-                where: {
+            if (epkRecord) {
+                db.update('EpkRecord', {
+                    where: {
+                        _id: epkRecord._id,
+                    },
+                    update: {
+                        posRep: (epkRecord?.posRep ?? 0) + _posRep,
+                        negRep: (epkRecord?.negRep ?? 0) + _negRep,
+                    },
+                })
+            } else {
+                db.create('EpkRecord', {
                     epk: _toEpochKey,
                     epoch: _epoch,
-                },
-                update: {
+                    spent: 0,
                     posRep: (epkRecord?.posRep ?? 0) + _posRep,
                     negRep: (epkRecord?.negRep ?? 0) + _negRep,
-                },
-            })
+                })
+            }
         }
     }
 
