@@ -1,7 +1,7 @@
 import test from 'ava'
 import { startServer } from './environment'
 
-import { createComment, createPost, queryPost, signIn, signUp } from './utils'
+import { createComment, createPost, queryPost, signIn, signUp } from '../utils'
 
 test.before(async (t) => {
     const context = await startServer()

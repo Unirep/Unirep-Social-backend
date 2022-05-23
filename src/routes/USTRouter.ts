@@ -1,3 +1,5 @@
+import { Express } from 'express'
+import catchError from '../catchError'
 import {
     UserTransitionProof,
     computeStartTransitionProofHash,
@@ -11,10 +13,14 @@ import {
     DEFAULT_ETH_PROVIDER,
 } from '../constants'
 import { formatProofForVerifierContract } from '@unirep/circuits'
-import { verifyUSTProof } from './utils'
+import { verifyUSTProof } from '../utils'
 import TransactionManager from '../daemons/TransactionManager'
 
-const userStateTransition = async (req: any, res: any) => {
+export default (app: Express) => {
+    app.post('/api/userStateTransition', catchError(userStateTransition))
+}
+
+async function userStateTransition(req, res) {
     const unirepContract = new ethers.Contract(
         UNIREP,
         UNIREP_ABI,
@@ -28,7 +34,7 @@ const userStateTransition = async (req: any, res: any) => {
     const currentEpoch = Number(await unirepContract.currentEpoch())
     const { results } = req.body
 
-    const error = await verifyUSTProof(results, currentEpoch)
+    const error = await verifyUSTProof(req.db, results, currentEpoch)
     if (error !== undefined) {
         res.status(422).json({
             error,
@@ -123,8 +129,4 @@ const userStateTransition = async (req: any, res: any) => {
     res.json({
         transaction: hash,
     })
-}
-
-export default {
-    userStateTransition,
 }

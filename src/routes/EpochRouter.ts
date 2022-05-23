@@ -1,8 +1,21 @@
+import { Express } from 'express'
+import EpochManager from '../daemons/EpochManager'
+import catchError from '../catchError'
 import { ethers } from 'ethers'
 import { UNIREP_ABI, UNIREP, DEFAULT_ETH_PROVIDER } from '../constants'
 import TransactionManager from '../daemons/TransactionManager'
 
-const epochTransition = async (req: any, res: any) => {
+export default (app: Express) => {
+    app.get('/api/epochTransition', catchError(loadNextTransition))
+    app.post('/api/epochTransition', catchError(epochTransition))
+}
+
+async function loadNextTransition(req, res) {
+    const nextTransition = await EpochManager.nextTransition()
+    res.json({ nextTransition })
+}
+
+async function epochTransition(req, res) {
     if (req.headers.authorization !== 'NLmKDUnJUpc6VzuPc7Wm') {
         res.status(401).json({
             info: 'Not authorized',
@@ -21,8 +34,4 @@ const epochTransition = async (req: any, res: any) => {
     )
     await TransactionManager.queueTransaction(unirepContract.address, calldata)
     res.status(204).end()
-}
-
-export default {
-    epochTransition,
 }

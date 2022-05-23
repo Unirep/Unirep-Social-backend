@@ -1,17 +1,16 @@
-import express, { Request, Response, NextFunction } from 'express'
+import express from 'express'
 import path from 'path'
 import cors from 'cors'
-import mongoose from 'mongoose'
 import dotenv from 'dotenv'
 // load the environment variables from the .env file before constants file
 dotenv.config()
-import MasterRouter from './routers/MasterRouter'
 import EpochManager from './daemons/EpochManager'
 import TransactionManager from './daemons/TransactionManager'
-import Synchronizer from './daemons/Synchronizer'
+import { Synchronizer } from './daemons/NewSynchronizer'
+import { SQLiteMemoryConnector } from 'anondb/node'
+import schema from './schema'
 
-import { MONGO_URL, DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER } from './constants'
-// import { startEventListeners } from './daemons/listener'
+import { DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER } from './constants'
 
 main().catch((err) => {
     console.log(`Uncaught error: ${err}`)
@@ -20,25 +19,28 @@ main().catch((err) => {
 
 async function main() {
     // try database connection
-    mongoose.connect(MONGO_URL)
-    // Bind connection to error event (to get notification of connection errors)
-    mongoose.connection.on(
-        'error',
-        console.error.bind(console, 'MongoDB connection error:')
-    )
+    const db = await SQLiteMemoryConnector.create(schema)
 
     // start watching for epoch transitions
     await EpochManager.updateWatch()
-    TransactionManager.configure(DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER)
+    TransactionManager.configure(DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER, db)
     await TransactionManager.start()
-    await Synchronizer.start()
+    const sync = new Synchronizer(db)
+    await sync.start()
 
     // now start the http server
     const app = express()
     app.use(cors())
     app.use('/build', express.static(path.join(__dirname, '../keys')))
     app.use(express.json())
-    app.use('/api', MasterRouter)
+    app.use('/api', (req, _, next) => {
+        // put a db object for use in the route handler
+        ;(req as any).db = db
+        next()
+    })
+    require('not-index')([__dirname, 'routes'], /[a-zA-Z0-9]\.ts/).map((r) =>
+        r.default(app)
+    )
     const port = process.env.APP_PORT ?? 5000
     app.listen(port, () => console.log(`> Listening on port ${port}`))
 }

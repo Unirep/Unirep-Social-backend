@@ -1,3 +1,5 @@
+import { Express } from 'express'
+import catchError from '../catchError'
 import { formatProofForSnarkjsVerification } from '@unirep/circuits'
 import { ReputationProof } from '@unirep/contracts'
 import { ethers } from 'ethers'
@@ -15,97 +17,78 @@ import {
     UNIREP_SOCIAL_ABI,
     ActionType,
 } from '../constants'
-import Post from '../models/post'
-import Comment from '../models/comment'
-import Vote from '../models/vote'
-import { verifyReputationProof } from '../controllers/utils'
+import { verifyReputationProof } from '../utils'
 import TransactionManager from '../daemons/TransactionManager'
-import Nullifier from '../models/nullifiers'
-import Record from '../models/record'
 
-const getCommentsByPostId = async (req, res) => {
+export default (app: Express) => {
+    app.get('/api/post', catchError(loadPosts))
+    app.get('/api/post/:id', catchError(loadPostById))
+    app.get('/api/post/:postId/comments', catchError(loadCommentsByPostId))
+    app.get('/api/post/:postId/votes', catchError(loadVotesByPostId))
+    app.post('/api/post', catchError(createPost))
+}
+
+async function loadCommentsByPostId(req, res) {
     const { postId } = req.params
-    res.json(await Comment.find({ postId }).lean())
+    const comments = await req.db.findMany('Comment', {
+        where: {
+            postId,
+        },
+    })
+    res.json(comments)
 }
 
-const getVotesByPostId = async (req, res) => {
+async function loadVotesByPostId(req, res) {
     const { postId } = req.params
-    res.json(await Vote.find({ postId }).lean())
+    const votes = await req.db.findMany('Vote', {
+        where: {
+            postId,
+        },
+    })
+    res.json(votes)
 }
 
-const listAllPosts = async () => {
-    // load posts
-    const allPosts = await Post.find({ status: 1 }).lean()
-    return allPosts
+async function loadPostById(req, res) {
+    const post = await req.db.findOne('Post', {
+        where: {
+            transactionHash: req.params.id,
+        },
+    })
+    res.json(post)
 }
 
-const getPostsWithEpks = async (epks: string[]) => {
-    return Post.find({ epochKey: { $in: epks } })
-}
-
-const getPostWithId = async (postId: string) => {
-    const post = await Post.findOne({ transactionHash: postId })
-    if (!post) return null
-    return [post.toObject()]
-}
-
-const getPostWithQuery = async (
-    query: string,
-    lastRead: string,
-    epks: string[]
-) => {
-    // get posts and sort
-    let allPosts: any[] = []
-    const baseQuery = {
-        ...(epks.length > 0 ? { epochKey: { $in: epks } } : {}),
+async function loadPosts(req, res) {
+    if (req.query.query === undefined) {
+        const posts = await req.db.findMany('Post', {
+            where: {
+                status: 1,
+            },
+        })
+        res.json(posts)
+        return
     }
-    allPosts.sort((a, b) => (a.created_at > b.created_at ? -1 : 1))
-    if (query === QueryType.New) {
-        // allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
-        allPosts = await Post.find(baseQuery).sort({
-            created_at: -1,
-        })
-    } else if (query === QueryType.Boost) {
-        allPosts = await Post.find(baseQuery).sort({
-            posRep: -1,
-        })
-    } else if (query === QueryType.Comments) {
-        allPosts = await Post.find(baseQuery).sort({
-            commentCount: -1,
-        })
-    } else if (query === QueryType.Squash) {
-        allPosts = await Post.find(baseQuery).sort({
-            negRep: -1,
-        })
-    } else if (query === QueryType.Rep) {
-        allPosts = await Post.find(baseQuery).sort({
-            totalRep: -1,
-        })
-    }
+    const query = req.query.query.toString()
+    // TODO: deal with this when there's an offset arg
+    // const lastRead = req.query.lastRead || 0
+    const epks = req.query.epks ? req.query.epks.split('_') : []
 
-    // filter out posts more than loadPostCount
-    if (lastRead === '0') {
-        return allPosts.slice(0, Math.min(LOAD_POST_COUNT, allPosts.length))
-    } else {
-        console.log('last read is : ' + lastRead)
-        let index: number = -1
-        allPosts.forEach((p, i) => {
-            if (p.transactionHash === lastRead) {
-                index = i
-            }
-        })
-        if (index > -1) {
-            return allPosts.slice(
-                index + 1,
-                Math.min(allPosts.length, index + 1 + LOAD_POST_COUNT)
-            )
-        } else {
-            return allPosts.slice(0, LOAD_POST_COUNT)
-        }
-    }
+    const posts = await req.db.findMany('Post', {
+        where: {
+            epochKey: epks.length ? epks : undefined,
+        },
+        orderBy: {
+            createdAt: query === QueryType.New ? 'desc' : undefined,
+            posRep: query === QueryType.Boost ? 'desc' : undefined,
+            negRep: query === QueryType.Squash ? 'desc' : undefined,
+            totalRep: query === QueryType.Rep ? 'desc' : undefined,
+            commentCount: query === QueryType.Comments ? 'desc' : undefined,
+        },
+        limit: LOAD_POST_COUNT,
+    })
+    res.json(posts)
 }
 
-const publishPost = async (req: any, res: any) => {
+async function createPost(req, res) {
     // should have content, epk, proof, minRep, nullifiers, publicSignals
     const unirepContract = new ethers.Contract(
         UNIREP,
@@ -130,6 +113,7 @@ const publishPost = async (req: any, res: any) => {
     const minRep = Number(reputationProof.minRep)
 
     const error = await verifyReputationProof(
+        req.db,
         reputationProof,
         DEFAULT_POST_KARMA,
         unirepSocialId,
@@ -163,7 +147,7 @@ const publishPost = async (req: any, res: any) => {
         }
     )
 
-    const post = await Post.create({
+    const post = await req.db.create('Post', {
         content,
         title,
         epochKey: epochKey,
@@ -175,7 +159,8 @@ const publishPost = async (req: any, res: any) => {
         status: 0,
         transactionHash: hash,
     })
-    await Nullifier.create(
+    await req.db.create(
+        'Nullifier',
         reputationProof.repNullifiers
             .filter((n) => n.toString() !== '0')
             .map((n) => ({
@@ -185,7 +170,7 @@ const publishPost = async (req: any, res: any) => {
                 confirmed: false,
             }))
     )
-    await Record.create({
+    await req.db.create('Record', {
         to: epochKey,
         from: epochKey,
         upvote: 0,
@@ -202,13 +187,4 @@ const publishPost = async (req: any, res: any) => {
         currentEpoch: currentEpoch,
         post,
     })
-}
-
-export default {
-    getVotesByPostId,
-    getCommentsByPostId,
-    listAllPosts,
-    getPostWithQuery,
-    getPostWithId,
-    publishPost,
 }

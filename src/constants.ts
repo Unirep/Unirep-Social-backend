@@ -10,7 +10,6 @@ Object.assign(process.env, {
     UNIREP_SOCIAL: '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
     DEFAULT_ETH_PROVIDER_URL: 'http://localhost:8545',
     ADMIN_SESSION_CODE: randomstring.generate(20),
-    MONGO_URL: 'mongodb://127.0.0.1:27017/unirep_social',
     ...process.env,
 })
 
