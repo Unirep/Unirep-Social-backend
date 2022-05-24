@@ -7,10 +7,10 @@ dotenv.config()
 import EpochManager from './daemons/EpochManager'
 import TransactionManager from './daemons/TransactionManager'
 import { Synchronizer } from './daemons/NewSynchronizer'
-import { SQLiteMemoryConnector } from 'anondb/node'
+import { SQLiteConnector } from 'anondb/node'
 import schema from './schema'
 
-import { DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER } from './constants'
+import { DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER, DB_PATH } from './constants'
 
 main().catch((err) => {
     console.log(`Uncaught error: ${err}`)
@@ -18,9 +18,7 @@ main().catch((err) => {
 })
 
 async function main() {
-    // try database connection
-    const db = await SQLiteMemoryConnector.create(schema)
-
+    const db = await SQLiteConnector.create(schema, DB_PATH)
     // start watching for epoch transitions
     await EpochManager.updateWatch()
     TransactionManager.configure(DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER, db)

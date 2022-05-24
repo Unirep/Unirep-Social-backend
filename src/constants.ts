@@ -10,6 +10,7 @@ Object.assign(process.env, {
     UNIREP_SOCIAL: '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
     DEFAULT_ETH_PROVIDER_URL: 'http://localhost:8545',
     ADMIN_SESSION_CODE: randomstring.generate(20),
+    DB_PATH: ':memory:',
     ...process.env,
 })
 
@@ -20,6 +21,7 @@ export const {
     DEFAULT_ETH_PROVIDER_URL,
     MONGO_URL,
     ADMIN_SESSION_CODE,
+    DB_PATH,
 } = process.env as any
 
 console.log(`Admin session code is "${ADMIN_SESSION_CODE}"`)
