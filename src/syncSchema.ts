@@ -30,7 +30,7 @@ const schema = [
             ['transactionHash', 'String'],
             ['blindedUserState', 'String', { optional: true }],
             ['blindedHashChain', 'String', { optional: true }],
-            ['globalStateTree', 'String', { optional: true }],
+            ['globalStateTree', 'String'],
             ['outputBlindedUserState', 'String', { optional: true }],
             ['outputBlindedHashChain', 'String', { optional: true }],
             ['inputBlindedUserState', 'String', { optional: true }],

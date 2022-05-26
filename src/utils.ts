@@ -1,4 +1,5 @@
-import { Circuit, verifyProof } from '@unirep/circuits'
+import { Circuit } from '@unirep/circuits'
+import { Prover } from './daemons/Prover'
 import {
     ReputationProof,
     SignUpProof,
@@ -62,7 +63,11 @@ const verifyReputationProof = async (
         return 'Error: proof with wrong reputation amount'
     }
 
-    const isProofValid = await reputationProof.verify()
+    const isProofValid = await Prover.default.verifyProof(
+        Circuit.proveReputation,
+        reputationProof.proof,
+        (reputationProof as any).publicSignals
+    )
     if (!isProofValid) {
         return 'Error: invalid reputation proof'
     }
@@ -113,7 +118,11 @@ const verifyAirdropProof = async (
         return 'Error: user has not signed up in Unirep Social'
     }
 
-    const isProofValid = await signUpProof.verify()
+    const isProofValid = await Prover.default.verifyProof(
+        Circuit.proveUserSignUp,
+        signUpProof.proof,
+        (signUpProof as any).publicSignals
+    )
     if (!isProofValid) {
         return 'Error: invalid user sign up proof'
     }
@@ -151,7 +160,7 @@ const verifyUSTProof = async (
     }
 
     // Start user state transition proof
-    let isValid = await verifyProof(
+    let isValid = await Prover.default.verifyProof(
         Circuit.startTransition,
         results.startTransitionProof.proof,
         results.startTransitionProof.publicSignals
@@ -163,7 +172,7 @@ const verifyUSTProof = async (
 
     // Process attestations proofs
     for (let i = 0; i < results.processAttestationProofs.length; i++) {
-        const isValid = await verifyProof(
+        const isValid = await Prover.default.verifyProof(
             Circuit.processAttestations,
             results.processAttestationProofs[i].proof,
             results.processAttestationProofs[i].publicSignals
@@ -179,7 +188,11 @@ const verifyUSTProof = async (
         results.finalTransitionProof.publicSignals,
         results.finalTransitionProof.proof
     )
-    isValid = await USTProof.verify()
+    isValid = await Prover.default.verifyProof(
+        Circuit.userStateTransition,
+        USTProof.proof,
+        (USTProof as any).publicSignals
+    )
     if (!isValid) {
         error = 'Error: user state transition proof generated is not valid!'
         return error

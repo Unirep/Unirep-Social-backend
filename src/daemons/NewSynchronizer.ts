@@ -27,11 +27,7 @@ import {
     genNewSMT,
     SMT_ONE_LEAF,
 } from '@unirep/core'
-import {
-    Circuit,
-    formatProofForSnarkjsVerification,
-    verifyProof,
-} from '@unirep/circuits'
+import { Circuit, formatProofForSnarkjsVerification } from '@unirep/circuits'
 import {
     IncrementalMerkleTree,
     hash5,
@@ -40,6 +36,8 @@ import {
     stringifyBigInts,
     unstringifyBigInts,
 } from '@unirep/crypto'
+import { IncrementalQuinTree } from 'maci-crypto'
+import { Prover } from './Prover'
 
 const encodeBigIntArray = (arr: BigInt[]): string => {
     return JSON.stringify(stringifyBigInts(arr))
@@ -113,7 +111,7 @@ export class Synchronizer extends EventEmitter {
     private epochTreeRoot: { [key: number]: BigInt } = {}
     private GSTLeaves: { [key: number]: BigInt[] } = {}
     private epochTreeLeaves: { [key: number]: any[] } = {}
-    private globalStateTree: { [key: number]: IncrementalMerkleTree } = {}
+    private globalStateTree: { [key: number]: IncrementalQuinTree } = {}
     private epochTree: { [key: number]: SparseMerkleTree } = {}
     private defaultGSTLeaf: BigInt = BigInt(0)
     public latestProcessedBlock: number = 0
@@ -146,7 +144,7 @@ export class Synchronizer extends EventEmitter {
         )
         this.defaultGSTLeaf = hashLeftRight(BigInt(0), emptyUserStateRoot)
         this.GSTLeaves[this.currentEpoch] = []
-        this.globalStateTree[this.currentEpoch] = new IncrementalMerkleTree(
+        this.globalStateTree[this.currentEpoch] = new IncrementalQuinTree(
             treeDepths.globalStateTreeDepth,
             this.defaultGSTLeaf,
             2
@@ -481,40 +479,41 @@ export class Synchronizer extends EventEmitter {
             },
         })
         if (!proof) throw new Error(`Unable to find attestation proof ${index}`)
-        let formedProof
         if (proof.event === 'IndexedEpochKeyProof') {
             const publicSignals = decodeBigIntArray(proof.publicSignals)
             const _proof = JSON.parse(proof.proof)
-            formedProof = new EpochKeyProof(
-                publicSignals,
-                formatProofForSnarkjsVerification(_proof)
+            const valid = await Prover.default.verifyProof(
+                Circuit.verifyEpochKey,
+                formatProofForSnarkjsVerification(_proof),
+                publicSignals
             )
+            if (!valid) return { isProofValid: false }
         } else if (proof.event === 'IndexedReputationProof') {
             const publicSignals = decodeBigIntArray(proof.publicSignals)
             const _proof = JSON.parse(proof.proof)
-            formedProof = new ReputationProof(
-                publicSignals,
-                formatProofForSnarkjsVerification(_proof)
+            const valid = await Prover.default.verifyProof(
+                Circuit.proveReputation,
+                formatProofForSnarkjsVerification(_proof),
+                publicSignals
             )
+            if (!valid) return { isProofValid: false }
         } else if (proof.event === 'IndexedUserSignedUpProof') {
             const publicSignals = decodeBigIntArray(proof.publicSignals)
             const _proof = JSON.parse(proof.proof)
-            formedProof = new SignUpProof(
-                publicSignals,
-                formatProofForSnarkjsVerification(_proof)
+            const valid = await Prover.default.verifyProof(
+                Circuit.proveUserSignUp,
+                formatProofForSnarkjsVerification(_proof),
+                publicSignals
             )
+            if (!valid) return { isProofValid: false }
         } else {
             console.log(
                 `proof index ${index} matches wrong event ${proof.event}`
             )
-            return { isProofValid: false, proof: formedProof }
+            return { isProofValid: false }
         }
-        if (!(await formedProof.verify())) {
-            return { isProofValid: false, proof: formedProof }
-        }
-
-        const epoch = Number(formedProof.epoch)
-        const root = BigInt(formedProof.globalStateTree).toString()
+        const epoch = Number(_epoch)
+        const root = BigInt(proof.globalStateTree).toString()
         const rootEntry = await this._db.findOne('GSTRoot', {
             where: {
                 epoch,
@@ -532,9 +531,9 @@ export class Synchronizer extends EventEmitter {
                     valid: false,
                 },
             })
-            return { isProofValid: false, proof: formedProof }
+            return { isProofValid: false }
         }
-        return { isProofValid: true, proof: formedProof }
+        return { isProofValid: true }
     }
 
     async commentSubmittedEvent(event: ethers.Event, db: TransactionDB) {
@@ -790,22 +789,20 @@ export class Synchronizer extends EventEmitter {
             let content: string = ''
             let title: string = ''
             if (decodedData !== null) {
-                let i: number = decodedData.postContent.indexOf(titlePrefix)
+                const postContent =
+                    decodedData._postContent ?? decodedData.postContent
+                // TODO: remove underscores for new contract versions
+                let i: number = postContent.indexOf(titlePrefix)
                 if (i === -1) {
-                    content = decodedData.postContent
+                    content = postContent
                 } else {
                     i = i + titlePrefix.length
-                    let j: number = decodedData.postContent.indexOf(
-                        titlePostfix,
-                        i + 1
-                    )
+                    let j: number = postContent.indexOf(titlePostfix, i + 1)
                     if (j === -1) {
-                        content = decodedData.postContent
+                        content = postContent
                     } else {
-                        title = decodedData.postContent.substring(i, j)
-                        content = decodedData.postContent.substring(
-                            j + titlePostfix.length
-                        )
+                        title = postContent.substring(i, j)
+                        content = postContent.substring(j + titlePostfix.length)
                     }
                 }
             }
@@ -1127,7 +1124,8 @@ export class Synchronizer extends EventEmitter {
             _epoch,
             db
         )
-        if (isProofValid === false) return
+        if (isProofValid === false)
+            return console.log(`proof ${proofIndex} is invalid`)
 
         db.delete('Record', {
             where: {
@@ -1191,12 +1189,13 @@ export class Synchronizer extends EventEmitter {
                 leaf.hashchainResult
             )
         }
+        console.log(this.epochTree[1])
         this.epochTreeLeaves[epoch] = epochTreeLeaves.slice()
         this.epochTreeRoot[epoch] = this.epochTree[epoch].getRootHash()
         this.currentEpoch++
         this.GSTLeaves[this.currentEpoch] = []
         this.epochKeyInEpoch[this.currentEpoch] = new Map()
-        this.globalStateTree[this.currentEpoch] = new IncrementalMerkleTree(
+        this.globalStateTree[this.currentEpoch] = new IncrementalQuinTree(
             treeDepths.globalStateTreeDepth,
             this.defaultGSTLeaf,
             2
@@ -1207,7 +1206,6 @@ export class Synchronizer extends EventEmitter {
                 number: epoch,
             },
             update: {
-                number: epoch,
                 sealed: true,
                 epochRoot: this.epochTree[epoch].getRootHash().toString(),
             },
@@ -1396,7 +1394,9 @@ export class Synchronizer extends EventEmitter {
                 },
             })
             if (!processAttestationsProof) {
-                return
+                return console.log(
+                    'Unable to find processed attestations proof'
+                )
             }
             if (!processAttestationsProof.valid) {
                 console.log(
@@ -1445,6 +1445,7 @@ export class Synchronizer extends EventEmitter {
                     ],
                 },
             })
+            console.log(findBlindHC)
             const inList = proofIndexRecords.indexOf(findBlindHC.index)
             if (inList === -1) {
                 console.log(
@@ -1475,6 +1476,8 @@ export class Synchronizer extends EventEmitter {
             }
         }
         {
+            console.log(epochTreeRoot)
+            console.log(await this._db.findMany('Epoch', { where: {} }))
             const existingRoot = await this._db.findOne('Epoch', {
                 where: {
                     number: fromEpoch,
@@ -1613,7 +1616,7 @@ export class Synchronizer extends EventEmitter {
         const formattedProof = args.proof.map((n) => BigInt(n))
         const proof = encodeBigIntArray(formattedProof)
         const publicSignals = encodeBigIntArray(formatPublicSignals)
-        const isValid = await verifyProof(
+        const isValid = await Prover.default.verifyProof(
             Circuit.userStateTransition,
             formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
@@ -1655,7 +1658,7 @@ export class Synchronizer extends EventEmitter {
             _inputBlindedUserState,
         ]
         const formattedProof = decodedData.proof.map((n) => BigInt(n))
-        const isValid = await verifyProof(
+        const isValid = await Prover.default.verifyProof(
             Circuit.processAttestations,
             formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
@@ -1668,6 +1671,7 @@ export class Synchronizer extends EventEmitter {
             outputBlindedUserState: _outputBlindedUserState.toString(),
             outputBlindedHashChain: _outputBlindedHashChain.toString(),
             inputBlindedUserState: _inputBlindedUserState.toString(),
+            globalStateTree: '0',
             proof: proof,
             transactionHash: event.transactionHash,
             event: 'IndexedProcessedAttestationsProof',
@@ -1693,7 +1697,7 @@ export class Synchronizer extends EventEmitter {
             _globalStateTree,
         ]
         const formattedProof = decodedData.proof.map((n) => BigInt(n))
-        const isValid = await verifyProof(
+        const isValid = await Prover.default.verifyProof(
             Circuit.startTransition,
             formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
@@ -1739,7 +1743,7 @@ export class Synchronizer extends EventEmitter {
         const formattedProof = args.proof.map((n) => BigInt(n))
         const proof = encodeBigIntArray(formattedProof)
         const publicSignals = encodeBigIntArray(formatPublicSignals)
-        const isValid = await verifyProof(
+        const isValid = await Prover.default.verifyProof(
             Circuit.proveUserSignUp,
             formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
@@ -1751,6 +1755,7 @@ export class Synchronizer extends EventEmitter {
             proof: proof,
             publicSignals: publicSignals,
             transactionHash: event.transactionHash,
+            globalStateTree: args.globalStateTree.toString(),
             event: 'IndexedUserSignedUpProof',
             valid: isValid,
         })
@@ -1784,7 +1789,7 @@ export class Synchronizer extends EventEmitter {
         const formattedProof = args.proof.map((n) => BigInt(n))
         const proof = encodeBigIntArray(formattedProof)
         const publicSignals = encodeBigIntArray(formatPublicSignals)
-        const isValid = await verifyProof(
+        const isValid = await Prover.default.verifyProof(
             Circuit.proveReputation,
             formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
@@ -1796,6 +1801,7 @@ export class Synchronizer extends EventEmitter {
             proof: proof,
             publicSignals: publicSignals,
             transactionHash: event.transactionHash,
+            globalStateTree: args.globalStateTree.toString(),
             event: 'IndexedReputationProof',
             valid: isValid,
         })
@@ -1820,7 +1826,7 @@ export class Synchronizer extends EventEmitter {
         const formattedProof = args.proof.map((n) => BigInt(n))
         const proof = encodeBigIntArray(formattedProof)
         const publicSignals = encodeBigIntArray(formatPublicSignals)
-        const isValid = await verifyProof(
+        const isValid = await Prover.default.verifyProof(
             Circuit.verifyEpochKey,
             formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
@@ -1832,6 +1838,7 @@ export class Synchronizer extends EventEmitter {
             proof: proof,
             publicSignals: publicSignals,
             transactionHash: event.transactionHash,
+            globalStateTree: args.globalStateTree,
             event: 'IndexedEpochKeyProof',
             valid: isValid,
         })
