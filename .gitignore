@@ -3,7 +3,7 @@
 build/
 keys/
 
-testdb.sqlite
+*.sqlite
 
 artifacts/
 
