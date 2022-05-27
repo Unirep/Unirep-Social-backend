@@ -47,6 +47,9 @@ const decodeBigIntArray = (input: string): bigint[] => {
     return unstringifyBigInts(JSON.parse(input))
 }
 
+const LEGACY_ATTESTATION_TOPIC =
+    '0xdbd3d665448fee233664f2b549d5d40b93371f736ecc7f9bc421fe927bf0b376'
+
 interface IAttestation {
     attesterId: BigInt
     posRep: BigInt
@@ -333,6 +336,7 @@ export class Synchronizer extends EventEmitter {
                     IndexedStartedTransitionProof,
                     IndexedProcessedAttestationsProof,
                     IndexedUserStateTransitionProof,
+                    LEGACY_ATTESTATION_TOPIC,
                 ],
             ],
         }
@@ -434,7 +438,10 @@ export class Synchronizer extends EventEmitter {
         } else if (event.topics[0] === this.allTopics.UserStateTransitioned) {
             console.log('UserStateTransitioned')
             await this.USTEvent(event, db)
-        } else if (event.topics[0] === this.allTopics.AttestationSubmitted) {
+        } else if (
+            event.topics[0] === this.allTopics.AttestationSubmitted ||
+            event.topics[0] === LEGACY_ATTESTATION_TOPIC
+        ) {
             console.log('AttestationSubmitted')
             await this.attestationEvent(event, db)
         } else if (event.topics[0] === this.allTopics.EpochEnded) {
@@ -1189,7 +1196,6 @@ export class Synchronizer extends EventEmitter {
                 leaf.hashchainResult
             )
         }
-        console.log(this.epochTree[1])
         this.epochTreeLeaves[epoch] = epochTreeLeaves.slice()
         this.epochTreeRoot[epoch] = this.epochTree[epoch].getRootHash()
         this.currentEpoch++
@@ -1276,6 +1282,7 @@ export class Synchronizer extends EventEmitter {
                     valid: false,
                 },
             })
+            console.log('Attestion proof is invalid')
             return
         }
         if (fromProofIndex) {
@@ -1445,7 +1452,6 @@ export class Synchronizer extends EventEmitter {
                     ],
                 },
             })
-            console.log(findBlindHC)
             const inList = proofIndexRecords.indexOf(findBlindHC.index)
             if (inList === -1) {
                 console.log(
@@ -1476,8 +1482,6 @@ export class Synchronizer extends EventEmitter {
             }
         }
         {
-            console.log(epochTreeRoot)
-            console.log(await this._db.findMany('Epoch', { where: {} }))
             const existingRoot = await this._db.findOne('Epoch', {
                 where: {
                     number: fromEpoch,
