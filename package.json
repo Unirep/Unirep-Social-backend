@@ -3,6 +3,7 @@
     "version": "1.0.0",
     "description": "",
     "scripts": {
+        "postinstall": "sh scripts/loadKeys.sh",
         "start": "nodemon src/app.ts",
         "start:daemon": "ts-node src/app.ts",
         "synct": "ts-node src/sync-test.ts",
