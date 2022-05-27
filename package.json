@@ -6,7 +6,7 @@
         "start": "nodemon src/app.ts",
         "start:daemon": "ts-node src/app.ts",
         "synct": "ts-node src/sync-test.ts",
-        "keys": "rm -rf keys ; cp -r node_modules/@unirep/circuits/build ./keys",
+        "keys": "sh scripts/loadKeys.sh",
         "build": "tsc",
         "lint": "prettier .",
         "test": "sh scripts/pretest.sh && ava test/*.test.ts -T 5m --verbose"
