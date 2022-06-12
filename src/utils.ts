@@ -1,4 +1,4 @@
-import { Circuit } from '@unirep/circuits'
+import { Circuit, formatProofForSnarkjsVerification } from '@unirep/circuits'
 import { Prover } from './daemons/Prover'
 import {
     ReputationProof,
@@ -65,7 +65,7 @@ const verifyReputationProof = async (
 
     const isProofValid = await Prover.default.verifyProof(
         Circuit.proveReputation,
-        reputationProof.proof,
+        formatProofForSnarkjsVerification(reputationProof.proof as string[]),
         (reputationProof as any).publicSignals
     )
     if (!isProofValid) {
@@ -120,7 +120,7 @@ const verifyAirdropProof = async (
 
     const isProofValid = await Prover.default.verifyProof(
         Circuit.proveUserSignUp,
-        signUpProof.proof,
+        formatProofForSnarkjsVerification(signUpProof.proof as string[]),
         (signUpProof as any).publicSignals
     )
     if (!isProofValid) {
@@ -190,7 +190,7 @@ const verifyUSTProof = async (
     )
     isValid = await Prover.default.verifyProof(
         Circuit.userStateTransition,
-        USTProof.proof,
+        formatProofForSnarkjsVerification(USTProof.proof as string[]),
         (USTProof as any).publicSignals
     )
     if (!isValid) {

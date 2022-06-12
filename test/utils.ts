@@ -77,7 +77,7 @@ export const airdrop = async (t, iden) => {
             'content-type': 'application/json',
         },
         body: JSON.stringify({
-            proof: formatProofForVerifierContract(proof),
+            proof,
             publicSignals,
         }),
     })
