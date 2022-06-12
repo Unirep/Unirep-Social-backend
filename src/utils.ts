@@ -63,7 +63,7 @@ const verifyReputationProof = async (
         return 'Error: proof with wrong reputation amount'
     }
 
-    const isProofValid = await Prover.default.verifyProof(
+    const isProofValid = await Prover.verifyProof(
         Circuit.proveReputation,
         formatProofForSnarkjsVerification(reputationProof.proof as string[]),
         (reputationProof as any).publicSignals
@@ -118,7 +118,7 @@ const verifyAirdropProof = async (
         return 'Error: user has not signed up in Unirep Social'
     }
 
-    const isProofValid = await Prover.default.verifyProof(
+    const isProofValid = await Prover.verifyProof(
         Circuit.proveUserSignUp,
         formatProofForSnarkjsVerification(signUpProof.proof as string[]),
         (signUpProof as any).publicSignals
@@ -160,7 +160,7 @@ const verifyUSTProof = async (
     }
 
     // Start user state transition proof
-    let isValid = await Prover.default.verifyProof(
+    let isValid = await Prover.verifyProof(
         Circuit.startTransition,
         results.startTransitionProof.proof,
         results.startTransitionProof.publicSignals
@@ -172,7 +172,7 @@ const verifyUSTProof = async (
 
     // Process attestations proofs
     for (let i = 0; i < results.processAttestationProofs.length; i++) {
-        const isValid = await Prover.default.verifyProof(
+        const isValid = await Prover.verifyProof(
             Circuit.processAttestations,
             results.processAttestationProofs[i].proof,
             results.processAttestationProofs[i].publicSignals
@@ -188,7 +188,7 @@ const verifyUSTProof = async (
         results.finalTransitionProof.publicSignals,
         results.finalTransitionProof.proof
     )
-    isValid = await Prover.default.verifyProof(
+    isValid = await Prover.verifyProof(
         Circuit.userStateTransition,
         formatProofForSnarkjsVerification(USTProof.proof as string[]),
         (USTProof as any).publicSignals
