@@ -84,13 +84,15 @@ export async function startServer(contractOverrides = {}) {
 
     const constants = require('../src/constants')
     const appTxManager = require('../src/daemons/TransactionManager').default
-    const { Synchronizer } = require('../src/daemons/NewSynchronizer')
+    const {
+        UnirepSocialSynchronizer,
+    } = require('../src/daemons/NewSynchronizer')
 
     const appDB = await SQLiteMemoryConnector.create(schema)
     appTxManager.configure(wallet.privateKey, provider, appDB)
     await appTxManager.start()
 
-    const sync = new Synchronizer(appDB)
+    const sync = new UnirepSocialSynchronizer(appDB)
     await sync.start()
 
     const app = express()

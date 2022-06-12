@@ -6,7 +6,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 import EpochManager from './daemons/EpochManager'
 import TransactionManager from './daemons/TransactionManager'
-import { Synchronizer } from './daemons/NewSynchronizer'
+import { UnirepSocialSynchronizer } from './daemons/NewSynchronizer'
 import { SQLiteConnector } from 'anondb/node'
 import schema from './schema'
 
@@ -23,7 +23,7 @@ async function main() {
     await EpochManager.updateWatch()
     TransactionManager.configure(DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER, db)
     await TransactionManager.start()
-    const sync = new Synchronizer(db)
+    const sync = new UnirepSocialSynchronizer(db)
     await sync.start()
 
     // now start the http server
