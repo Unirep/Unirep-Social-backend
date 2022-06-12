@@ -65,8 +65,8 @@ const verifyReputationProof = async (
 
     const isProofValid = await Prover.verifyProof(
         Circuit.proveReputation,
-        formatProofForSnarkjsVerification(reputationProof.proof as string[]),
-        (reputationProof as any).publicSignals
+        (reputationProof as any).publicSignals,
+        formatProofForSnarkjsVerification(reputationProof.proof as string[])
     )
     if (!isProofValid) {
         return 'Error: invalid reputation proof'
@@ -120,8 +120,8 @@ const verifyAirdropProof = async (
 
     const isProofValid = await Prover.verifyProof(
         Circuit.proveUserSignUp,
-        formatProofForSnarkjsVerification(signUpProof.proof as string[]),
-        (signUpProof as any).publicSignals
+        (signUpProof as any).publicSignals,
+        formatProofForSnarkjsVerification(signUpProof.proof as string[])
     )
     if (!isProofValid) {
         return 'Error: invalid user sign up proof'
@@ -162,8 +162,8 @@ const verifyUSTProof = async (
     // Start user state transition proof
     let isValid = await Prover.verifyProof(
         Circuit.startTransition,
-        results.startTransitionProof.proof,
-        results.startTransitionProof.publicSignals
+        results.startTransitionProof.publicSignals,
+        results.startTransitionProof.proof
     )
     if (!isValid) {
         error = 'Error: start state transition proof generated is not valid!'
@@ -174,8 +174,8 @@ const verifyUSTProof = async (
     for (let i = 0; i < results.processAttestationProofs.length; i++) {
         const isValid = await Prover.verifyProof(
             Circuit.processAttestations,
-            results.processAttestationProofs[i].proof,
-            results.processAttestationProofs[i].publicSignals
+            results.processAttestationProofs[i].publicSignals,
+            results.processAttestationProofs[i].proof
         )
         if (!isValid) {
             error = 'Error: process attestations proof generated is not valid!'
@@ -190,8 +190,8 @@ const verifyUSTProof = async (
     )
     isValid = await Prover.verifyProof(
         Circuit.userStateTransition,
-        formatProofForSnarkjsVerification(USTProof.proof as string[]),
-        (USTProof as any).publicSignals
+        (USTProof as any).publicSignals,
+        formatProofForSnarkjsVerification(USTProof.proof as string[])
     )
     if (!isValid) {
         error = 'Error: user state transition proof generated is not valid!'

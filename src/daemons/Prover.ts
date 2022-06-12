@@ -3,7 +3,7 @@ import * as snarkjs from 'snarkjs'
 import path from 'path'
 
 export class Prover {
-    static async verifyProof(type: Circuit, proof, signals: bigint[]) {
+    static async verifyProof(type: Circuit, signals: bigint[], proof) {
         // we'll handle loading here
         const basepath = path.join(__dirname, '../../keys/', type)
         // const zkeypath = `${basepath}.zkey`
