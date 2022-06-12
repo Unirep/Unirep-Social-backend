@@ -1,6 +1,5 @@
 import { Express } from 'express'
 import catchError from '../catchError'
-import { formatProofForSnarkjsVerification } from '@unirep/circuits'
 import { SignUpProof } from '@unirep/contracts'
 import {
     UNIREP_SOCIAL,
@@ -36,10 +35,7 @@ async function getAirdrop(req, res) {
 
     // Parse Inputs
     const { publicSignals, proof } = req.body
-    const signUpProof = new SignUpProof(
-        publicSignals,
-        formatProofForSnarkjsVerification(proof)
-    )
+    const signUpProof = new SignUpProof(publicSignals, proof)
 
     const attestingFee = await unirepContract.attestingFee()
 

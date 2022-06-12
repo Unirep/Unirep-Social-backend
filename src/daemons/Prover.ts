@@ -9,7 +9,7 @@ export class Prover {
     }
     async verifyProof(type: Circuit, proof, signals: bigint[]) {
         // we'll handle loading here
-        const basepath = path.join(__dirname, '../../build/keys/', type)
+        const basepath = path.join(__dirname, '../../keys/', type)
         // const zkeypath = `${basepath}.zkey`
         const vkeypath = `${basepath}.vkey.json`
         // const wasmpath = `${basepath}.wasm`
