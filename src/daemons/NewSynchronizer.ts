@@ -491,8 +491,8 @@ export class Synchronizer extends EventEmitter {
             const _proof = JSON.parse(proof.proof)
             const valid = await Prover.verifyProof(
                 Circuit.verifyEpochKey,
-                formatProofForSnarkjsVerification(_proof),
-                publicSignals
+                publicSignals,
+                formatProofForSnarkjsVerification(_proof)
             )
             if (!valid) return { isProofValid: false }
         } else if (proof.event === 'IndexedReputationProof') {
@@ -500,8 +500,8 @@ export class Synchronizer extends EventEmitter {
             const _proof = JSON.parse(proof.proof)
             const valid = await Prover.verifyProof(
                 Circuit.proveReputation,
-                formatProofForSnarkjsVerification(_proof),
-                publicSignals
+                publicSignals,
+                formatProofForSnarkjsVerification(_proof)
             )
             if (!valid) return { isProofValid: false }
         } else if (proof.event === 'IndexedUserSignedUpProof') {
@@ -509,8 +509,8 @@ export class Synchronizer extends EventEmitter {
             const _proof = JSON.parse(proof.proof)
             const valid = await Prover.verifyProof(
                 Circuit.proveUserSignUp,
-                formatProofForSnarkjsVerification(_proof),
-                publicSignals
+                publicSignals,
+                formatProofForSnarkjsVerification(_proof)
             )
             if (!valid) return { isProofValid: false }
         } else {
@@ -1622,8 +1622,8 @@ export class Synchronizer extends EventEmitter {
         const publicSignals = encodeBigIntArray(formatPublicSignals)
         const isValid = await Prover.verifyProof(
             Circuit.userStateTransition,
-            formatProofForSnarkjsVerification(formattedProof),
-            formatPublicSignals
+            formatPublicSignals,
+            formatProofForSnarkjsVerification(formattedProof)
         )
 
         db.create('Proof', {
@@ -1664,8 +1664,8 @@ export class Synchronizer extends EventEmitter {
         const formattedProof = decodedData.proof.map((n) => BigInt(n))
         const isValid = await Prover.verifyProof(
             Circuit.processAttestations,
-            formatProofForSnarkjsVerification(formattedProof),
-            formatPublicSignals
+            formatPublicSignals,
+            formatProofForSnarkjsVerification(formattedProof)
         )
 
         const proof = encodeBigIntArray(formattedProof)
@@ -1703,8 +1703,8 @@ export class Synchronizer extends EventEmitter {
         const formattedProof = decodedData.proof.map((n) => BigInt(n))
         const isValid = await Prover.verifyProof(
             Circuit.startTransition,
-            formatProofForSnarkjsVerification(formattedProof),
-            formatPublicSignals
+            formatPublicSignals,
+            formatProofForSnarkjsVerification(formattedProof)
         )
 
         const proof = encodeBigIntArray(formattedProof)
@@ -1749,8 +1749,8 @@ export class Synchronizer extends EventEmitter {
         const publicSignals = encodeBigIntArray(formatPublicSignals)
         const isValid = await Prover.verifyProof(
             Circuit.proveUserSignUp,
-            formatProofForSnarkjsVerification(formattedProof),
-            formatPublicSignals
+            formatPublicSignals,
+            formatProofForSnarkjsVerification(formattedProof)
         )
 
         db.create('Proof', {
@@ -1795,8 +1795,8 @@ export class Synchronizer extends EventEmitter {
         const publicSignals = encodeBigIntArray(formatPublicSignals)
         const isValid = await Prover.verifyProof(
             Circuit.proveReputation,
-            formatProofForSnarkjsVerification(formattedProof),
-            formatPublicSignals
+            formatPublicSignals,
+            formatProofForSnarkjsVerification(formattedProof)
         )
 
         db.create('Proof', {
@@ -1832,8 +1832,8 @@ export class Synchronizer extends EventEmitter {
         const publicSignals = encodeBigIntArray(formatPublicSignals)
         const isValid = await Prover.verifyProof(
             Circuit.verifyEpochKey,
-            formatProofForSnarkjsVerification(formattedProof),
-            formatPublicSignals
+            formatPublicSignals,
+            formatProofForSnarkjsVerification(formattedProof)
         )
 
         db.create('Proof', {
