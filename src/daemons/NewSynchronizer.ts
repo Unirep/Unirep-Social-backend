@@ -489,7 +489,7 @@ export class Synchronizer extends EventEmitter {
         if (proof.event === 'IndexedEpochKeyProof') {
             const publicSignals = decodeBigIntArray(proof.publicSignals)
             const _proof = JSON.parse(proof.proof)
-            const valid = await Prover.default.verifyProof(
+            const valid = await Prover.verifyProof(
                 Circuit.verifyEpochKey,
                 formatProofForSnarkjsVerification(_proof),
                 publicSignals
@@ -498,7 +498,7 @@ export class Synchronizer extends EventEmitter {
         } else if (proof.event === 'IndexedReputationProof') {
             const publicSignals = decodeBigIntArray(proof.publicSignals)
             const _proof = JSON.parse(proof.proof)
-            const valid = await Prover.default.verifyProof(
+            const valid = await Prover.verifyProof(
                 Circuit.proveReputation,
                 formatProofForSnarkjsVerification(_proof),
                 publicSignals
@@ -507,7 +507,7 @@ export class Synchronizer extends EventEmitter {
         } else if (proof.event === 'IndexedUserSignedUpProof') {
             const publicSignals = decodeBigIntArray(proof.publicSignals)
             const _proof = JSON.parse(proof.proof)
-            const valid = await Prover.default.verifyProof(
+            const valid = await Prover.verifyProof(
                 Circuit.proveUserSignUp,
                 formatProofForSnarkjsVerification(_proof),
                 publicSignals
@@ -1620,7 +1620,7 @@ export class Synchronizer extends EventEmitter {
         const formattedProof = args.proof.map((n) => BigInt(n))
         const proof = encodeBigIntArray(formattedProof)
         const publicSignals = encodeBigIntArray(formatPublicSignals)
-        const isValid = await Prover.default.verifyProof(
+        const isValid = await Prover.verifyProof(
             Circuit.userStateTransition,
             formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
@@ -1662,7 +1662,7 @@ export class Synchronizer extends EventEmitter {
             _inputBlindedUserState,
         ]
         const formattedProof = decodedData.proof.map((n) => BigInt(n))
-        const isValid = await Prover.default.verifyProof(
+        const isValid = await Prover.verifyProof(
             Circuit.processAttestations,
             formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
@@ -1701,7 +1701,7 @@ export class Synchronizer extends EventEmitter {
             _globalStateTree,
         ]
         const formattedProof = decodedData.proof.map((n) => BigInt(n))
-        const isValid = await Prover.default.verifyProof(
+        const isValid = await Prover.verifyProof(
             Circuit.startTransition,
             formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
@@ -1747,7 +1747,7 @@ export class Synchronizer extends EventEmitter {
         const formattedProof = args.proof.map((n) => BigInt(n))
         const proof = encodeBigIntArray(formattedProof)
         const publicSignals = encodeBigIntArray(formatPublicSignals)
-        const isValid = await Prover.default.verifyProof(
+        const isValid = await Prover.verifyProof(
             Circuit.proveUserSignUp,
             formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
@@ -1793,7 +1793,7 @@ export class Synchronizer extends EventEmitter {
         const formattedProof = args.proof.map((n) => BigInt(n))
         const proof = encodeBigIntArray(formattedProof)
         const publicSignals = encodeBigIntArray(formatPublicSignals)
-        const isValid = await Prover.default.verifyProof(
+        const isValid = await Prover.verifyProof(
             Circuit.proveReputation,
             formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
@@ -1830,7 +1830,7 @@ export class Synchronizer extends EventEmitter {
         const formattedProof = args.proof.map((n) => BigInt(n))
         const proof = encodeBigIntArray(formattedProof)
         const publicSignals = encodeBigIntArray(formatPublicSignals)
-        const isValid = await Prover.default.verifyProof(
+        const isValid = await Prover.verifyProof(
             Circuit.verifyEpochKey,
             formatProofForSnarkjsVerification(formattedProof),
             formatPublicSignals
