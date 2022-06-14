@@ -3,7 +3,7 @@ import { startServer } from './environment'
 
 import { createPost, queryPost, signIn, signUp } from './utils'
 
-test.before(async (t) => {
+test.before(async (t: any) => {
     const context = await startServer()
     Object.assign(t.context, context)
 })

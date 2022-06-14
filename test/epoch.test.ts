@@ -4,7 +4,7 @@ import fetch from 'node-fetch'
 
 const EPOCH_LENGTH = 20000
 
-test.before(async (t) => {
+test.before(async (t: any) => {
     const context = await startServer({ epochLength: EPOCH_LENGTH / 1000 })
     Object.assign(t.context, context)
 })
