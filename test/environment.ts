@@ -1,11 +1,12 @@
 import { ethers } from 'ethers'
-import UnirepSocial from '@unirep/unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json'
+import UnirepSocial from 'unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json'
 import { deployUnirep } from '@unirep/contracts'
 import express from 'express'
 import cors from 'cors'
 import getPort from 'get-port'
 import { SQLiteConnector, SQLiteMemoryConnector } from 'anondb/node'
 import schema from '../src/schema'
+import { Prover } from '../src/daemons/Prover'
 
 import { settings } from './config'
 
@@ -84,15 +85,18 @@ export async function startServer(contractOverrides = {}) {
 
     const constants = require('../src/constants')
     const appTxManager = require('../src/daemons/TransactionManager').default
-    const {
-        UnirepSocialSynchronizer,
-    } = require('../src/daemons/NewSynchronizer')
+    const { UnirepSocialSynchronizer } = require('unirep-social')
 
     const appDB = await SQLiteMemoryConnector.create(schema)
     appTxManager.configure(wallet.privateKey, provider, appDB)
     await appTxManager.start()
 
-    const sync = new UnirepSocialSynchronizer(appDB)
+    const sync = new UnirepSocialSynchronizer(
+        appDB,
+        Prover,
+        unirep as any,
+        unirepSocial as any
+    )
     await sync.start()
 
     const app = express()

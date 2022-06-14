@@ -1,5 +1,6 @@
 import { Express } from 'express'
-import { ActionType, titlePrefix, titlePostfix } from '../constants'
+import { titlePrefix, titlePostfix } from '../constants'
+import { ActionType } from 'unirep-social'
 import catchError from '../catchError'
 
 export default (app: Express) => {

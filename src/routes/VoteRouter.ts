@@ -9,9 +9,9 @@ import {
     UNIREP_ABI,
     UNIREP_SOCIAL,
     DEFAULT_ETH_PROVIDER,
-    ActionType,
     UNIREP_SOCIAL_ATTESTER_ID,
 } from '../constants'
+import { ActionType } from 'unirep-social'
 import { verifyReputationProof } from '../utils'
 import TransactionManager from '../daemons/TransactionManager'
 

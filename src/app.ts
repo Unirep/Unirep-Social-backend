@@ -6,11 +6,20 @@ import dotenv from 'dotenv'
 dotenv.config()
 import EpochManager from './daemons/EpochManager'
 import TransactionManager from './daemons/TransactionManager'
-import { UnirepSocialSynchronizer } from './daemons/NewSynchronizer'
+import { UnirepSocialSynchronizer } from 'unirep-social'
 import { SQLiteConnector } from 'anondb/node'
 import schema from './schema'
-
-import { DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER, DB_PATH } from './constants'
+import { Prover } from './daemons/Prover'
+import { ethers } from 'ethers'
+import {
+    UNIREP,
+    UNIREP_ABI,
+    UNIREP_SOCIAL,
+    UNIREP_SOCIAL_ABI,
+    DEPLOYER_PRIV_KEY,
+    DEFAULT_ETH_PROVIDER,
+    DB_PATH,
+} from './constants'
 
 main().catch((err) => {
     console.log(`Uncaught error: ${err}`)
@@ -23,7 +32,16 @@ async function main() {
     await EpochManager.updateWatch()
     TransactionManager.configure(DEPLOYER_PRIV_KEY, DEFAULT_ETH_PROVIDER, db)
     await TransactionManager.start()
-    const sync = new UnirepSocialSynchronizer(db)
+    const sync = new UnirepSocialSynchronizer(
+        db,
+        Prover,
+        new ethers.Contract(UNIREP, UNIREP_ABI, DEFAULT_ETH_PROVIDER),
+        new ethers.Contract(
+            UNIREP_SOCIAL,
+            UNIREP_SOCIAL_ABI,
+            DEFAULT_ETH_PROVIDER
+        )
+    )
     await sync.start()
 
     // now start the http server

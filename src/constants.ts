@@ -1,4 +1,4 @@
-import UnirepSocial from '@unirep/unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json'
+import UnirepSocial from 'unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json'
 import Unirep from '@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json'
 import { ethers } from 'ethers'
 import randomstring from 'randomstring'
@@ -54,14 +54,6 @@ export const LOAD_POST_COUNT = 10
 
 export const UNIREP_ABI = Unirep.abi
 export const UNIREP_SOCIAL_ABI = UnirepSocial.abi
-
-export enum ActionType {
-    Post = 'Post',
-    Comment = 'Comment',
-    Vote = 'Vote',
-    UST = 'UST',
-    Signup = 'Signup',
-}
 
 export enum QueryType {
     New = 'new',

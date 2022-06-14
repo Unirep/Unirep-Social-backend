@@ -15,8 +15,8 @@ import {
     UNIREP,
     UNIREP_ABI,
     UNIREP_SOCIAL_ABI,
-    ActionType,
 } from '../constants'
+import { ActionType } from 'unirep-social'
 import { verifyReputationProof } from '../utils'
 import TransactionManager from '../daemons/TransactionManager'
 

@@ -15,8 +15,8 @@ import {
     UNIREP_SOCIAL_ATTESTER_ID,
     QueryType,
     LOAD_POST_COUNT,
-    ActionType,
 } from '../constants'
+import { ActionType } from 'unirep-social'
 
 export default (app: Express) => {
     app.get('/api/comment/:id', catchError(loadComment))
