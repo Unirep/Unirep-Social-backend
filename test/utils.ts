@@ -4,8 +4,8 @@ import {
     formatProofForVerifierContract,
     verifyProof,
 } from '@unirep/circuits'
-import { genIdentity, genIdentityCommitment } from '@unirep/crypto'
-import { genEpochKey, genUserStateFromContract } from '@unirep/unirep'
+import { ZkIdentity } from '@unirep/crypto'
+import { genEpochKey, genUserState } from '@unirep/core'
 
 export const getInvitationCode = async (t) => {
     const r = await fetch(`${t.context.url}/api/genInvitationCode?code=ffff`)
@@ -25,8 +25,10 @@ export const waitForBackendBlock = async (t, blockNumber) => {
 }
 
 export const signUp = async (t) => {
-    const iden = genIdentity()
-    const commitment = genIdentityCommitment(iden)
+    const iden = new ZkIdentity()
+    // const iden = genIdentity()
+    const commitment = iden
+        .genIdentityCommitment()
         .toString(16)
         .padStart(64, '0')
     const currentEpoch = await t.context.unirep.currentEpoch()
@@ -54,7 +56,7 @@ export const signUp = async (t) => {
 }
 
 export const airdrop = async (t, iden) => {
-    const userState = await genUserStateFromContract(
+    const userState = await genUserState(
         t.context.unirepSocial.provider,
         t.context.unirep.address,
         iden
@@ -75,7 +77,7 @@ export const airdrop = async (t, iden) => {
             'content-type': 'application/json',
         },
         body: JSON.stringify({
-            proof: formatProofForVerifierContract(proof),
+            proof,
             publicSignals,
         }),
     })
@@ -126,7 +128,7 @@ export const getSpent = async (t, iden) => {
 }
 
 const genReputationProof = async (t, iden, proveAmount) => {
-    const userState = await genUserStateFromContract(
+    const userState = await genUserState(
         t.context.unirepSocial.provider,
         t.context.unirep.address,
         iden
@@ -338,7 +340,7 @@ export const epochTransition = async (t) => {
 }
 
 export const userStateTransition = async (t, iden) => {
-    const userState = await genUserStateFromContract(
+    const userState = await genUserState(
         t.context.unirepSocial.provider,
         t.context.unirep.address,
         iden

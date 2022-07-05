@@ -3,6 +3,8 @@
 build/
 keys/
 
+*.sqlite
+
 artifacts/
 
 # Logs

@@ -1,6 +1,10 @@
+import { Express } from 'express'
+import catchError from '../catchError'
+import { ethers } from 'ethers'
+import TransactionManager from '../daemons/TransactionManager'
 import { formatProofForSnarkjsVerification } from '@unirep/circuits'
 import { ReputationProof } from '@unirep/contracts'
-import { ethers } from 'ethers'
+import { verifyReputationProof } from '../utils'
 import {
     UNIREP,
     UNIREP_SOCIAL_ABI,
@@ -11,80 +15,65 @@ import {
     UNIREP_SOCIAL_ATTESTER_ID,
     QueryType,
     LOAD_POST_COUNT,
-    ActionType,
 } from '../constants'
-import Comment, { IComment } from '../models/comment'
-import Nullifier from '../models/nullifiers'
-import { verifyReputationProof } from '../controllers/utils'
-import TransactionManager from '../daemons/TransactionManager'
-import Record from '../models/record'
-import Vote from '../models/vote'
+import { ActionType } from 'unirep-social'
 
-const getVotesByCommentId = async (req, res) => {
+export default (app: Express) => {
+    app.get('/api/comment/:id', catchError(loadComment))
+    app.get('/api/comment/:commentId/votes', catchError(loadVotesByCommentId))
+    app.get('/api/comment/', catchError(listComments))
+    app.post('/api/comment', catchError(createComment))
+}
+
+async function loadComment(req, res, next) {
+    const comment = await req.db.findOne('Comment', {
+        transactionHash: req.params.id,
+    })
+    res.json(comment)
+}
+
+async function loadVotesByCommentId(req, res, next) {
     const { commentId } = req.params
-    res.json(await Vote.find({ commentId }).lean())
+    const votes = await req.db.findMany('Vote', {
+        where: {
+            commentId,
+        },
+    })
+    res.json(votes)
 }
 
-const listAllComments = async () => {
-    const comments = await Comment.find({})
-    return comments.map((c) => c.toObject())
-}
-
-const getCommentsWithEpks = async (epks: string[]) => {
-    return Comment.find({ epochKey: { $in: epks } })
-}
-
-const getCommentsWithQuery = async (
-    query: string,
-    lastRead: string,
-    epks: string[]
-) => {
-    let allComments: any[] = []
-    if (epks.length === 0) {
-        allComments = await listAllComments()
-    } else {
-        allComments = await getCommentsWithEpks(epks)
+async function listComments(req, res, next) {
+    if (req.query.query === undefined) {
+        const comments = await req.db.findMany('Comment', { where: {} })
+        res.json(comments)
+        return
     }
-    allComments.sort((a, b) => (a.created_at > b.created_at ? -1 : 1))
-    if (query === QueryType.New) {
-        // allPosts.sort((a, b) => a.created_at > b.created_at? -1 : 1);
-    } else if (query === QueryType.Boost) {
-        allComments.sort((a, b) => (a.posRep > b.posRep ? -1 : 1))
-    } else if (query === QueryType.Squash) {
-        allComments.sort((a, b) => (a.negRep > b.negRep ? -1 : 1))
-    } else if (query === QueryType.Rep) {
-        allComments.sort((a, b) =>
-            a.posRep - a.negRep >= b.posRep - b.negRep ? -1 : 1
-        )
-    }
-
-    // console.log(allComments);
-
-    // filter out posts more than loadPostCount
-    if (lastRead === '0') {
-        return allComments.slice(
-            0,
-            Math.min(LOAD_POST_COUNT, allComments.length)
-        )
-    } else {
-        let index: number = -1
-        allComments.forEach((p, i) => {
-            if (p.transactionHash === lastRead) {
-                index = i
-            }
-        })
-        if (index > -1) {
-            return allComments.slice(
-                index + 1,
-                Math.min(allComments.length, index + 1 + LOAD_POST_COUNT)
-            )
-        } else {
-            return allComments.slice(0, LOAD_POST_COUNT)
-        }
-    }
+    const lastRead = req.query.lastRead
+    const query = req.query.query.toString()
+    const epks = req.query.epks ? req.query.epks.split('_') : []
+    const comments = await req.db.findMany('Comment', {
+        where: {
+            createdAt:
+                lastRead && query === QueryType.New
+                    ? {
+                          $lt: +lastRead,
+                      }
+                    : undefined,
+            epochKey: epks.length ? epks : undefined,
+        },
+        // TODO: add an offset argument for non-chronological sorts
+        orderBy: {
+            createdAt: query === QueryType.New ? 'desc' : undefined,
+            posRep: query === QueryType.Boost ? 'desc' : undefined,
+            negRep: query === QueryType.Squash ? 'desc' : undefined,
+            totalRep: query === QueryType.Rep ? 'desc' : undefined,
+        },
+        limit: LOAD_POST_COUNT,
+    })
+    res.json(comments)
 }
 
-const leaveComment = async (req: any, res: any) => {
+async function createComment(req, res) {
     const unirepContract = new ethers.Contract(
         UNIREP,
         UNIREP_ABI,
@@ -108,6 +97,7 @@ const leaveComment = async (req: any, res: any) => {
     const minRep = Number(reputationProof.minRep)
 
     const error = await verifyReputationProof(
+        req.db,
         reputationProof,
         DEFAULT_COMMENT_KARMA,
         unirepSocialId,
@@ -133,7 +123,7 @@ const leaveComment = async (req: any, res: any) => {
         }
     )
 
-    const newComment: IComment = new Comment({
+    const comment = await req.db.create('Comment', {
         postId: req.body.postId,
         content: req.body.content, // TODO: hashedContent
         epochKey: epochKey,
@@ -146,9 +136,8 @@ const leaveComment = async (req: any, res: any) => {
         transactionHash: hash,
     })
 
-    const comment = await newComment.save()
-
-    await Nullifier.create(
+    await req.db.create(
+        'Nullifier',
         reputationProof.repNullifiers
             .filter((n) => n.toString() !== '0')
             .map((n) => ({
@@ -158,7 +147,7 @@ const leaveComment = async (req: any, res: any) => {
                 confirmed: false,
             }))
     )
-    await Record.create({
+    await req.db.create('Record', {
         to: epochKey,
         from: epochKey,
         upvote: 0,
@@ -176,12 +165,4 @@ const leaveComment = async (req: any, res: any) => {
         currentEpoch: currentEpoch,
         comment,
     })
-}
-
-export default {
-    getVotesByCommentId,
-    leaveComment,
-    getCommentsWithQuery,
-    getCommentsWithEpks,
-    listAllComments,
 }

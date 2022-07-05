@@ -1,8 +1,8 @@
-import UnirepSocial from '@unirep/unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json'
+import UnirepSocial from 'unirep-social/artifacts/contracts/UnirepSocial.sol/UnirepSocial.json'
 import Unirep from '@unirep/contracts/artifacts/contracts/Unirep.sol/Unirep.json'
 import { ethers } from 'ethers'
 import randomstring from 'randomstring'
-import { numEpochKeyNoncePerEpoch } from '@unirep/unirep'
+import { NUM_EPOCH_KEY_NONCE_PER_EPOCH } from '@unirep/circuits/config'
 
 // Provide default values for process.env
 Object.assign(process.env, {
@@ -10,7 +10,7 @@ Object.assign(process.env, {
     UNIREP_SOCIAL: '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
     DEFAULT_ETH_PROVIDER_URL: 'http://localhost:8545',
     ADMIN_SESSION_CODE: randomstring.generate(20),
-    MONGO_URL: 'mongodb://127.0.0.1:27017/unirep_social',
+    DB_PATH: ':memory:',
     ...process.env,
 })
 
@@ -21,6 +21,7 @@ export const {
     DEFAULT_ETH_PROVIDER_URL,
     MONGO_URL,
     ADMIN_SESSION_CODE,
+    DB_PATH,
 } = process.env as any
 
 console.log(`Admin session code is "${ADMIN_SESSION_CODE}"`)
@@ -45,7 +46,7 @@ export const MAX_KARMA_BUDGET = 10
 export const DEFAULT_AIRDROPPED_KARMA = 30
 export const DEFAULT_QUERY_DEPTH = 5
 export const QUERY_DELAY_TIME = 300
-export const EPOCH_KEY_NONCE_PER_EPOCH = numEpochKeyNoncePerEpoch
+export const EPOCH_KEY_NONCE_PER_EPOCH = NUM_EPOCH_KEY_NONCE_PER_EPOCH
 
 export const maxReputationBudget = 10
 
@@ -53,14 +54,6 @@ export const LOAD_POST_COUNT = 10
 
 export const UNIREP_ABI = Unirep.abi
 export const UNIREP_SOCIAL_ABI = UnirepSocial.abi
-
-export enum ActionType {
-    Post = 'Post',
-    Comment = 'Comment',
-    Vote = 'Vote',
-    UST = 'UST',
-    Signup = 'Signup',
-}
 
 export enum QueryType {
     New = 'new',

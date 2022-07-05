@@ -3,7 +3,7 @@ import { startServer } from './environment'
 
 import { createComment, createPost, queryPost, signUp, vote } from './utils'
 
-test.before(async (t) => {
+test.before(async (t: any) => {
     const context = await startServer()
     Object.assign(t.context, context)
 })

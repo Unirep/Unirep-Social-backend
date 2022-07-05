@@ -3,9 +3,11 @@
     "version": "1.0.0",
     "description": "",
     "scripts": {
+        "postinstall": "sh scripts/loadKeys.sh",
         "start": "nodemon src/app.ts",
         "start:daemon": "ts-node src/app.ts",
-        "keys": "rm -rf keys ; cp -r node_modules/@unirep/circuits/build ./keys",
+        "synct": "ts-node src/sync-test.ts",
+        "keys": "sh scripts/loadKeys.sh",
         "build": "tsc",
         "lint": "prettier .",
         "test": "sh scripts/pretest.sh && ava test/*.test.ts -T 5m --verbose"
@@ -25,18 +27,21 @@
         "nodemon": "^2.0.12",
         "prettier": "^2.6.0",
         "ts-node": "^10.1.0",
-        "typescript": "^4.3.5"
+        "typescript": "^4.4.0"
     },
     "dependencies": {
-        "@unirep/circuits": "git+https://github.com/Unirep/circuits.git#alpha",
-        "@unirep/crypto": "git+https://github.com/Unirep/crypto.git",
-        "@unirep/unirep": "git+https://github.com/Unirep/unirep.git#alpha",
-        "@unirep/unirep-social": "git+https://github.com/Unirep/unirep-social.git#alpha",
+        "@unirep/circuits": "1.0.0-alpha-5",
+        "@unirep/contracts": "1.0.0-alpha-6",
+        "@unirep/core": "1.0.0-alpha-6",
+        "@unirep/crypto": "1.0.0-alpha-4",
+        "unirep-social": "git+https://github.com/Unirep/unirep-social.git#sync",
+        "anondb": "^0.0.6",
         "cors": "^2.8.5",
         "dotenv": "^10.0.0",
         "express": "^4.17.1",
         "global": "^4.4.0",
-        "mongoose": "^6.0.10",
+        "nanoid": "^3.3.4",
+        "not-index": "^1.2.0",
         "randomstring": "^1.2.1"
     },
     "ava": {

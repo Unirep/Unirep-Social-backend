@@ -1,3 +1,5 @@
+import { Express } from 'express'
+import catchError from '../catchError'
 import { formatProofForSnarkjsVerification } from '@unirep/circuits'
 import { ReputationProof } from '@unirep/contracts'
 import { ethers } from 'ethers'
@@ -7,19 +9,17 @@ import {
     UNIREP_ABI,
     UNIREP_SOCIAL,
     DEFAULT_ETH_PROVIDER,
-    ActionType,
     UNIREP_SOCIAL_ATTESTER_ID,
 } from '../constants'
-import Vote from '../models/vote'
-import Proof from '../models/proof'
-import Post from '../models/post'
-import Comment from '../models/comment'
-import { verifyReputationProof } from '../controllers/utils'
+import { ActionType } from 'unirep-social'
+import { verifyReputationProof } from '../utils'
 import TransactionManager from '../daemons/TransactionManager'
-import Nullifier from '../models/nullifiers'
-import Record from '../models/record'
 
-const vote = async (req: any, res: any) => {
+export default (app: Express) => {
+    app.post('/api/vote', catchError(vote))
+}
+
+async function vote(req, res) {
     const unirepContract = new ethers.Contract(
         UNIREP,
         UNIREP_ABI,
@@ -43,8 +43,8 @@ const vote = async (req: any, res: any) => {
 
     const { dataId } = req.body
     const [post, comment] = await Promise.all([
-        Post.findOne({ transactionHash: dataId }),
-        Comment.findOne({ transactionHash: dataId }),
+        req.db.findOne('Post', { where: { transactionHash: dataId } }),
+        req.db.findOne('Comment', { where: { transactionHash: dataId } }),
     ])
     if (post && comment) {
         res.status(500).json({
@@ -66,10 +66,12 @@ const vote = async (req: any, res: any) => {
             return
         }
 
-        const validProof = await Proof.findOne({
-            index: post.proofIndex,
-            epoch: currentEpoch,
-            valid: true,
+        const validProof = await req.db.findOne('Proof', {
+            where: {
+                index: post.proofIndex,
+                epoch: currentEpoch,
+                valid: true,
+            },
         })
         if (!validProof) {
             res.status(422).json({
@@ -85,10 +87,12 @@ const vote = async (req: any, res: any) => {
             })
             return
         }
-        const validProof = await Proof.findOne({
-            index: comment.proofIndex,
-            epoch: currentEpoch,
-            valid: true,
+        const validProof = await req.db.findOne('Proof', {
+            where: {
+                index: comment.proofIndex,
+                epoch: currentEpoch,
+                valid: true,
+            },
         })
         if (!validProof) {
             res.status(422).json({
@@ -109,6 +113,7 @@ const vote = async (req: any, res: any) => {
     }
 
     const error = await verifyReputationProof(
+        req.db,
         reputationProof,
         req.body.upvote + req.body.downvote,
         unirepSocialId,
@@ -145,7 +150,7 @@ const vote = async (req: any, res: any) => {
         }
     )
     // save to db data
-    const newVote = await Vote.create({
+    const newVote = await req.db.create('Vote', {
         transactionHash: hash,
         epoch: currentEpoch,
         voter: epochKey,
@@ -159,7 +164,8 @@ const vote = async (req: any, res: any) => {
         status: 0,
     })
 
-    await Nullifier.create(
+    await req.db.create(
+        'Nullifier',
         reputationProof.repNullifiers
             .filter((n) => n.toString() !== '0')
             .map((n) => ({
@@ -169,7 +175,7 @@ const vote = async (req: any, res: any) => {
                 confirmed: false,
             }))
     )
-    await Record.create({
+    await req.db.create('Record', {
         to: req.body.receiver,
         from: epochKey,
         upvote: req.body.upvote,
@@ -184,8 +190,4 @@ const vote = async (req: any, res: any) => {
         transaction: hash,
         newVote,
     })
-}
-
-export default {
-    vote,
 }

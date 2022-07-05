@@ -1,53 +1,39 @@
-import mongoose from 'mongoose'
-import AccountNonce, {
-    IAccountNonce,
-    AccountNonceSchema,
-} from '../models/accountNonce'
-import AccountTransaction, {
-    IAccountTransaction,
-    AccountTransactionSchema,
-} from '../models/accountTransaction'
 import { ethers } from 'ethers'
+import { DB } from 'anondb'
 
 export class TransactionManager {
     wallet?: ethers.Wallet
-    AccountNonce: mongoose.Model<IAccountNonce> = AccountNonce
-    AccountTransaction: mongoose.Model<IAccountTransaction> = AccountTransaction
+    _db?: DB
 
-    configure(key: string, provider: any) {
+    configure(key: string, provider: any, db: DB) {
         this.wallet = new ethers.Wallet(key, provider)
+        this._db = db
     }
 
-    async start(connection?: any) {
-        if (!this.wallet) throw new Error('Not initialized')
+    async start() {
+        if (!this.wallet || !this._db) throw new Error('Not initialized')
         const latestNonce = await this.wallet.getTransactionCount()
-        this.AccountNonce = (
-            connection ? mongoose.createConnection(connection) : mongoose
-        ).model('AccountNonce', AccountNonceSchema)
-        this.AccountTransaction = (
-            connection ? mongoose.createConnection(connection) : mongoose
-        ).model('AccountTransaction', AccountTransactionSchema)
-        await this.AccountNonce.findOneAndUpdate(
-            {
+        await this._db.upsert('AccountNonce', {
+            where: {
                 address: this.wallet.address,
             },
-            {
+            create: {
                 address: this.wallet.address,
-                $setOnInsert: {
-                    nonce: latestNonce,
-                },
+                nonce: latestNonce,
             },
-            {
-                upsert: true,
-            }
-        )
+            update: {},
+        })
         this.startDaemon()
     }
 
     async startDaemon() {
+        if (!this._db) throw new Error('No db connected')
         for (;;) {
-            const nextTx = await this.AccountTransaction.findOne({}).sort({
-                nonce: 1,
+            const nextTx = await this._db.findOne('AccountTransaction', {
+                where: {},
+                orderBy: {
+                    nonce: 'asc',
+                },
             })
             if (!nextTx) {
                 await new Promise((r) => setTimeout(r, 5000))
@@ -55,11 +41,14 @@ export class TransactionManager {
             }
             const sent = await this.tryBroadcastTransaction(nextTx.signedData)
             if (sent) {
-                await this.AccountTransaction.deleteOne({
-                    signedData: nextTx.signedData,
+                await this._db.delete('AccountTransaction', {
+                    where: {
+                        signedData: nextTx.signedData,
+                    },
                 })
             } else {
-                await new Promise((r) => setTimeout(r, 2000))
+                const randWait = Math.random() * 2000
+                await new Promise((r) => setTimeout(r, 1000 + randWait))
             }
         }
     }
@@ -86,18 +75,25 @@ export class TransactionManager {
     }
 
     async getNonce(address: string) {
-        const doc = await this.AccountNonce.findOneAndUpdate(
-            {
+        const latest = await this._db?.findOne('AccountNonce', {
+            where: {
                 address,
             },
-            {
-                $inc: {
-                    nonce: 1,
-                },
-            }
-        )
-        if (!doc) throw new Error('No initial nonce')
-        return doc.nonce
+        })
+        const updated = await this._db?.update('AccountNonce', {
+            where: {
+                address,
+                nonce: latest.nonce,
+            },
+            update: {
+                nonce: latest.nonce + 1,
+            },
+        })
+        if (updated === 0) {
+            await new Promise((r) => setTimeout(r, Math.random() * 500))
+            return this.getNonce(address)
+        }
+        return latest.nonce
     }
 
     async wait(hash: string) {
@@ -133,7 +129,7 @@ export class TransactionManager {
             gasPrice: 10000,
             ...args,
         })
-        await this.AccountTransaction.create({
+        await this._db?.create('AccountTransaction', {
             address: this.wallet.address,
             signedData,
             nonce,
